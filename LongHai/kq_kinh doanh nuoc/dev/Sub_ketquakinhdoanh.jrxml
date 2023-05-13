@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.4.3.final using JasperReports Library version 6.4.3  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Sub_ketqua" pageWidth="572" pageHeight="46" columnWidth="572" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="5c3a5e64-7657-4e4b-b2f2-c66d7a004abc">
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="HSV"/>
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<parameter name="AD_CLIENT_ID" class="java.lang.Integer">
+		<defaultValueExpression><![CDATA[1000019]]></defaultValueExpression>
+	</parameter>
+	<parameter name="StartDate" class="java.util.Date">
+		<defaultValueExpression><![CDATA[new Date(119,0,1)]]></defaultValueExpression>
+	</parameter>
+	<parameter name="EndDate" class="java.util.Date">
+		<defaultValueExpression><![CDATA[NOW()]]></defaultValueExpression>
+	</parameter>
+	<queryString>
+		<![CDATA[select  id,tp.description, tp.name,tp.hsv_dinhmuc, round(sum(a1) -sum(a2),0) as a13
+FROM(
+SELECT '13' as id, sum(tt) as a1, 0 as a2
+FROM(
+select   '2' as id,  tp.description, tp.name, sl, tt/sl as dg,tt 
+from(
+select '2' as id,sum(qtyinvoiced) as sl, sum(linenetamt) as tt  from c_invoice ci
+JOIN c_invoiceline civ on civ.c_invoice_id=ci.c_invoice_id and civ.m_product_id = 1015089
+ where issotrx = 'Y' and ci.ad_client_id = $P{AD_CLIENT_ID} and ci.dateacct>=$P{StartDate} and ci.dateacct<=$P{EndDate}
+) as k 
+JOIN hsv_kqthumua tp on  tp.value = k.id 
+where ad_client_id = $P{AD_CLIENT_ID}
+UNION ALL
+
+SELECT  id,tp.description, tp.name, k.sl,  tp.hsv_dinhmuc as dg, k.sl* tp.hsv_dinhmuc as tt 
+FROM(
+select '3' as id,sum(qtyinternaluse) as sl from m_inventory ci JOIN m_inventoryline civ on ci.m_inventory_id = civ.m_inventory_id and civ.m_product_id = 1015090 and ci.docstatus in ('CO','CL') and ci.ad_client_id = $P{AD_CLIENT_ID}  and ci.movementdate >=$P{StartDate} and ci.movementdate<=$P{EndDate} 
+) as k 
+RIGHT JOIN hsv_kqthumua tp ON tp.value = k.id
+WHERE ad_client_id = $P{AD_CLIENT_ID} AND tp.value = '3'
+UNION ALL
+select '4' as id , description,name, null::int4 as sl,null::int4 as dg,null::int4 as tt from hsv_kqthumua where ad_client_id =$P{AD_CLIENT_ID} and value ='4'
+) as k
+UNION ALL
+SELECT '13' as id,0 as a1, sum(tt) as a2
+FROM(
+select  id , description,name, null::int4 as sl,null::int4 as dg,k.tt as tt 
+from(
+select '6' as id,sum(amtacctdr-amtacctcr) as tt 
+from (
+select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				join gl_journalline gl on fc.record_id = gl.gl_journal_id and fc.line_id = gl.gl_journalline_id and fc.Account_ID = gl.Account_ID and gl.IsGenerated = 'N'
+				join gl_journal a on a.gl_journal_id = fc.record_id and a.docstatus in ('CO', 'CL')
+				where fc.C_Activity_ID = 1000275 and fc.ad_client_id = $P{AD_CLIENT_ID}  and fc.ad_client_id = 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+			
+				
+				union all
+				
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				where fc.C_Activity_ID = 1000275 and  fc.ad_client_id = $P{AD_CLIENT_ID}  and fc.ad_client_id <> 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}	
+	
+) as t
+JOIN c_elementvalue acct ON t.account_id = acct.c_elementvalue_id AND LEFT(acct.value, 4) IN ('6221','6223', '6271')
+)as k join hsv_kqthumua tp on tp.value = k.id
+where ad_client_id =$P{AD_CLIENT_ID} and value ='6'
+UNION ALL
+select  id , description,name, null::int4 as sl,null::int4 as dg,k.tt as tt 
+from(
+select '7' as id,sum(amtacctdr-amtacctcr) as tt 
+from (
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				join gl_journalline gl on fc.record_id = gl.gl_journal_id and fc.line_id = gl.gl_journalline_id and fc.Account_ID = gl.Account_ID and gl.IsGenerated = 'N'
+				join gl_journal a on a.gl_journal_id = fc.record_id and a.docstatus in ('CO', 'CL')
+				where fc.C_Activity_ID = 1000275 and fc.ad_client_id = $P{AD_CLIENT_ID}  and fc.ad_client_id = 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+			
+				
+				union all
+				
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				where fc.C_Activity_ID = 1000275 and  fc.ad_client_id = $P{AD_CLIENT_ID}  and fc.ad_client_id <> 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+			
+) as t 
+JOIN c_elementvalue acct ON t.account_id = acct.c_elementvalue_id AND LEFT(acct.value, 4) IN ('6211','6213', '6272','6273','6275','6276','6277','6278')
+
+)as k join hsv_kqthumua tp on tp.value = k.id
+where ad_client_id =$P{AD_CLIENT_ID} and value ='7'
+ UNION ALL
+ 
+select  id , description,concat(name,'(',tp.hsv_dinhmuc,'%)'), null::int4 as sl,null::int4 as dg,k.tt*tp.hsv_dinhmuc/100 as tt 
+from(
+select '8' as id,sum(amtacctdr-amtacctcr) as tt 
+from (
+select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				join gl_journalline gl on fc.record_id = gl.gl_journal_id and fc.line_id = gl.gl_journalline_id and fc.Account_ID = gl.Account_ID and gl.IsGenerated = 'N'
+				join gl_journal a on a.gl_journal_id = fc.record_id and a.docstatus in ('CO', 'CL')
+				where  fc.ad_client_id = $P{AD_CLIENT_ID}  and fc.ad_client_id = 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+			
+				
+				union all
+				
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				where    fc.ad_client_id = $P{AD_CLIENT_ID}  and fc.ad_client_id <> 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+			
+) as t 
+JOIN c_elementvalue acct ON t.account_id = acct.c_elementvalue_id AND LEFT(acct.value, 4) IN ('6421','6428') 
+
+)as k join hsv_kqthumua tp on tp.value = k.id
+where ad_client_id =$P{AD_CLIENT_ID} and value ='8'
+
+) as k
+) as k join hsv_kqthumua tp on tp.value = k.id
+where ad_client_id =$P{AD_CLIENT_ID} and value ='13'
+ group by id,tp.description, tp.name,tp.hsv_dinhmuc]]>
+	</queryString>
+	<field name="id" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="id"/>
+	</field>
+	<field name="description" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="description"/>
+	</field>
+	<field name="name" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="name"/>
+	</field>
+	<field name="hsv_dinhmuc" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.label" value="hsv_dinhmuc"/>
+	</field>
+	<field name="a13" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.label" value="a13"/>
+	</field>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<detail>
+		<band height="46" splitType="Stretch">
+			<textField pattern="#,##0.###" isBlankWhenNull="true">
+				<reportElement x="30" y="23" width="221" height="23" uuid="8c69b337-7892-41c2-9257-2bf2edd6910d">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{name}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.###" isBlankWhenNull="true">
+				<reportElement x="455" y="23" width="111" height="23" uuid="93647db4-a889-42df-a3f2-0454884f9f83">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{a13}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="0" y="23" width="30" height="23" uuid="4e24f3f7-74bc-4cf0-8722-dc114ba723de">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{description}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.###" isBlankWhenNull="true">
+				<reportElement x="251" y="23" width="65" height="23" uuid="28de232c-56bd-49e0-8474-368c638e945f">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+			</textField>
+			<textField pattern="#,##0.###" isBlankWhenNull="true">
+				<reportElement x="316" y="23" width="80" height="23" uuid="5c697782-3ec6-48c6-b9d9-65f16af24b60">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+			</textField>
+			<textField pattern="#,##0.###" isBlankWhenNull="true">
+				<reportElement x="396" y="23" width="59" height="23" uuid="1002685e-22a8-4534-9502-ca4a32f58c24">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[""]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+</jasperReport>

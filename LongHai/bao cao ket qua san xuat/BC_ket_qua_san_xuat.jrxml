@@ -1,0 +1,634 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.17.0.final using JasperReports Library version 6.17.0-6d93193241dd8cc42629e188b94f9e0bc5722efd  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="BC_ket_qua_san_xuat" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="a9f14589-98b7-41f2-9826-9c0d94b4c3e3">
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="adempiere_7.1"/>
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.rows" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.columns" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.detect.cell.type" value="true"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="0"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="1000"/>
+	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
+	<parameter name="C_Period_ID" class="java.lang.Integer"/>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String">
+		<defaultValueExpression><![CDATA["dev/"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="EXPORT_TYPE" class="java.lang.String"/>
+	<queryString>
+		<![CDATA[select id  ,cs.name,case when id not in('101','113') then 'VNĐ' else  '' end  as "dvt"
+,tt1, tt2
+from 
+(
+select '102' as id, tt1, tt2
+from(
+	select sum(case when fc.dateacct >= (select startdate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})
+					and fc.dateacct <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID}) 
+					then (-fc.amtacctdr+fc.amtacctcr) else 0 end) tt1, 			
+			sum(case when  fc.dateacct >= (SELECT date_trunc('YEAR',(select p.enddate from C_Period p where p.c_period_id = $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}))::DATE) 
+					and fc.dateacct <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})
+					then (-fc.amtacctdr+fc.amtacctcr) else 0 end) tt2
+	from fact_acct fc 
+	join m_product hh on  hh.m_product_id = fc.m_product_id and hh.m_product_category_id in (1000492,1000493)
+	and hh.hsv_loaimat_id not in (1000033,1000034) 
+	join c_elementvalue ev on fc.account_id=ev.c_elementvalue_id and ev.ad_client_id=$P{AD_CLIENT_ID} and left(ev.value,2) in ('15')
+	where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.c_campaign_id in (1000060,1000062) and  fc.ad_table_id =321	 				
+) as k
+union all
+select '103' as id,
+sum(case when ci.movementdate >= (select startdate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})
+and ci.movementdate <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})  then  civ.qtyinternaluse *ctt.hsv_dinhmuc else 0 end) as tt1,
+sum(case when  ci.movementdate >= (SELECT date_trunc('YEAR',(select p.enddate from C_Period p where p.c_period_id = $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}))::DATE) 
+and ci.movementdate <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID}) then  civ.qtyinternaluse * ctt.hsv_dinhmuc else 0 end) as tt2
+from m_inventory ci 
+join m_inventoryline civ on civ.m_inventory_id = ci.m_inventory_id 
+join m_product hh on hh.m_product_id = civ.m_product_id and hh.hsv_loaimat_id =1000034
+join m_attributeinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
+join m_attributevalue atv on atv.m_attributevalue_id = att.m_attributevalue_id 
+join hsv_c_thuoctinh ctt on ctt.hsv_c_thuoctinh_id = atv.hsv_c_thuoctinh_id 
+where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.c_campaign_id = 1000060 
+
+union all 
+select '104' as id,
+sum(case when ci.movementdate >= (select startdate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})
+and ci.movementdate <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})  then  civ.qtyinternaluse *ctt.hsv_dinhmuc else 0 end) as tt1,
+sum(case when  ci.movementdate >= (SELECT date_trunc('YEAR',(select p.enddate from C_Period p where p.c_period_id = $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}))::DATE) 
+and ci.movementdate <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID}) then  civ.qtyinternaluse * ctt.hsv_dinhmuc else 0 end) as tt2
+from m_inventory ci 
+join m_inventoryline civ on civ.m_inventory_id = ci.m_inventory_id 
+join m_product hh on hh.m_product_id = civ.m_product_id and hh.hsv_loaimat_id =1000033
+join m_attributeinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
+join m_attributevalue atv on atv.m_attributevalue_id = att.m_attributevalue_id 
+join hsv_c_thuoctinh ctt on ctt.hsv_c_thuoctinh_id = atv.hsv_c_thuoctinh_id 
+where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.c_campaign_id = 1000062 
+union ALL
+select '105' as id,
+sum(case when ci.movementdate >= (select startdate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})
+and ci.movementdate <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})  then  civ.productionqty *ctt.hsv_dinhmuc else 0 end) as tt1,
+sum(case when  ci.movementdate >= (SELECT date_trunc('YEAR',(select p.enddate from C_Period p where p.c_period_id = $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}))::DATE) 
+and ci.movementdate <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID}) then  civ.productionqty * ctt.hsv_dinhmuc else 0 end) as tt2
+from m_productionplan civ 
+join m_production ci on civ.m_production_id = ci.m_production_id 
+join m_product hh on hh.m_product_id = civ.m_product_id and hh.hsv_loaimat_id =1000034
+join m_attributeinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
+join m_attributevalue atv on atv.m_attributevalue_id = att.m_attributevalue_id 
+join hsv_c_thuoctinh ctt on ctt.hsv_c_thuoctinh_id = atv.hsv_c_thuoctinh_id 
+where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.c_campaign_id = 1000060 and ci.C_Activity_ID=1000272
+
+union all 
+
+
+select '109' as id,
+sum(case when ci.movementdate >= (select startdate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})
+and ci.movementdate <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})  then  civ.productionqty *ctt.hsv_dinhmuc else 0 end) as tt1,
+sum(case when  ci.movementdate >= (SELECT date_trunc('YEAR',(select p.enddate from C_Period p where p.c_period_id = $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}))::DATE) 
+and ci.movementdate <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID}) then  civ.productionqty * ctt.hsv_dinhmuc else 0 end) as tt2
+from m_productionplan civ 
+join m_production ci on civ.m_production_id = ci.m_production_id 
+join m_product hh on hh.m_product_id = civ.m_product_id and hh.hsv_loaimat_id =1000033
+join m_attributeinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
+join m_attributevalue atv on atv.m_attributevalue_id = att.m_attributevalue_id 
+join hsv_c_thuoctinh ctt on ctt.hsv_c_thuoctinh_id = atv.hsv_c_thuoctinh_id 
+where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.c_campaign_id = 1000062 and ci.C_Activity_ID=1000273
+union all
+select '110' as id, sum(tt1) - sum(tt11) as tt1, sum(tt2)-sum(tt22) as tt2
+from(
+select  sum(tt1) as tt1,sum(tt2) as tt2,0 as tt11,0 as tt22
+from (
+	select 
+	sum(case when ci.movementdate >= (select startdate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})
+	and ci.movementdate <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})  then  civ.productionqty *ctt.hsv_dinhmuc else 0 end) as tt1,
+	sum(case when  ci.movementdate >= (SELECT date_trunc('YEAR',(select p.enddate from C_Period p where p.c_period_id = $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}))::DATE) 
+	and ci.movementdate <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID}) then  civ.productionqty * ctt.hsv_dinhmuc else 0 end) as tt2
+	from m_productionplan civ 
+	join m_production ci on civ.m_production_id = ci.m_production_id 
+	join m_product hh on hh.m_product_id = civ.m_product_id and hh.hsv_loaimat_id =1000034
+	join m_attributeinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
+	join m_attributevalue atv on atv.m_attributevalue_id = att.m_attributevalue_id 
+	join hsv_c_thuoctinh ctt on ctt.hsv_c_thuoctinh_id = atv.hsv_c_thuoctinh_id 
+	where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.c_campaign_id = 1000060 and ci.C_Activity_ID=1000272
+	union all 
+	select 
+	sum(case when ci.movementdate >= (select startdate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})
+	and ci.movementdate <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})  then  civ.productionqty *ctt.hsv_dinhmuc else 0 end) as tt1,
+	sum(case when  ci.movementdate >= (SELECT date_trunc('YEAR',(select p.enddate from C_Period p where p.c_period_id = $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}))::DATE) 
+	and ci.movementdate <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID}) then  civ.productionqty * ctt.hsv_dinhmuc else 0 end) as tt2
+	from m_productionplan civ 
+	join m_production ci on civ.m_production_id = ci.m_production_id 
+	join m_product hh on hh.m_product_id = civ.m_product_id and hh.hsv_loaimat_id =1000033
+	join m_attributeinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
+	join m_attributevalue atv on atv.m_attributevalue_id = att.m_attributevalue_id 
+	join hsv_c_thuoctinh ctt on ctt.hsv_c_thuoctinh_id = atv.hsv_c_thuoctinh_id 
+	where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.c_campaign_id = 1000062 and ci.C_Activity_ID=1000273
+) as k
+union all 
+select 0 as tt1, 0 as tt2, sum(tt1) as tt11,sum(tt2) as tt22
+from(
+select  tt1, tt2
+from(
+	select sum(case when fc.dateacct >= (select startdate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})
+					and fc.dateacct <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID}) 
+					then (-fc.amtacctdr+fc.amtacctcr) else 0 end) tt1, 			
+			sum(case when  fc.dateacct >= (SELECT date_trunc('YEAR',(select p.enddate from C_Period p where p.c_period_id = $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}))::DATE) 
+					and fc.dateacct <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})
+					then (-fc.amtacctdr+fc.amtacctcr) else 0 end) tt2
+	from fact_acct fc 
+	join m_product hh on  hh.m_product_id = fc.m_product_id and hh.m_product_category_id in (1000492,1000493)
+	and hh.hsv_loaimat_id not in (1000033,1000034) 
+	join c_elementvalue ev on fc.account_id=ev.c_elementvalue_id and ev.ad_client_id=$P{AD_CLIENT_ID} and left(ev.value,2) in ('15')
+	where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.c_campaign_id in (1000060,1000062) and  fc.ad_table_id =321	 				
+) as k
+	union all
+	select 
+	sum(case when ci.movementdate >= (select startdate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})
+	and ci.movementdate <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})  then  civ.qtyinternaluse *ctt.hsv_dinhmuc else 0 end) as tt1,
+	sum(case when  ci.movementdate >= (SELECT date_trunc('YEAR',(select p.enddate from C_Period p where p.c_period_id = $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}))::DATE) 
+	and ci.movementdate <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID}) then  civ.qtyinternaluse * ctt.hsv_dinhmuc else 0 end) as tt2
+	from m_inventory ci 
+	join m_inventoryline civ on civ.m_inventory_id = ci.m_inventory_id 
+	join m_product hh on hh.m_product_id = civ.m_product_id and hh.hsv_loaimat_id =1000034
+	join m_attributeinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
+	join m_attributevalue atv on atv.m_attributevalue_id = att.m_attributevalue_id 
+	join hsv_c_thuoctinh ctt on ctt.hsv_c_thuoctinh_id = atv.hsv_c_thuoctinh_id 
+	where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.c_campaign_id = 1000060 
+
+	union all 
+	select 
+	sum(case when ci.movementdate >= (select startdate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})
+	and ci.movementdate <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})  then  civ.qtyinternaluse *ctt.hsv_dinhmuc else 0 end) as tt1,
+	sum(case when  ci.movementdate >= (SELECT date_trunc('YEAR',(select p.enddate from C_Period p where p.c_period_id = $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}))::DATE) 
+	and ci.movementdate <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID}) then  civ.qtyinternaluse * ctt.hsv_dinhmuc else 0 end) as tt2
+	from m_inventory ci 
+	join m_inventoryline civ on civ.m_inventory_id = ci.m_inventory_id 
+	join m_product hh on hh.m_product_id = civ.m_product_id and hh.hsv_loaimat_id =1000033
+	join m_attributeinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
+	join m_attributevalue atv on atv.m_attributevalue_id = att.m_attributevalue_id 
+	join hsv_c_thuoctinh ctt on ctt.hsv_c_thuoctinh_id = atv.hsv_c_thuoctinh_id 
+	where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.c_campaign_id = 1000062
+) as k 
+) as k
+
+union all
+
+select '114' as id,
+sum(case when t.dateacct >= (select startdate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})
+and t.dateacct <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})  then  (amtacctdr-amtacctcr) else 0 end ) as tt1,
+sum(case when t.dateacct >= (SELECT date_trunc('YEAR',(select p.enddate from C_Period p where p.c_period_id = $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}))::DATE)
+and t.dateacct <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})  then  (amtacctdr-amtacctcr) else 0 end ) as tt2
+from (
+ 	SELECT  fc.amtacctdr, fc.amtacctcr, fc.account_id, fc.c_activity_id, fc.dateacct 
+	from fact_acct fc
+	join gl_journalline gl on fc.record_id = gl.gl_journal_id and fc.line_id = gl.gl_journalline_id and fc.Account_ID = gl.Account_ID and gl.IsGenerated = 'N'
+	join gl_journal a on a.gl_journal_id = fc.record_id and a.docstatus in ('CO', 'CL')
+	where  fc.ad_client_id = $P{AD_CLIENT_ID} and fc.ad_table_id = 224 
+	union all
+ 	SELECT  fc.amtacctdr, fc.amtacctcr, fc.account_id, fc.c_activity_id, fc.dateacct 
+	from fact_acct fc
+	where  fc.ad_client_id = $P{AD_CLIENT_ID} and fc.ad_table_id <> 224 
+	) as t
+join c_elementvalue acct on t.account_id = acct.c_elementvalue_id and (LEFT(acct.value, 3) in ('622','627','641','642') or LEFT(acct.value, 4) in ('6352','6213'))
+where t.c_activity_id in (1000271,1000272,1000273)
+
+union all
+
+select '115' as id,
+	sum(case when ci.movementdate >= (select startdate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})
+	and ci.movementdate <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})  then  civ.productionqty *ctt.hsv_dinhmuc1 else 0 end) as tt1,
+	sum(case when  ci.movementdate >= (SELECT date_trunc('YEAR',(select p.enddate from C_Period p where p.c_period_id = $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}))::DATE) 
+	and ci.movementdate <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID}) then  civ.productionqty * ctt.hsv_dinhmuc1 else 0 end) as tt2
+from m_productionplan civ 
+	join m_production ci on civ.m_production_id = ci.m_production_id 
+	join m_product hh on hh.m_product_id = civ.m_product_id and hh.hsv_loaimat_id in (1000033,1000034)
+	join m_attributeinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
+	join m_attributevalue atv on atv.m_attributevalue_id = att.m_attributevalue_id 
+	join hsv_c_thuoctinh ctt on ctt.hsv_c_thuoctinh_id = atv.hsv_c_thuoctinh_id 
+	where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.c_campaign_id in(1000062, 1000060)
+union all
+select '116' as id,sum(tt1)-sum(tt11) as tt1,sum(tt2)-sum(tt22) as tt2
+from(
+select 
+	sum(case when ci.movementdate >= (select startdate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})
+	and ci.movementdate <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})  then  civ.productionqty *ctt.hsv_dinhmuc1 else 0 end) as tt1,
+	sum(case when  ci.movementdate >= (SELECT date_trunc('YEAR',(select p.enddate from C_Period p where p.c_period_id = $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}))::DATE) 
+	and ci.movementdate <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID}) then  civ.productionqty * ctt.hsv_dinhmuc1 else 0 end) as tt2,
+	0 as tt11, 0 as tt22
+from m_productionplan civ 
+	join m_production ci on civ.m_production_id = ci.m_production_id 
+	join m_product hh on hh.m_product_id = civ.m_product_id and hh.hsv_loaimat_id in (1000033,1000034)
+	join m_attributeinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
+	join m_attributevalue atv on atv.m_attributevalue_id = att.m_attributevalue_id 
+	join hsv_c_thuoctinh ctt on ctt.hsv_c_thuoctinh_id = atv.hsv_c_thuoctinh_id 
+	where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.c_campaign_id in(1000062, 1000060)
+	
+union all
+select 0 as tt1, 0 as tt2,
+sum(case when t.dateacct >= (select startdate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})
+and t.dateacct <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})  then  (amtacctdr-amtacctcr) else 0 end ) as tt1,
+sum(case when t.dateacct >= (SELECT date_trunc('YEAR',(select p.enddate from C_Period p where p.c_period_id = $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}))::DATE)
+and t.dateacct <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})  then  (amtacctdr-amtacctcr) else 0 end ) as tt2
+from (
+ 	SELECT  fc.amtacctdr, fc.amtacctcr, fc.account_id, fc.c_activity_id, fc.dateacct 
+	from fact_acct fc
+	join gl_journalline gl on fc.record_id = gl.gl_journal_id and fc.line_id = gl.gl_journalline_id and fc.Account_ID = gl.Account_ID and gl.IsGenerated = 'N'
+	join gl_journal a on a.gl_journal_id = fc.record_id and a.docstatus in ('CO', 'CL')
+	where  fc.ad_client_id = $P{AD_CLIENT_ID} and fc.ad_table_id = 224 
+	union all
+ 	SELECT  fc.amtacctdr, fc.amtacctcr, fc.account_id, fc.c_activity_id, fc.dateacct 
+	from fact_acct fc
+	where  fc.ad_client_id = $P{AD_CLIENT_ID} and fc.ad_table_id <> 224 
+	) as t
+join c_elementvalue acct on t.account_id = acct.c_elementvalue_id and (LEFT(acct.value, 3) in ('622','627','641','642') or LEFT(acct.value, 4) in ('6352','6213'))
+where t.c_activity_id in (1000271,1000272,1000273)
+) as k
+
+union all 
+select '117' as id, sum(tt1) as tt1,sum(tt2) as tt2 
+from(
+select  sum(tt1) - sum(tt11) as tt1, sum(tt2)-sum(tt22) as tt2
+from(
+select  sum(tt1) as tt1,sum(tt2) as tt2,0 as tt11,0 as tt22
+from (
+	select 
+	sum(case when ci.movementdate >= (select startdate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})
+	and ci.movementdate <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})  then  civ.productionqty *ctt.hsv_dinhmuc else 0 end) as tt1,
+	sum(case when  ci.movementdate >= (SELECT date_trunc('YEAR',(select p.enddate from C_Period p where p.c_period_id = $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}))::DATE) 
+	and ci.movementdate <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID}) then  civ.productionqty * ctt.hsv_dinhmuc else 0 end) as tt2
+	from m_productionplan civ 
+	join m_production ci on civ.m_production_id = ci.m_production_id 
+	join m_product hh on hh.m_product_id = civ.m_product_id and hh.hsv_loaimat_id =1000034
+	join m_attributeinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
+	join m_attributevalue atv on atv.m_attributevalue_id = att.m_attributevalue_id 
+	join hsv_c_thuoctinh ctt on ctt.hsv_c_thuoctinh_id = atv.hsv_c_thuoctinh_id 
+	where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.c_campaign_id = 1000060 and ci.C_Activity_ID=1000272
+	union all 
+	select 
+	sum(case when ci.movementdate >= (select startdate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})
+	and ci.movementdate <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})  then  civ.productionqty *ctt.hsv_dinhmuc else 0 end) as tt1,
+	sum(case when  ci.movementdate >= (SELECT date_trunc('YEAR',(select p.enddate from C_Period p where p.c_period_id = $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}))::DATE) 
+	and ci.movementdate <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID}) then  civ.productionqty * ctt.hsv_dinhmuc else 0 end) as tt2
+	from m_productionplan civ 
+	join m_production ci on civ.m_production_id = ci.m_production_id 
+	join m_product hh on hh.m_product_id = civ.m_product_id and hh.hsv_loaimat_id =1000033
+	join m_attributeinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
+	join m_attributevalue atv on atv.m_attributevalue_id = att.m_attributevalue_id 
+	join hsv_c_thuoctinh ctt on ctt.hsv_c_thuoctinh_id = atv.hsv_c_thuoctinh_id 
+	where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.c_campaign_id = 1000062 and ci.C_Activity_ID=1000273
+) as k
+union all 
+select 0 as tt1, 0 as tt2, sum(tt1) as tt11,sum(tt2) as tt22
+from(
+select  tt1, tt2
+from(
+	select sum(case when fc.dateacct >= (select startdate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})
+					and fc.dateacct <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID}) 
+					then (-fc.amtacctdr+fc.amtacctcr) else 0 end) tt1, 			
+			sum(case when  fc.dateacct >= (SELECT date_trunc('YEAR',(select p.enddate from C_Period p where p.c_period_id = $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}))::DATE) 
+					and fc.dateacct <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})
+					then (-fc.amtacctdr+fc.amtacctcr) else 0 end) tt2
+	from fact_acct fc 
+	join m_product hh on  hh.m_product_id = fc.m_product_id and hh.m_product_category_id in (1000492,1000493)
+	and hh.hsv_loaimat_id not in (1000033,1000034) 
+	join c_elementvalue ev on fc.account_id=ev.c_elementvalue_id and ev.ad_client_id=$P{AD_CLIENT_ID} and left(ev.value,2) in ('15')
+	where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.c_campaign_id in (1000060,1000062) and  fc.ad_table_id =321	 				
+) as k
+	union all
+	select 
+	sum(case when ci.movementdate >= (select startdate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})
+	and ci.movementdate <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})  then  civ.qtyinternaluse *ctt.hsv_dinhmuc else 0 end) as tt1,
+	sum(case when  ci.movementdate >= (SELECT date_trunc('YEAR',(select p.enddate from C_Period p where p.c_period_id = $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}))::DATE) 
+	and ci.movementdate <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID}) then  civ.qtyinternaluse * ctt.hsv_dinhmuc else 0 end) as tt2
+	from m_inventory ci 
+	join m_inventoryline civ on civ.m_inventory_id = ci.m_inventory_id 
+	join m_product hh on hh.m_product_id = civ.m_product_id and hh.hsv_loaimat_id =1000034
+	join m_attributeinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
+	join m_attributevalue atv on atv.m_attributevalue_id = att.m_attributevalue_id 
+	join hsv_c_thuoctinh ctt on ctt.hsv_c_thuoctinh_id = atv.hsv_c_thuoctinh_id 
+	where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.c_campaign_id = 1000060 
+
+	union all 
+	select 
+	sum(case when ci.movementdate >= (select startdate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})
+	and ci.movementdate <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})  then  civ.qtyinternaluse *ctt.hsv_dinhmuc else 0 end) as tt1,
+	sum(case when  ci.movementdate >= (SELECT date_trunc('YEAR',(select p.enddate from C_Period p where p.c_period_id = $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}))::DATE) 
+	and ci.movementdate <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID}) then  civ.qtyinternaluse * ctt.hsv_dinhmuc else 0 end) as tt2
+	from m_inventory ci 
+	join m_inventoryline civ on civ.m_inventory_id = ci.m_inventory_id 
+	join m_product hh on hh.m_product_id = civ.m_product_id and hh.hsv_loaimat_id =1000033
+	join m_attributeinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
+	join m_attributevalue atv on atv.m_attributevalue_id = att.m_attributevalue_id 
+	join hsv_c_thuoctinh ctt on ctt.hsv_c_thuoctinh_id = atv.hsv_c_thuoctinh_id 
+	where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.c_campaign_id = 1000062
+) as k 
+) as k
+union all 
+select sum(tt1)-sum(tt11) as tt1,sum(tt2)-sum(tt22) as tt2
+from(
+select 
+	sum(case when ci.movementdate >= (select startdate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})
+	and ci.movementdate <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})  then  civ.productionqty *ctt.hsv_dinhmuc1 else 0 end) as tt1,
+	sum(case when  ci.movementdate >= (SELECT date_trunc('YEAR',(select p.enddate from C_Period p where p.c_period_id = $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}))::DATE) 
+	and ci.movementdate <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID}) then  civ.productionqty * ctt.hsv_dinhmuc1 else 0 end) as tt2,
+	0 as tt11, 0 as tt22
+from m_productionplan civ 
+	join m_production ci on civ.m_production_id = ci.m_production_id 
+	join m_product hh on hh.m_product_id = civ.m_product_id and hh.hsv_loaimat_id in (1000033,1000034)
+	join m_attributeinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
+	join m_attributevalue atv on atv.m_attributevalue_id = att.m_attributevalue_id 
+	join hsv_c_thuoctinh ctt on ctt.hsv_c_thuoctinh_id = atv.hsv_c_thuoctinh_id 
+	where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.c_campaign_id in(1000062, 1000060)
+	
+union all
+
+select 0 as tt1, 0 as tt2,
+sum(case when t.dateacct >= (select startdate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})
+and t.dateacct <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})  then  (amtacctdr-amtacctcr) else 0 end ) as tt11,
+sum(case when t.dateacct >= (SELECT date_trunc('YEAR',(select p.enddate from C_Period p where p.c_period_id = $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}))::DATE)
+and t.dateacct <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})  then  (amtacctdr-amtacctcr) else 0 end ) as tt22
+from (
+ 	SELECT  fc.amtacctdr, fc.amtacctcr, fc.account_id, fc.c_activity_id, fc.dateacct 
+	from fact_acct fc
+	join gl_journalline gl on fc.record_id = gl.gl_journal_id and fc.line_id = gl.gl_journalline_id and fc.Account_ID = gl.Account_ID and gl.IsGenerated = 'N'
+	join gl_journal a on a.gl_journal_id = fc.record_id and a.docstatus in ('CO', 'CL')
+	where  fc.ad_client_id = $P{AD_CLIENT_ID} and fc.ad_table_id = 224 
+	union all
+ 	SELECT  fc.amtacctdr, fc.amtacctcr, fc.account_id, fc.c_activity_id, fc.dateacct 
+	from fact_acct fc
+	where  fc.ad_client_id = $P{AD_CLIENT_ID} and fc.ad_table_id <> 224 
+	) as t
+join c_elementvalue acct on t.account_id = acct.c_elementvalue_id and (LEFT(acct.value, 3) in ('622','627','641','642') or LEFT(acct.value, 4) in ('6352','6213'))
+where t.c_activity_id in (1000271,1000272,1000273)
+) as k
+) as k
+
+union all
+select cs.value, null::int4 as tt1,null::int4 as tt1 from hsv_chiso cs where cs.ad_client_id = $P{AD_CLIENT_ID} and cs.value in ('101','113')
+
+) as k left join hsv_chiso cs on cs.value = k.id  and cs.isactive ='Y'
+where cs.ad_client_id = $P{AD_CLIENT_ID}
+order by cast(cs.value as integer) asc]]>
+	</queryString>
+	<field name="id" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="id"/>
+	</field>
+	<field name="name" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="name"/>
+	</field>
+	<field name="dvt" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="dvt"/>
+	</field>
+	<field name="tt1" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.label" value="tt1"/>
+	</field>
+	<field name="tt2" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.label" value="tt2"/>
+	</field>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="76" splitType="Stretch">
+			<printWhenExpression><![CDATA[$P{EXPORT_TYPE}==null]]></printWhenExpression>
+			<subreport>
+				<reportElement x="0" y="0" width="380" height="30" uuid="3694ed5d-de79-444a-ad9c-5837e826332f"/>
+				<subreportParameter name="AD_CLIENT_ID">
+					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="C_Period_ID">
+					<subreportParameterExpression><![CDATA[$P{C_Period_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"CompanyInfo.jasper"]]></subreportExpression>
+			</subreport>
+			<textField isBlankWhenNull="true">
+				<reportElement x="0" y="27" width="560" height="30" uuid="a7dc9eb2-2bbf-48e4-8b53-fbac26415101">
+					<property name="local_mesure_unitheight" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="20" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["BÁO CÁO KẾT QUẢ SẢN XUẤT"]]></textFieldExpression>
+			</textField>
+			<subreport>
+				<reportElement x="220" y="54" width="190" height="20" uuid="63506270-0cd3-41cd-89e5-6efc5853c35c"/>
+				<subreportParameter name="AD_CLIENT_ID">
+					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="C_Period_ID">
+					<subreportParameterExpression><![CDATA[$P{C_Period_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"sub_thang.jasper"]]></subreportExpression>
+			</subreport>
+		</band>
+	</title>
+	<columnHeader>
+		<band height="23" splitType="Stretch">
+			<printWhenExpression><![CDATA[$V{PAGE_NUMBER}==1]]></printWhenExpression>
+			<staticText>
+				<reportElement x="0" y="0" width="260" height="23" uuid="1282b8be-5f29-49cf-af19-a7cdade644fc">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="a1810ba2-73a7-4bbe-8ae8-2b953a928d91"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Nội dung]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="300" y="0" width="130" height="23" uuid="0cfc5b20-e7b9-4949-9e55-f4d6afb5cb18">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c866d79c-4230-46b8-a66c-9f1e4aae0bb2"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Tháng]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="430" y="0" width="130" height="23" uuid="99e2f6e8-12a3-4631-bc51-0879a09f154d">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="7a255ddb-e756-4e9b-87f5-62d10c226127"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Lũy kế đầu năm]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="260" y="0" width="40" height="23" uuid="6db6d777-54a5-4a8b-b7eb-7fd85fdcc334">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c972985a-e2de-4852-8872-b3c3bd6d7bf3"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<text><![CDATA[ĐVT]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="23" splitType="Stretch">
+			<textField isBlankWhenNull="true">
+				<reportElement x="0" y="0" width="260" height="23" uuid="8d51187c-00ae-4552-92dc-33142755633f">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="a1810ba2-73a7-4bbe-8ae8-2b953a928d91"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{name}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="300" y="0" width="130" height="23" uuid="561f2b80-617b-4f35-85a5-edd2b2d7fa94">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c866d79c-4230-46b8-a66c-9f1e4aae0bb2"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{tt1}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="430" y="0" width="130" height="23" uuid="61aafccc-8ff0-4fb8-be48-1fd373bb5582">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="7a255ddb-e756-4e9b-87f5-62d10c226127"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{tt2}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="260" y="0" width="40" height="23" uuid="cd6c3c11-2230-4167-b6b1-cae2dce8ae78">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c972985a-e2de-4852-8872-b3c3bd6d7bf3"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{dvt}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<pageFooter>
+		<band height="30" splitType="Stretch">
+			<printWhenExpression><![CDATA[$P{EXPORT_TYPE}==null]]></printWhenExpression>
+			<textField>
+				<reportElement x="0" y="0" width="280" height="30" uuid="61b0462a-765c-4a16-b186-a6a3e4250769">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{PAGE_NUMBER}]]></textFieldExpression>
+			</textField>
+			<textField evaluationTime="Report">
+				<reportElement x="280" y="0" width="280" height="30" uuid="08d98d51-4ea1-48b8-b7b5-4b722aeb128b">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA["/"+$V{PAGE_NUMBER}]]></textFieldExpression>
+			</textField>
+		</band>
+	</pageFooter>
+	<summary>
+		<band height="45" splitType="Stretch">
+			<printWhenExpression><![CDATA[$P{EXPORT_TYPE}==null]]></printWhenExpression>
+			<staticText>
+				<reportElement key="staticText-8" x="30" y="29" width="100" height="16" uuid="0473cce3-ae66-4211-8db9-c73c5a582167">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<printWhenExpression><![CDATA[$P{EXPORT_TYPE}==null]]></printWhenExpression>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Lập biểu]]></text>
+			</staticText>
+			<staticText>
+				<reportElement key="staticText-8" x="220" y="29" width="100" height="16" uuid="a5621355-32bc-42f3-aab6-4aeacc8273e1">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<printWhenExpression><![CDATA[$P{EXPORT_TYPE}==null]]></printWhenExpression>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Kiểm soát]]></text>
+			</staticText>
+			<staticText>
+				<reportElement key="staticText-8" x="410" y="29" width="100" height="16" uuid="0c25c981-418c-4404-80ab-a3a48c456881">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<printWhenExpression><![CDATA[$P{EXPORT_TYPE}==null]]></printWhenExpression>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Giám đốc]]></text>
+			</staticText>
+			<textField pattern="" isBlankWhenNull="false">
+				<reportElement key="textField-4" x="333" y="6" width="212" height="19" forecolor="#000000" backcolor="#FFFFFF" uuid="dfe476e6-fe65-47e6-b9e4-f79e62f8a433">
+					<printWhenExpression><![CDATA[$P{EXPORT_TYPE}==null]]></printWhenExpression>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Ngày in: " + new SimpleDateFormat("dd/MM/yyyy hh24:mm").format(new Date())]]></textFieldExpression>
+			</textField>
+		</band>
+	</summary>
+</jasperReport>

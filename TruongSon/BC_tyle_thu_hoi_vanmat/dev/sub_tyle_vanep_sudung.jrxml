@@ -1,0 +1,339 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.4.3.final using JasperReports Library version 6.4.3  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="sub_tyle_thuhoi.jrxml" pageWidth="555" pageHeight="842" columnWidth="555" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="14cd9b9d-c893-4b43-a726-7114ca21099b">
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="idempiere-7.1"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="269"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="724"/>
+	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
+	<parameter name="AD_Org_ID" class="java.lang.Integer"/>
+	<parameter name="StartDate" class="java.util.Date"/>
+	<parameter name="EndDate" class="java.util.Date"/>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String"/>
+	<queryString language="SQL">
+		<![CDATA[select id,tp.name, qty
+from(
+	select '41' as id,case when sum(qty1) <>0 then sum(qty)/(sum(qty1)*2) else 0 end as qty
+	from(
+		
+		select sum(qty) - sum(qty1) as qty,0 as qty1
+		from(
+			select sum(civ.qtyinternaluse) as qty, 0 as qty1 
+			from M_Inventory ci
+			join m_inventoryline civ on ci.m_inventory_id = civ.m_inventory_id and ci.docstatus in('CO','CL')
+			join m_product hh on hh.m_product_id = civ.m_product_id  and hh.m_product_category_id in (1000402,1000539)
+			where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.ad_org_id = $P{AD_Org_ID} and ci.movementdate >=$P{StartDate} and ci.movementdate <=$P{EndDate}
+			union all 
+			select 0 as qty,sum(civ.qtyinternaluse) as qty1 
+			from M_Inventory ci
+			join m_inventoryline civ on ci.m_inventory_id = civ.m_inventory_id and ci.docstatus in('CO','CL') and civ.hsv_xuatkhac ='Y'
+			join m_product hh on hh.m_product_id = civ.m_product_id  and hh.m_product_category_id in (1000402,1000539)
+			where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.ad_org_id = $P{AD_Org_ID} and ci.movementdate >=$P{StartDate} and ci.movementdate <=$P{EndDate}
+		) as k
+		union all
+		select 	0 as qty,sum(qty) as qty1
+		from(
+		select '33' as id,'tấm' as DVT, sum(qty) as qty
+	from(
+		select sum(civ.movementqty)  / k.hsv_dinhmuc as qty
+		from m_inout ci 
+		join m_inoutline civ on ci.m_inout_id = civ.m_inout_id  and ci.docstatus in ('CO','CL') and ci.issotrx ='Y'
+		join m_product hh on civ.m_product_id = hh.m_product_id and hh.M_AttributeSet_ID = 1000064 and hh.m_product_category_id = 1000085 
+		join ( select distinct  att.m_attributesetinstance_id, atv.hsv_dinhmuc,att.value 
+		from m_attributeinstance att 
+		join m_attributevalue atv ON atv.m_attributevalue_id = att.m_attributevalue_id  
+		where att.ad_client_id = $P{AD_CLIENT_ID}
+		) as k on civ.m_attributesetinstance_id = k.m_attributesetinstance_id
+		where ci.ad_client_id = $P{AD_CLIENT_ID} and k.value ~ '^\d+(\.\d+)?$' and (ci.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and ci.dateacct >= $P{StartDate} and ci.dateacct <= $P{EndDate}
+		group by k.hsv_dinhmuc
+	) as k
+	union all
+	
+		select '34' as id,'tấm' as DVT,
+			sum(case when t.movementdate <= $P{EndDate} then t.movementqty/k.hsv_dinhmuc else 0 end)-
+	
+			sum(case when t.movementdate < $P{StartDate} then t.movementqty/k.hsv_dinhmuc  else 0 end) as qty
+		from 
+		(	
+			select tran.m_locator_id,tran.movementdate,tran.movementqty,t.m_attributesetinstance_id
+			from m_transaction tran 
+			join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id = 1000085 and hh.M_AttributeSet_ID = 1000064
+			join (select ml.M_inventoryline_id,ml.m_attributesetinstance_id	from M_inventoryline ml join M_inventory m on ml.M_inventory_id=m.M_inventory_id and m.docstatus in ('CO','CL') and m.ad_client_id=$P{AD_CLIENT_ID})
+			t on tran.M_inventoryline_id=t.M_inventoryline_id
+			where tran.movementdate<=$P{EndDate} and tran.ad_client_id=$P{AD_CLIENT_ID}
+			 
+			union all
+	
+			select tran.m_locator_id,tran.movementdate,tran.movementqty,t1.m_attributesetinstance_id
+			from m_transaction tran 
+			join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id = 1000085 and hh.M_AttributeSet_ID = 1000064
+			join (select ml.M_movementline_id,ml.m_attributesetinstance_id  from M_movementline ml join M_movement m on ml.M_movement_id=m.M_movement_id and m.docstatus in ('CO','CL')and m.ad_client_id=$P{AD_CLIENT_ID}) t1 on tran.M_movementline_id=t1.M_movementline_id
+			where tran.movementdate<=$P{EndDate} and tran.ad_client_id=$P{AD_CLIENT_ID}
+			 
+			union all
+	
+			select tran.m_locator_id,tran.movementdate,tran.movementqty,t2.m_attributesetinstance_id
+			from m_transaction tran 
+			join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id = 1000085 and hh.M_AttributeSet_ID = 1000064
+			join (select ml.M_inoutline_id,ml.m_attributesetinstance_id  from M_inoutline ml join M_inout m on ml.M_inout_id=m.M_inout_id and m.docstatus in ('CO','CL')and m.ad_client_id=$P{AD_CLIENT_ID}) t2 on tran.M_inoutline_id=t2.M_inoutline_id
+		 	where tran.movementdate<=$P{EndDate} and tran.ad_client_id=$P{AD_CLIENT_ID}
+		 
+			union all
+	
+			select tran.m_locator_id,tran.movementdate,tran.movementqty,t3.m_attributesetinstance_id
+			from m_transaction tran 
+			join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id = 1000085 and hh.M_AttributeSet_ID = 1000064
+			join (select ml.M_productionline_id,ml.m_attributesetinstance_id  from M_productionline ml join (select ml.M_productionplan_id from M_productionplan ml join M_production m on ml.M_production_id=m.M_production_id and m.docstatus in ('CO','CL')and m.ad_client_id=$P{AD_CLIENT_ID} ) m on ml.M_productionplan_id=m.M_productionplan_id ) t3 on tran.M_productionline_id=t3.M_productionline_id
+			where tran.movementdate<=$P{EndDate} and tran.ad_client_id=$P{AD_CLIENT_ID}
+			 
+			union all
+	
+			select tran.m_locator_id,tran.movementdate,tran.movementqty,t4.m_attributesetinstance_id
+			from m_transaction tran 
+			join m_product hh on tran.m_product_id=hh.m_product_id and  hh.m_product_category_id = 1000085 and hh.M_AttributeSet_ID = 1000064
+			join (select ml.M_productionline_id,ml.m_attributesetinstance_id  from M_productionline ml join M_production m on ml.M_production_id=m.M_production_id and m.docstatus in ('CO','CL') and m.ad_client_id=$P{AD_CLIENT_ID}) t4 on tran.M_productionline_id=t4.M_productionline_id
+			where tran.movementdate<=$P{EndDate} and tran.ad_client_id=$P{AD_CLIENT_ID}
+			 
+		) as t
+		join m_locator kho on t.m_locator_id=kho.m_locator_id and (kho.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null)
+		join ( select distinct  att.m_attributesetinstance_id, atv.hsv_dinhmuc,att.value 
+				from m_attributeinstance att 
+				join m_attributevalue atv ON atv.m_attributevalue_id = att.m_attributevalue_id  
+				where att.ad_client_id = $P{AD_CLIENT_ID}
+			) as k on k.m_attributesetinstance_id = t.m_attributesetinstance_id
+		where k.value ~ '^\d+(\.\d+)?$'
+		union all 
+		select '35' as id,'tấm' as DVT, sum(qty) as qty
+		from(
+			select sum(civ.qtyinvoiced)   as qty
+			from c_invoice ci 
+			join c_invoiceline civ on ci.c_invoice_id = civ.c_invoice_id  and ci.docstatus in ('CO','CL') and ci.issotrx ='Y'
+			join m_inoutline biv on civ.m_inoutline_id = biv.m_inoutline_id 
+			join m_inout bi on biv.m_inout_id = bi.m_inout_id 
+			join m_product hh on civ.m_product_id = hh.m_product_id and hh.M_AttributeSet_ID = 1000131 and hh.m_product_category_id = 1000530 				
+			where ci.ad_client_id = $P{AD_CLIENT_ID} and (ci.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and bi.dateacct >= $P{StartDate} and bi.dateacct <= $P{EndDate}
+		) as k
+		union all 
+		
+		select '36' as id,'tấm' as DVT,
+			sum(case when t.movementdate <= $P{EndDate} then t.movementqty else 0 end)-
+			sum(case when t.movementdate < $P{StartDate} then t.movementqty else 0 end) as qty
+		from 
+		(	
+			select tran.m_locator_id,tran.movementdate,tran.movementqty
+			from m_transaction tran 
+			join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id = 1000530 and hh.M_AttributeSet_ID = 1000131
+			join (select ml.M_inventoryline_id  from M_inventoryline ml join M_inventory m on ml.M_inventory_id=m.M_inventory_id and m.docstatus in ('CO','CL') and m.ad_client_id=$P{AD_CLIENT_ID}) t on tran.M_inventoryline_id=t.M_inventoryline_id
+			where tran.movementdate<=$P{EndDate} and tran.ad_client_id=$P{AD_CLIENT_ID}
+			 
+			union all
+	
+			select tran.m_locator_id,tran.movementdate,tran.movementqty
+			from m_transaction tran 
+			join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id = 1000530 and hh.M_AttributeSet_ID = 1000131
+			join (select ml.M_movementline_id  from M_movementline ml join M_movement m on ml.M_movement_id=m.M_movement_id and m.docstatus in ('CO','CL')and m.ad_client_id=$P{AD_CLIENT_ID}) t1 on tran.M_movementline_id=t1.M_movementline_id
+			where tran.movementdate<=$P{EndDate} and tran.ad_client_id=$P{AD_CLIENT_ID}
+			 
+			union all
+	
+			select tran.m_locator_id,tran.movementdate,tran.movementqty
+			from m_transaction tran 
+			join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id = 1000530 and hh.M_AttributeSet_ID = 1000131
+			join (select ml.M_inoutline_id  from M_inoutline ml join M_inout m on ml.M_inout_id=m.M_inout_id and m.docstatus in ('CO','CL')and m.ad_client_id=$P{AD_CLIENT_ID}) t2 on tran.M_inoutline_id=t2.M_inoutline_id
+		 	where tran.movementdate<=$P{EndDate} and tran.ad_client_id=$P{AD_CLIENT_ID}
+		 
+			union all
+	
+			select tran.m_locator_id,tran.movementdate,tran.movementqty
+			from m_transaction tran 
+			join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id = 1000530 and hh.M_AttributeSet_ID = 1000131
+			join (select ml.M_productionline_id  from M_productionline ml join (select ml.M_productionplan_id from M_productionplan ml join M_production m on ml.M_production_id=m.M_production_id and m.docstatus in ('CO','CL')and m.ad_client_id=$P{AD_CLIENT_ID} ) m on ml.M_productionplan_id=m.M_productionplan_id ) t3 on tran.M_productionline_id=t3.M_productionline_id
+			where tran.movementdate<=$P{EndDate} and tran.ad_client_id=$P{AD_CLIENT_ID}
+			 
+			union all
+	
+			select tran.m_locator_id,tran.movementdate,tran.movementqty
+			from m_transaction tran 
+			join m_product hh on tran.m_product_id=hh.m_product_id and  hh.m_product_category_id = 1000530 and hh.M_AttributeSet_ID = 1000131
+			join (select ml.M_productionline_id  from M_productionline ml join M_production m on ml.M_production_id=m.M_production_id and m.docstatus in ('CO','CL') and m.ad_client_id=$P{AD_CLIENT_ID}) t4 on tran.M_productionline_id=t4.M_productionline_id
+			where tran.movementdate<=$P{EndDate} and tran.ad_client_id=$P{AD_CLIENT_ID}
+			 
+		) as t
+		join m_locator kho on t.m_locator_id=kho.m_locator_id and (kho.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null)
+	
+		union all
+		
+		select '37' as id,'tấm' as DVT,
+			sum(case when t.movementdate<=$P{EndDate} then t.movementqty else 0 end)-
+			sum(case when t.movementdate<$P{StartDate} then t.movementqty else 0 end) as qty
+		from 
+		(	
+			select tran.m_locator_id,tran.movementdate,tran.movementqty
+			from m_transaction tran 
+			join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id = 1000530 and hh.M_AttributeSet_ID = 1000135
+			join (select ml.M_inventoryline_id  from M_inventoryline ml join M_inventory m on ml.M_inventory_id=m.M_inventory_id and m.docstatus in ('CO','CL') and m.ad_client_id=$P{AD_CLIENT_ID}) t on tran.M_inventoryline_id=t.M_inventoryline_id
+			where tran.movementdate<=$P{EndDate} and tran.ad_client_id=$P{AD_CLIENT_ID}
+			 
+			union all
+	
+			select tran.m_locator_id,tran.movementdate,tran.movementqty
+			from m_transaction tran 
+			join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id = 1000530 and hh.M_AttributeSet_ID = 1000135
+			join (select ml.M_movementline_id  from M_movementline ml join M_movement m on ml.M_movement_id=m.M_movement_id and m.docstatus in ('CO','CL')and m.ad_client_id=$P{AD_CLIENT_ID}) t1 on tran.M_movementline_id=t1.M_movementline_id
+			where tran.movementdate<=$P{EndDate} and tran.ad_client_id=$P{AD_CLIENT_ID}
+			 
+			union all
+	
+			select tran.m_locator_id,tran.movementdate,tran.movementqty
+			from m_transaction tran 
+			join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id = 1000530 and hh.M_AttributeSet_ID = 1000135
+			join (select ml.M_inoutline_id  from M_inoutline ml join M_inout m on ml.M_inout_id=m.M_inout_id and m.docstatus in ('CO','CL')and m.ad_client_id=$P{AD_CLIENT_ID}) t2 on tran.M_inoutline_id=t2.M_inoutline_id
+		 	where tran.movementdate<=$P{EndDate} and tran.ad_client_id=$P{AD_CLIENT_ID}
+		 
+			union all
+	
+			select tran.m_locator_id,tran.movementdate,tran.movementqty
+			from m_transaction tran 
+			join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id = 1000530 and hh.M_AttributeSet_ID = 1000135
+			join (select ml.M_productionline_id  from M_productionline ml join (select ml.M_productionplan_id from M_productionplan ml join M_production m on ml.M_production_id=m.M_production_id and m.docstatus in ('CO','CL')and m.ad_client_id=$P{AD_CLIENT_ID} ) m on ml.M_productionplan_id=m.M_productionplan_id ) t3 on tran.M_productionline_id=t3.M_productionline_id
+			where tran.movementdate<=$P{EndDate} and tran.ad_client_id=$P{AD_CLIENT_ID}
+			 
+			union all
+	
+			select tran.m_locator_id,tran.movementdate,tran.movementqty
+			from m_transaction tran 
+			join m_product hh on tran.m_product_id=hh.m_product_id and  hh.m_product_category_id = 1000530 and hh.M_AttributeSet_ID = 1000135
+			join (select ml.M_productionline_id  from M_productionline ml join M_production m on ml.M_production_id=m.M_production_id and m.docstatus in ('CO','CL') and m.ad_client_id=$P{AD_CLIENT_ID}) t4 on tran.M_productionline_id=t4.M_productionline_id
+			where tran.movementdate<=$P{EndDate} and tran.ad_client_id=$P{AD_CLIENT_ID}
+			 
+		) as t
+		join m_locator kho on t.m_locator_id=kho.m_locator_id and (kho.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null)
+	
+		union all
+		select '38' as id,'tấm' as DVT,
+			sum(case when t.movementdate <= $P{EndDate} then t.movementqty else 0 end)-
+			sum(case when t.movementdate < $P{StartDate} then t.movementqty else 0 end) as qty
+		from 
+		(	
+			select tran.m_locator_id,tran.movementdate,tran.movementqty
+			from m_transaction tran 
+			join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id = 1000530 and hh.M_AttributeSet_ID = 1000134
+			join (select ml.M_inventoryline_id  from M_inventoryline ml join M_inventory m on ml.M_inventory_id=m.M_inventory_id and m.docstatus in ('CO','CL') and m.ad_client_id=$P{AD_CLIENT_ID}) t on tran.M_inventoryline_id=t.M_inventoryline_id
+			where tran.movementdate<=$P{EndDate} and tran.ad_client_id=$P{AD_CLIENT_ID}
+			 
+			union all
+	
+			select tran.m_locator_id,tran.movementdate,tran.movementqty
+			from m_transaction tran 
+			join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id = 1000530 and hh.M_AttributeSet_ID = 1000134
+			join (select ml.M_movementline_id  from M_movementline ml join M_movement m on ml.M_movement_id=m.M_movement_id and m.docstatus in ('CO','CL')and m.ad_client_id=$P{AD_CLIENT_ID}) t1 on tran.M_movementline_id=t1.M_movementline_id
+			where tran.movementdate<=$P{EndDate} and tran.ad_client_id=$P{AD_CLIENT_ID}
+			 
+			union all
+	
+			select tran.m_locator_id,tran.movementdate,tran.movementqty
+			from m_transaction tran 
+			join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id = 1000530 and hh.M_AttributeSet_ID = 1000134
+			join (select ml.M_inoutline_id  from M_inoutline ml join M_inout m on ml.M_inout_id=m.M_inout_id and m.docstatus in ('CO','CL')and m.ad_client_id=$P{AD_CLIENT_ID}) t2 on tran.M_inoutline_id=t2.M_inoutline_id
+		 	where tran.movementdate<=$P{EndDate} and tran.ad_client_id=$P{AD_CLIENT_ID}
+		 
+			union all
+	
+			select tran.m_locator_id,tran.movementdate,tran.movementqty
+			from m_transaction tran 
+			join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id = 1000530 and hh.M_AttributeSet_ID = 1000134
+			join (select ml.M_productionline_id  from M_productionline ml join (select ml.M_productionplan_id from M_productionplan ml join M_production m on ml.M_production_id=m.M_production_id and m.docstatus in ('CO','CL')and m.ad_client_id=$P{AD_CLIENT_ID} ) m on ml.M_productionplan_id=m.M_productionplan_id ) t3 on tran.M_productionline_id=t3.M_productionline_id
+			where tran.movementdate<=$P{EndDate} and tran.ad_client_id=$P{AD_CLIENT_ID}
+			 
+			union all
+	
+			select tran.m_locator_id,tran.movementdate,tran.movementqty
+			from m_transaction tran 
+			join m_product hh on tran.m_product_id=hh.m_product_id and  hh.m_product_category_id = 1000530 and hh.M_AttributeSet_ID = 1000134
+			join (select ml.M_productionline_id  from M_productionline ml join M_production m on ml.M_production_id=m.M_production_id and m.docstatus in ('CO','CL') and m.ad_client_id=$P{AD_CLIENT_ID}) t4 on tran.M_productionline_id=t4.M_productionline_id
+			where tran.movementdate<=$P{EndDate} and tran.ad_client_id=$P{AD_CLIENT_ID}
+			 
+		) as t
+		join m_locator kho on t.m_locator_id=kho.m_locator_id and (kho.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null)
+		union all 
+		
+		select '39' as id,'tấm' as DVT, sum(qty)-sum(qty1) as qty 
+		from(
+			select sum(civ.movementqty) as qty, 0 as qty1
+			from M_Movement ci
+			join m_movementline civ on ci.m_movement_id = civ.m_movement_id and ci.docstatus  in ('CL','CO')
+			join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_category_id = 1000530 and hh.M_AttributeSet_ID in (1000131,1000134,1000135)
+			join M_Locator loc on loc.m_locator_id = civ.m_locator_id 
+			where ci.ad_client_id = $P{AD_CLIENT_ID} and (loc.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
+			
+			union all
+			
+			select 0 as qty,sum(civ.movementqty) as qty1
+			from M_Movement ci
+			join m_movementline civ on ci.m_movement_id = civ.m_movement_id and ci.docstatus  in ('CL','CO')
+			join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_category_id = 1000530 and hh.M_AttributeSet_ID in (1000131,1000134,1000135)
+			join M_Locator loc on loc.m_locator_id = civ.m_locatorto_id  
+			where ci.ad_client_id = $P{AD_CLIENT_ID} and (loc.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
+		) as k
+		) as k
+	) as k
+) as k join hsv_thanhpham tp on tp.value = k.id
+where tp.ad_client_id = $P{AD_CLIENT_ID}]]>
+	</queryString>
+	<field name="id" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="id"/>
+	</field>
+	<field name="name" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="name"/>
+	</field>
+	<field name="qty" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.label" value="qty"/>
+	</field>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<detail>
+		<band height="23" splitType="Stretch">
+			<textField>
+				<reportElement x="40" y="0" width="340" height="23" uuid="6f928dfb-3e38-45a9-9e1f-4fe018d6682f">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{name}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.##" isBlankWhenNull="true">
+				<reportElement x="380" y="0" width="175" height="23" uuid="20a62ce1-ce79-4cec-8023-7341da83f9e4">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{qty}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="0" y="0" width="40" height="23" uuid="02268085-79dc-46f3-b584-405b1a5e2b42">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="43aac822-cb99-4161-993c-39cf994f4582"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA["1"]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+</jasperReport>

@@ -1,0 +1,695 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.19.0.final using JasperReports Library version 6.19.0-646c68931cebf1a58bc65c4359d1f0ca223c5e94  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="BC_san_xuat_surimi1" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="0c9307d4-ac72-449a-91bb-030d668da90b">
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="adempiere_7.1"/>
+	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.rows" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.columns" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.detect.cell.type" value="true"/>
+	<property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+	<property name="net.sf.jasperreports.exports.xls.font.size.fix.enabled" value="true"/>
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
+	<parameter name="StartDate" class="java.util.Date"/>
+	<parameter name="EndDate" class="java.util.Date"/>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String">
+		<defaultValueExpression><![CDATA["dev/"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="EXPORT_TYPE" class="java.lang.String"/>
+	<queryString>
+		<![CDATA[select  ROW_NUMBER() OVER (PARTITION BY danhmuc ORDER by danhmuc desc, a2 asc) AS stt, danhmuc, a2, a3,a4,a5,a6,a7,a8,a9,a10
+ from(
+
+select 'I. Nguyên liệu cá đưa vào sản xuất' as danhmuc, name  as a2, k1.soluong as a3,case when k1.soluong<>0 then k1.tt/k1.soluong else 0 end as a4,k1.tt as a5,k2.tt as a6,k1.tt as a7, 0 as a8, k2.tt as a9, 0 as a10 
+from(
+	select  1 as id, hh.name,sum(fc.qty) as soluong,sum(fc.amtacctdr) as tt  from m_inventory ci 
+	join m_inventoryline civ on ci.m_inventory_id = civ.m_inventory_id and ci.docstatus in('CL','CO')
+	JOIN fact_acct fc on fc.record_id = ci.m_inventory_id and fc.line_id = civ.m_inventoryline_id  and fc.c_activity_id =1000273 and fc.C_Campaign_ID=1000062
+	join m_product hh on hh.m_product_id = fc.m_product_id 
+	join m_product_category hhg on hh.m_product_category_id = hhg.m_product_category_id and hhg.m_product_category_id in (1000492,1000493)
+	where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.ad_table_id = 321 and fc.amtacctdr <> 0 and fc.dateacct >= $P{StartDate} and fc.dateacct <=$P{EndDate}
+	group by hh.name
+) as k1
+join (
+	select  1 as id, sum(fc.amtacctdr) as tt  from m_inventory ci 
+	join m_inventoryline civ on ci.m_inventory_id = civ.m_inventory_id and ci.docstatus in('CL','CO')
+	JOIN fact_acct fc on fc.record_id = ci.m_inventory_id and fc.line_id = civ.m_inventoryline_id  and fc.c_activity_id =1000273 and fc.C_Campaign_ID=1000062
+	join m_product hh on hh.m_product_id = fc.m_product_id 
+	join m_product_category hhg on hh.m_product_category_id = hhg.m_product_category_id and hhg.m_product_category_id in (1000492,1000493)
+	where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.ad_table_id = 321 and fc.amtacctdr <> 0 
+	and fc.dateacct >= date_trunc('year', $P{EndDate}::DATE) and fc.dateacct <=$P{EndDate}
+) as k2 on k1.id= k2.id
+
+
+
+
+union all
+
+
+select 'II. Thành phẩm, Bán thành phẩm Surimi sản xuất' as danhmuc, k.name as a2, k1.qty1 as a3, k.hsv_dinhmuc as a4,   k1.qty1 *k.hsv_dinhmuc as a5,k2.tt2 as a6,0 as a7, k1.qty1 *k.hsv_dinhmuc as a8, 0 as a9, k2.tt2 as a10
+from (
+select 	1 as id,a2, sum(a3) - sum(a4) as qty1
+from(
+select hh.name as a2,sum(civ.productionqty) as a3,0 as a4
+from m_production ci
+join m_productionplan civ on ci.m_production_id = civ.m_production_id and ci.C_Activity_ID=1000273 and ci.C_Campaign_ID = 1000062
+join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_category_id = 1000545 
+join (
+	select hh.name,civ.hsv_dinhmuc, ci.startdate as dg_startdate, ci.enddate as dg_enddate 
+	from hsv_dongia ci 
+	join hsv_nkdongialine civ on ci.hsv_dongia_id  = civ.hsv_dongia_id and ci.hsv_loaidongia_ID=1000025
+	join m_product hh on civ.m_product_id = hh.m_product_id 
+	where ci.ad_client_id = $P{AD_CLIENT_ID} 
+) as k on k.name = hh.name
+where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.movementdate >= k.dg_startdate and  ci.movementdate <=  k.dg_enddate 
+and ci.movementdate >= $P{StartDate} and  ci.movementdate <=  $P{EndDate}
+group by hh.name
+union all 
+select hh.name as a2,0 as a3,sum(civ.qtyinternaluse) as a4
+from m_inventory ci
+join m_inventoryline civ on ci.m_inventory_id = civ.m_inventory_id and ci.C_Activity_ID=1000273 and ci.C_Campaign_ID = 1000062
+join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_category_id = 1000545 
+join (
+	select hh.name,civ.hsv_dinhmuc, ci.startdate as dg_startdate, ci.enddate as dg_enddate 
+	from hsv_dongia ci 
+	join hsv_nkdongialine civ on ci.hsv_dongia_id  = civ.hsv_dongia_id and ci.hsv_loaidongia_ID=1000025
+	join m_product hh on civ.m_product_id = hh.m_product_id 
+	where ci.ad_client_id = $P{AD_CLIENT_ID} 
+) as k on k.name = hh.name
+where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.movementdate >= k.dg_startdate and  ci.movementdate <=  k.dg_enddate 
+and ci.movementdate >= $P{StartDate} and  ci.movementdate <=  $P{EndDate}
+group by hh.name
+) as k1 group by a2
+) as k1
+join (
+
+select 1 as id, sum(a3) - sum(a4) as tt2
+from(
+select hh.name as a2,sum(civ.productionqty)*k.hsv_dinhmuc as a3,0 as a4
+from m_production ci
+join m_productionplan civ on ci.m_production_id = civ.m_production_id and ci.C_Activity_ID=1000273 and ci.C_Campaign_ID = 1000062
+join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_category_id = 1000545 
+join (
+	select hh.name,civ.hsv_dinhmuc, ci.startdate as dg_startdate, ci.enddate as dg_enddate 
+	from hsv_dongia ci 
+	join hsv_nkdongialine civ on ci.hsv_dongia_id  = civ.hsv_dongia_id and ci.hsv_loaidongia_ID=1000025
+	join m_product hh on civ.m_product_id = hh.m_product_id 
+	where ci.ad_client_id = $P{AD_CLIENT_ID} 
+) as k on k.name = hh.name
+where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.movementdate >= k.dg_startdate and  ci.movementdate <=  k.dg_enddate 
+and ci.movementdate >= date_trunc('year', $P{EndDate}::DATE) and  ci.movementdate <=  $P{EndDate}
+group by hh.name,k.hsv_dinhmuc
+
+union all
+
+select hh.name as a2,0 as a3,sum(civ.qtyinternaluse)*k.hsv_dinhmuc as a4
+from m_inventory ci
+join m_inventoryline civ on ci.m_inventory_id = civ.m_inventory_id and ci.C_Activity_ID=1000273 and ci.C_Campaign_ID = 1000062
+join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_category_id = 1000545 
+join (
+	select hh.name,civ.hsv_dinhmuc, ci.startdate as dg_startdate, ci.enddate as dg_enddate 
+	from hsv_dongia ci 
+	join hsv_nkdongialine civ on ci.hsv_dongia_id  = civ.hsv_dongia_id and ci.hsv_loaidongia_ID=1000025
+	join m_product hh on civ.m_product_id = hh.m_product_id 
+	where ci.ad_client_id = $P{AD_CLIENT_ID} 
+) as k on k.name = hh.name
+where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.movementdate >= k.dg_startdate and  ci.movementdate <=  k.dg_enddate 
+and ci.movementdate >= date_trunc('year', $P{EndDate}::DATE) and  ci.movementdate <=  $P{EndDate}
+group by hh.name,k.hsv_dinhmuc
+) as k2
+) as k2 on k1.id =k2.id
+ 
+join (
+	select hh.name,civ.hsv_dinhmuc, ci.startdate as dg_startdate, ci.enddate as dg_enddate 
+	from hsv_dongia ci 
+	join hsv_nkdongialine civ on ci.hsv_dongia_id  = civ.hsv_dongia_id and ci.hsv_loaidongia_ID=1000025
+	join m_product hh on civ.m_product_id = hh.m_product_id 
+	where ci.ad_client_id = $P{AD_CLIENT_ID} 
+) as k on  k.name = k1.a2
+) as k
+where a5<>0]]>
+	</queryString>
+	<field name="stt" class="java.lang.Long">
+		<property name="com.jaspersoft.studio.field.name" value="stt"/>
+		<property name="com.jaspersoft.studio.field.label" value="stt"/>
+	</field>
+	<field name="danhmuc" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="danhmuc"/>
+		<property name="com.jaspersoft.studio.field.label" value="danhmuc"/>
+	</field>
+	<field name="a2" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="a2"/>
+		<property name="com.jaspersoft.studio.field.label" value="a2"/>
+	</field>
+	<field name="a3" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="a3"/>
+		<property name="com.jaspersoft.studio.field.label" value="a3"/>
+	</field>
+	<field name="a4" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="a4"/>
+		<property name="com.jaspersoft.studio.field.label" value="a4"/>
+	</field>
+	<field name="a5" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="a5"/>
+		<property name="com.jaspersoft.studio.field.label" value="a5"/>
+	</field>
+	<field name="a6" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="a6"/>
+		<property name="com.jaspersoft.studio.field.label" value="a6"/>
+	</field>
+	<field name="a7" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="a7"/>
+		<property name="com.jaspersoft.studio.field.label" value="a7"/>
+	</field>
+	<field name="a8" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="a8"/>
+		<property name="com.jaspersoft.studio.field.label" value="a8"/>
+	</field>
+	<field name="a9" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="a9"/>
+		<property name="com.jaspersoft.studio.field.label" value="a9"/>
+	</field>
+	<field name="a10" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="a10"/>
+		<property name="com.jaspersoft.studio.field.label" value="a10"/>
+	</field>
+	<variable name="sum_a3" class="java.math.BigDecimal" resetType="Group" resetGroup="Group1" calculation="Sum">
+		<variableExpression><![CDATA[$F{a3}]]></variableExpression>
+	</variable>
+	<variable name="sum_a5" class="java.math.BigDecimal" resetType="Group" resetGroup="Group1" calculation="Sum">
+		<variableExpression><![CDATA[$F{a5}]]></variableExpression>
+	</variable>
+	<variable name="sum_a6" class="java.math.BigDecimal" resetType="Group" resetGroup="Group1" calculation="Sum">
+		<variableExpression><![CDATA[$F{a6}]]></variableExpression>
+	</variable>
+	<variable name="sum_a7" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{a7}]]></variableExpression>
+	</variable>
+	<variable name="sum_a8" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{a8}]]></variableExpression>
+	</variable>
+	<variable name="sum_a9" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{a9}]]></variableExpression>
+	</variable>
+	<variable name="sum_a10" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{a10}]]></variableExpression>
+	</variable>
+	<group name="Group1">
+		<groupExpression><![CDATA[$F{danhmuc}]]></groupExpression>
+		<groupHeader>
+			<band height="25">
+				<textField>
+					<reportElement x="0" y="0" width="555" height="25" uuid="aaa2ca40-35db-4e82-8339-c88790c6a8db">
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					</reportElement>
+					<box leftPadding="5">
+						<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textElement textAlignment="Left" verticalAlignment="Middle">
+						<font fontName="Arial" size="11" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{danhmuc}]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupHeader>
+		<groupFooter>
+			<band height="25">
+				<textField pattern="#,##0" isBlankWhenNull="true">
+					<reportElement x="260" y="0" width="75" height="25" uuid="e3b1a49a-91e2-45cb-be6b-26685e935fbe">
+						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="dbb8175b-46eb-4316-998a-317b5aadbc33"/>
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					</reportElement>
+					<box topPadding="2" leftPadding="2" bottomPadding="2" rightPadding="2">
+						<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" size="11" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[new Double($V{sum_a3}.doubleValue()==0?0:$V{sum_a5}.doubleValue()/$V{sum_a3}.doubleValue() )]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0" isBlankWhenNull="true">
+					<reportElement x="335" y="0" width="110" height="25" uuid="22391e7f-17c3-4e63-a6fc-44483a8caee7">
+						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="f6097316-c371-4e10-8f64-bb1f8e82d13c"/>
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					</reportElement>
+					<box topPadding="2" leftPadding="2" bottomPadding="2" rightPadding="2">
+						<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" size="11" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{sum_a5}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0" isBlankWhenNull="true">
+					<reportElement x="185" y="0" width="75" height="25" uuid="57c9a649-5b61-4a0d-885d-6959197d0a54">
+						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="1d2baa8c-2223-4166-8e88-d77ddf1c8a0a"/>
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					</reportElement>
+					<box topPadding="2" leftPadding="2" bottomPadding="2" rightPadding="2">
+						<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" size="11" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{sum_a3}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0" isBlankWhenNull="true">
+					<reportElement x="445" y="0" width="110" height="25" uuid="7f9538bc-2d03-4fe7-9b84-25b48999faa5">
+						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="1b0f2153-576b-4011-b2fa-d5f54060f147"/>
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					</reportElement>
+					<box topPadding="2" leftPadding="2" bottomPadding="2" rightPadding="2">
+						<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" size="11" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{a6}]]></textFieldExpression>
+				</textField>
+				<textField>
+					<reportElement x="0" y="0" width="185" height="25" uuid="a6319cc1-9c90-4fe2-a955-82ac11aaa92c">
+						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="61a01e4e-fd2f-42a3-ad17-c2bbdb7a6b43"/>
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					</reportElement>
+					<box topPadding="2" leftPadding="5" bottomPadding="2">
+						<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textElement textAlignment="Left" verticalAlignment="Middle">
+						<font fontName="Arial" size="11" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA["Cộng nhóm"]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupFooter>
+	</group>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="82" splitType="Stretch">
+			<printWhenExpression><![CDATA[$P{EXPORT_TYPE}==null]]></printWhenExpression>
+			<subreport>
+				<reportElement x="0" y="0" width="160" height="40" uuid="1ecf92b7-d21b-4818-be75-26893f633ce7"/>
+				<subreportParameter name="AD_CLIENT_ID">
+					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="StartDate">
+					<subreportParameterExpression><![CDATA[$P{StartDate}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="EndDate">
+					<subreportParameterExpression><![CDATA[$P{EndDate}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="SUBREPORT_DIR">
+					<subreportParameterExpression><![CDATA[$P{SUBREPORT_DIR}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"CompanyHeader.jasper"]]></subreportExpression>
+			</subreport>
+			<staticText>
+				<reportElement positionType="Float" x="0" y="34" width="557" height="30" uuid="989ec70a-d8c9-4549-9ae1-4a0a7687484f">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="44237c33-86da-4774-8250-958f8bfc9c7e"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="16" isBold="true"/>
+				</textElement>
+				<text><![CDATA[BÁO CÁO SẢN XUẤT SURIMI]]></text>
+			</staticText>
+			<textField isBlankWhenNull="false">
+				<reportElement x="0" y="62" width="557" height="20" uuid="fbeb085c-504f-47dd-9967-d202036c3450">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Top">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Kỳ báo cáo : " + new SimpleDateFormat("dd/MM/yyyy").format($P{StartDate}) + " To "  + new SimpleDateFormat("dd/MM/yyyy").format($P{EndDate})]]></textFieldExpression>
+			</textField>
+		</band>
+	</title>
+	<columnHeader>
+		<band height="25" splitType="Stretch">
+			<printWhenExpression><![CDATA[$V{PAGE_NUMBER}==1]]></printWhenExpression>
+			<staticText>
+				<reportElement x="0" y="0" width="35" height="25" uuid="408c3573-9bea-4901-b8be-612c5b4068c3">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="daf974ce-8efe-47e8-a0cf-2d8f02dafd9b"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<text><![CDATA[STT]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="35" y="0" width="150" height="25" uuid="7893b118-9c7b-4604-89da-9e73f8586b0d">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="61a01e4e-fd2f-42a3-ad17-c2bbdb7a6b43"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Nội dung]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="185" y="0" width="75" height="25" uuid="61fa14a5-776d-4041-8ed5-5a9c2056c8b9">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="1d2baa8c-2223-4166-8e88-d77ddf1c8a0a"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Số lượng]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="260" y="0" width="75" height="25" uuid="41679134-3142-4540-b6ea-b70c82514204">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="dbb8175b-46eb-4316-998a-317b5aadbc33"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Đơn giá]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="335" y="0" width="110" height="25" uuid="3b6363da-af79-4bca-b461-4fdf589c6228">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="f6097316-c371-4e10-8f64-bb1f8e82d13c"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Thành tiền]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="445" y="0" width="110" height="25" uuid="69c50b17-d3c5-45c7-a406-0b9a98e655ca">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="1b0f2153-576b-4011-b2fa-d5f54060f147"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Tiền lũy kế]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="25" splitType="Stretch">
+			<textField>
+				<reportElement x="0" y="0" width="35" height="25" uuid="07c63dc8-59c3-492f-b60d-113251148ab8">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="daf974ce-8efe-47e8-a0cf-2d8f02dafd9b"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{stt}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="35" y="0" width="150" height="25" uuid="055dae74-2da7-4b92-9b8a-0186c392ccd7">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="61a01e4e-fd2f-42a3-ad17-c2bbdb7a6b43"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box topPadding="2" leftPadding="2" bottomPadding="2" rightPadding="2">
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{a2}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="185" y="0" width="75" height="25" uuid="f71740d0-0f07-4aeb-862f-152fdabdadf4">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="1d2baa8c-2223-4166-8e88-d77ddf1c8a0a"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box topPadding="2" leftPadding="2" bottomPadding="2" rightPadding="2">
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{a3}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="260" y="0" width="75" height="25" uuid="993d14ce-2c2f-4683-9d7b-7b10d6a96988">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="dbb8175b-46eb-4316-998a-317b5aadbc33"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box topPadding="2" leftPadding="2" bottomPadding="2" rightPadding="2">
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{a4}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="335" y="0" width="110" height="25" uuid="88d42561-5820-4e8e-9ea1-f84eb489fb37">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="f6097316-c371-4e10-8f64-bb1f8e82d13c"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box topPadding="2" leftPadding="2" bottomPadding="2" rightPadding="2">
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{a5}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="445" y="0" width="110" height="25" uuid="d473918a-4f39-4429-8f2b-4b7fbd8047a0">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="1b0f2153-576b-4011-b2fa-d5f54060f147"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box topPadding="2" leftPadding="2" bottomPadding="2" rightPadding="2">
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[""]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<pageFooter>
+		<band height="30" splitType="Stretch">
+			<printWhenExpression><![CDATA[$P{EXPORT_TYPE}==null]]></printWhenExpression>
+			<textField>
+				<reportElement x="0" y="0" width="280" height="30" uuid="139749cd-f9d9-4a26-a8b6-0c42927b5b0f">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{PAGE_NUMBER}]]></textFieldExpression>
+			</textField>
+			<textField evaluationTime="Report">
+				<reportElement x="280" y="0" width="280" height="30" uuid="26d2b3c0-6769-4d0c-ae95-80256a417ee0"/>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="12"/>
+				</textElement>
+				<textFieldExpression><![CDATA["/"+$V{PAGE_NUMBER}]]></textFieldExpression>
+			</textField>
+		</band>
+	</pageFooter>
+	<summary>
+		<band height="83" splitType="Stretch">
+			<staticText>
+				<reportElement x="0" y="0" width="335" height="25" uuid="714ef4ec-69fd-4f27-a638-6cd9ce9f2e2f">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="7">
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[III. Chênh lệch]]></text>
+			</staticText>
+			<textField pattern="#,##0">
+				<reportElement x="335" y="0" width="110" height="25" uuid="64358575-c239-4f87-a612-7953426591c1">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="a98fdee2-f910-4653-885a-85b05cf2e3fd"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[new Double($V{sum_a8}.doubleValue()-$V{sum_a7}.doubleValue())]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0">
+				<reportElement x="445" y="0" width="110" height="25" uuid="842c10b9-2663-486e-bc0f-98e0689170d0">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="a98fdee2-f910-4653-885a-85b05cf2e3fd"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[new Double($V{sum_a10}.doubleValue()-$V{sum_a9}.doubleValue())]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement key="staticText-8" positionType="Float" stretchType="RelativeToTallestObject" x="34" y="60" width="118" height="16" uuid="b9887730-c140-4440-9597-e94ca877a81f">
+					<printWhenExpression><![CDATA[$P{EXPORT_TYPE}==null]]></printWhenExpression>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="13" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Lập biểu]]></text>
+			</staticText>
+			<staticText>
+				<reportElement key="staticText-8" positionType="Float" stretchType="RelativeToTallestObject" x="378" y="60" width="148" height="16" uuid="0a90551b-0c90-42b0-b0c1-f02efbdbf9d3">
+					<printWhenExpression><![CDATA[$P{EXPORT_TYPE}==null]]></printWhenExpression>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="13" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Kiểm soát]]></text>
+			</staticText>
+			<textField pattern="" isBlankWhenNull="false">
+				<reportElement key="textField-4" x="336" y="40" width="227" height="19" forecolor="#000000" backcolor="#FFFFFF" uuid="470ac9c1-3533-4aad-9c64-aa50358085ed">
+					<printWhenExpression><![CDATA[$P{EXPORT_TYPE}==null]]></printWhenExpression>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Ngày in: " + new SimpleDateFormat("dd/MM/yyyy hh24:mm").format(new Date())]]></textFieldExpression>
+			</textField>
+		</band>
+	</summary>
+</jasperReport>

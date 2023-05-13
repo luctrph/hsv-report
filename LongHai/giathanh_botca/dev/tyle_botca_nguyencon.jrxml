@@ -1,0 +1,856 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.17.0.final using JasperReports Library version 6.17.0-6d93193241dd8cc42629e188b94f9e0bc5722efd  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="tyle_botca_nguyencon" pageWidth="576" pageHeight="46" columnWidth="576" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="71115b91-dd99-4bc5-b217-10e925ac5efb">
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.rows" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.columns" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.detect.cell.type" value="true"/>
+	<property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+	<property name="net.sf.jasperreports.exports.xls.font.size.fix.enabled" value="true"/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="HSV"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="0"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="1000"/>
+	<parameter name="StartDate" class="java.util.Date">
+		<defaultValueExpression><![CDATA[new Date(117,0,1)]]></defaultValueExpression>
+	</parameter>
+	<parameter name="EndDate" class="java.util.Date">
+		<defaultValueExpression><![CDATA[NOW()]]></defaultValueExpression>
+	</parameter>
+	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
+	<queryString language="SQL">
+		<![CDATA[SELECT id, tp.name, tp.hsv_dinhmuc,round(a30,0) as a30
+FROM(
+    SELECT '30' AS id, sum(a5) AS a30
+    FROM(
+	
+	select id, "name" as a1, hsv_dinhmuc as a2, qty as a3, tt as a4, case when qty <> 0 then round(tt / qty, 0) else 0 end as a5
+	from (
+		select '7' as id, sum(qty)  as qty, sum(tt) as tt
+		from (		
+			select  sum(qty) - sum(qty1) as qty, 0 as tt			
+			from (
+				select sum(civ.productionqty) as qty, 0 as qty1
+				from m_production ci
+				join m_productionplan civ on ci.m_production_id = civ.m_production_id and docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id = hh.m_product_id and hh.hsv_loaimat_id =1000034
+				where ci.ad_client_id = $P{AD_CLIENT_ID}  and ci.C_Campaign_ID = 1000060 and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
+				
+				union all
+				
+				select 0 as qty, sum(civ.qtyinternaluse) as qty1
+				from m_inventory ci
+				join m_inventoryline civ on ci.m_inventory_id  = civ.m_inventory_id and docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id = hh.m_product_id and hh.hsv_loaimat_id =1000034
+				where ci.ad_client_id = $P{AD_CLIENT_ID}  and ci.C_Campaign_ID = 1000060 and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
+			) as k		union all		
+			select 0 as qty,sum(tt1)-sum(tt2) as tt
+			from(
+				select  sum(fc.amtacctcr - fc.amtacctdr) as "tt1", 0 as tt2
+				from fact_acct fc
+				join c_elementvalue acct on fc.account_id = acct.c_elementvalue_id and  LEFT(acct.value, 2) in ('15')
+				join m_product hh on fc.m_product_id = hh.m_product_id and (hh.M_Product_Category_ID in (1000492, 1000493) or  hh.M_Product_ID=1015083)		
+				where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.C_Activity_ID = 1000272 and ad_table_id = 321 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+				union all 
+				select  0 as tt1, sum(fc.amtacctcr - fc.amtacctdr) as "tt2"
+				from fact_acct fc
+				join c_elementvalue acct on fc.account_id = acct.c_elementvalue_id and LEFT(acct.value, 2) in ('15')
+				join m_product hh on fc.m_product_id = hh.m_product_id and hh.hsv_loaimat_id = 1000034 		
+				where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.C_Activity_ID = 1000272 and ad_table_id = 321 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}			
+				) as k
+			) as k
+		) as k
+	right join hsv_giathanh tp on tp.value = k.id and tp.isactive = 'Y'
+	where ad_client_id = $P{AD_CLIENT_ID} and tp.value = '7'
+	
+	union all
+	
+	select id, "name" as a1, hsv_dinhmuc as a2, qty as a3, tt as a4, case when qty <> 0 then round(tt / qty, 0) else 0 end as a5
+	from (
+		select '9' as id, sum(qty)  as qty, sum(tt) as tt
+		from (
+			select  sum(qty) - sum(qty1) as qty, 0 as tt			
+			from (
+				select sum(civ.productionqty) as qty, 0 as qty1
+				from m_production ci
+				join m_productionplan civ on ci.m_production_id = civ.m_production_id and docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id = hh.m_product_id and hh.hsv_loaimat_id =1000034
+				where ci.ad_client_id = $P{AD_CLIENT_ID}  and ci.C_Campaign_ID = 1000060 and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
+				
+				union all
+				
+				select 0 as qty, sum(civ.qtyinternaluse) as qty1
+				from m_inventory ci
+				join m_inventoryline civ on ci.m_inventory_id  = civ.m_inventory_id and docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id = hh.m_product_id and hh.hsv_loaimat_id =1000034
+				where ci.ad_client_id = $P{AD_CLIENT_ID}  and ci.C_Campaign_ID = 1000060 and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
+			) as k	
+			union all
+			
+			select  0 as qty, sum(amtacctdr - amtacctcr) as "tt"
+			from (
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				join gl_journalline gl on fc.record_id = gl.gl_journal_id and fc.line_id = gl.gl_journalline_id and fc.Account_ID = gl.Account_ID and gl.IsGenerated = 'N'
+				join gl_journal a on a.gl_journal_id = fc.record_id and a.docstatus in ('CO', 'CL')
+				where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.C_Activity_ID = 1000272 and fc.ad_table_id = 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+			
+				
+				
+				union all
+				
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.C_Activity_ID = 1000272 and fc.ad_table_id <> 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+				) as t
+			join c_elementvalue acct on t.account_id = acct.c_elementvalue_id and acct.ad_client_id = $P{AD_CLIENT_ID} and  LEFT(acct.value,4) IN ('6213')
+			) as k
+		group by id
+		) as k
+	right join hsv_giathanh tp on tp.value = k.id and tp.isactive = 'Y'
+	where ad_client_id = $P{AD_CLIENT_ID} and tp.value = '9'
+	
+	union all
+	
+	select id, "name" as a1, hsv_dinhmuc as a2, qty as a3, tt as a4, case when qty <> 0 then round(tt / qty, 0) else 0 end as a5
+	from (
+		select '10' as id, sum(qty) as qty, sum(tt) as tt
+		from (
+			select  sum(qty) - sum(qty1) as qty, 0 as tt			
+			from (
+				select sum(civ.productionqty) as qty, 0 as qty1
+				from m_production ci
+				join m_productionplan civ on ci.m_production_id = civ.m_production_id and docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id = hh.m_product_id and hh.hsv_loaimat_id =1000034
+				where ci.ad_client_id = $P{AD_CLIENT_ID}  and ci.C_Campaign_ID = 1000060 and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
+				
+				union all
+				
+				select 0 as qty, sum(civ.qtyinternaluse) as qty1
+				from m_inventory ci
+				join m_inventoryline civ on ci.m_inventory_id  = civ.m_inventory_id and docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id = hh.m_product_id and hh.hsv_loaimat_id =1000034
+				where ci.ad_client_id = $P{AD_CLIENT_ID}  and ci.C_Campaign_ID = 1000060 and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
+			) as k	
+			union all
+			
+			select  0 as qty, sum(amtacctdr - amtacctcr) as "tt"
+			from (
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				join gl_journalline gl on fc.record_id = gl.gl_journal_id and fc.line_id = gl.gl_journalline_id and fc.Account_ID = gl.Account_ID and gl.IsGenerated = 'N'
+				join gl_journal a on a.gl_journal_id = fc.record_id and a.docstatus in ('CO', 'CL')
+				where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.C_Activity_ID = 1000272 and fc.ad_table_id = 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+				
+				
+				union all
+				
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.C_Activity_ID = 1000272 and fc.ad_table_id <> 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+				) as t
+			join c_elementvalue acct on t.account_id = acct.c_elementvalue_id and acct.ad_client_id = $P{AD_CLIENT_ID} and  LEFT(acct.value,4) IN ('6221')
+			) as k
+		) as k
+	right join hsv_giathanh tp on tp.value = k.id and tp.isactive = 'Y'
+	where ad_client_id = $P{AD_CLIENT_ID} and tp.value = '10'
+	
+	union all
+	
+	select id, "name" as a1, hsv_dinhmuc as a2, qty as a3, tt as a4, case when qty <> 0 then round(tt / qty, 0) else 0 end as a5
+	from (
+		select '11' as id, sum(qty) as qty, sum(tt) as tt
+		from (
+			select  sum(qty) - sum(qty1) as qty, 0 as tt			
+			from (
+				select sum(civ.productionqty) as qty, 0 as qty1
+				from m_production ci
+				join m_productionplan civ on ci.m_production_id = civ.m_production_id and docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id = hh.m_product_id and hh.hsv_loaimat_id =1000034
+				where ci.ad_client_id = $P{AD_CLIENT_ID}  and ci.C_Campaign_ID = 1000060 and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
+				
+				union all
+				
+				select 0 as qty, sum(civ.qtyinternaluse) as qty1
+				from m_inventory ci
+				join m_inventoryline civ on ci.m_inventory_id  = civ.m_inventory_id and docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id = hh.m_product_id and hh.hsv_loaimat_id =1000034
+				where ci.ad_client_id = $P{AD_CLIENT_ID}  and ci.C_Campaign_ID = 1000060 and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
+			) as k	
+			union all
+			
+			select  0 as qty, sum(amtacctdr - amtacctcr) as "tt"
+			from (
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				join gl_journalline gl on fc.record_id = gl.gl_journal_id and fc.line_id = gl.gl_journalline_id and fc.Account_ID = gl.Account_ID and gl.IsGenerated = 'N'
+				join gl_journal a on a.gl_journal_id = fc.record_id and a.docstatus in ('CO', 'CL')
+				where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.C_Activity_ID = 1000272 and fc.ad_table_id = 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+				
+				
+				union all
+				
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.C_Activity_ID = 1000272 and fc.ad_table_id <> 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+				) as t
+			join c_elementvalue acct on t.account_id = acct.c_elementvalue_id and acct.ad_client_id = $P{AD_CLIENT_ID} and  LEFT(acct.value,4) IN ('6223')
+			) as k
+		) as k
+	right join hsv_giathanh tp on tp.value = k.id and tp.isactive = 'Y'
+	where ad_client_id = $P{AD_CLIENT_ID} and tp.value = '11'
+	
+	union all
+	
+	select id, "name" as a1, hsv_dinhmuc as a2, qty as a3, tt as a4, case when qty <> 0 then round(tt / qty, 0) else 0 end as a5
+	from (
+		select '12' as id, sum(qty) as qty, sum(tt) as tt
+		from (
+			select  sum(qty) - sum(qty1) as qty, 0 as tt			
+			from (
+				select sum(civ.productionqty) as qty, 0 as qty1
+				from m_production ci
+				join m_productionplan civ on ci.m_production_id = civ.m_production_id and docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id = hh.m_product_id and hh.hsv_loaimat_id =1000034
+				where ci.ad_client_id = $P{AD_CLIENT_ID}  and ci.C_Campaign_ID = 1000060 and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
+				
+				union all
+				
+				select 0 as qty, sum(civ.qtyinternaluse) as qty1
+				from m_inventory ci
+				join m_inventoryline civ on ci.m_inventory_id  = civ.m_inventory_id and docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id = hh.m_product_id and hh.hsv_loaimat_id =1000034
+				where ci.ad_client_id = $P{AD_CLIENT_ID}  and ci.C_Campaign_ID = 1000060 and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
+			) as k	
+			union all
+			
+			select  0 as qty, sum(amtacctdr - amtacctcr) as "tt"
+			from (
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				join gl_journalline gl on fc.record_id = gl.gl_journal_id and fc.line_id = gl.gl_journalline_id and fc.Account_ID = gl.Account_ID and gl.IsGenerated = 'N'
+				join gl_journal a on a.gl_journal_id = fc.record_id and a.docstatus in ('CO', 'CL')
+				where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.C_Activity_ID = 1000272 and fc.ad_table_id = 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+				
+				
+				union all
+				
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.C_Activity_ID = 1000272 and fc.ad_table_id <> 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+				) as t
+			join c_elementvalue acct on t.account_id = acct.c_elementvalue_id and acct.ad_client_id = $P{AD_CLIENT_ID} and  LEFT(acct.value,4) IN ('6271')
+			) as k
+		) as k
+	right join hsv_giathanh tp on tp.value = k.id and tp.isactive = 'Y'
+	where ad_client_id = $P{AD_CLIENT_ID} and tp.value = '12'
+	
+	union all
+	
+	select id, "name" as a1, hsv_dinhmuc as a2, qty as a3, tt as a4, case when qty <> 0 then round(tt / qty, 0) else 0 end as a5
+	from (
+		select '13' as id, sum(qty) as qty, sum(tt) as tt
+		from (
+		select  sum(qty) - sum(qty1) as qty, 0 as tt			
+			from (
+				select sum(civ.productionqty) as qty, 0 as qty1
+				from m_production ci
+				join m_productionplan civ on ci.m_production_id = civ.m_production_id and docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id = hh.m_product_id and hh.hsv_loaimat_id =1000034
+				where ci.ad_client_id = $P{AD_CLIENT_ID}  and ci.C_Campaign_ID = 1000060 and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
+				
+				union all
+				
+				select 0 as qty, sum(civ.qtyinternaluse) as qty1
+				from m_inventory ci
+				join m_inventoryline civ on ci.m_inventory_id  = civ.m_inventory_id and docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id = hh.m_product_id and hh.hsv_loaimat_id =1000034
+				where ci.ad_client_id = $P{AD_CLIENT_ID}  and ci.C_Campaign_ID = 1000060 and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
+			) as k		
+			union all
+			
+			select  0 as qty, sum(amtacctdr - amtacctcr) as "tt"
+			from (
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				join gl_journalline gl on fc.record_id = gl.gl_journal_id and fc.line_id = gl.gl_journalline_id and fc.Account_ID = gl.Account_ID and gl.IsGenerated = 'N'
+				join gl_journal a on a.gl_journal_id = fc.record_id and a.docstatus in ('CO', 'CL')
+				where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.C_Activity_ID = 1000272 and fc.ad_table_id = 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+				
+		
+				
+				
+				union all
+				
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.C_Activity_ID = 1000272 and fc.ad_table_id <> 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+				) as t
+			join c_elementvalue acct on t.account_id = acct.c_elementvalue_id and acct.ad_client_id = $P{AD_CLIENT_ID} and  LEFT(acct.value,4) IN ('6272')
+			) as k
+		) as k
+	right join hsv_giathanh tp on tp.value = k.id and tp.isactive = 'Y'
+	where ad_client_id = $P{AD_CLIENT_ID} and tp.value = '13'
+	
+	
+	union all
+	
+	select id, "name" as a1, hsv_dinhmuc as a2, qty as a3, tt as a4, case when qty <> 0 then round(tt / qty, 0) else 0 end as a5
+	from (
+		select '17' as id, sum(qty) as qty, sum(tt) as tt
+		from (
+			select  sum(qty) - sum(qty1) as qty, 0 as tt			
+			from (
+				select sum(civ.productionqty) as qty, 0 as qty1
+				from m_production ci
+				join m_productionplan civ on ci.m_production_id = civ.m_production_id and docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id = hh.m_product_id and hh.hsv_loaimat_id =1000034
+				where ci.ad_client_id = $P{AD_CLIENT_ID}  and ci.C_Campaign_ID = 1000060 and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
+				
+				union all
+				
+				select 0 as qty, sum(civ.qtyinternaluse) as qty1
+				from m_inventory ci
+				join m_inventoryline civ on ci.m_inventory_id  = civ.m_inventory_id and docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id = hh.m_product_id and hh.hsv_loaimat_id =1000034
+				where ci.ad_client_id = $P{AD_CLIENT_ID}  and ci.C_Campaign_ID = 1000060 and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
+			) as k	
+			union all
+			
+			select  0 as qty, sum(amtacctdr - amtacctcr) as "tt"
+			from (
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				join gl_journalline gl on fc.record_id = gl.gl_journal_id and fc.line_id = gl.gl_journalline_id and fc.Account_ID = gl.Account_ID and gl.IsGenerated = 'N'
+				join gl_journal a on a.gl_journal_id = fc.record_id and a.docstatus in ('CO', 'CL')
+				where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.C_Activity_ID = 1000272 and fc.ad_table_id = 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+				
+				
+				
+				union all
+				
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.C_Activity_ID = 1000272 and fc.ad_table_id <> 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+				) as t
+			join c_elementvalue acct on t.account_id = acct.c_elementvalue_id and acct.ad_client_id = $P{AD_CLIENT_ID} and  LEFT(acct.value,4) IN ('6273')
+			) as k
+		) as k
+	right join hsv_giathanh tp on tp.value = k.id and tp.isactive = 'Y'
+	where ad_client_id = $P{AD_CLIENT_ID} and tp.value = '17'
+	
+	union all
+	
+	select id, "name" as a1, hsv_dinhmuc as a2, qty as a3, tt as a4, case when qty <> 0 then round(tt / qty, 0) else 0 end as a5
+	from (
+		select '18' as id, sum(qty) as qty, sum(tt) as tt
+		from (
+			select  sum(qty) - sum(qty1) as qty, 0 as tt			
+			from (
+				select sum(civ.productionqty) as qty, 0 as qty1
+				from m_production ci
+				join m_productionplan civ on ci.m_production_id = civ.m_production_id and docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id = hh.m_product_id and hh.hsv_loaimat_id =1000034
+				where ci.ad_client_id = $P{AD_CLIENT_ID}  and ci.C_Campaign_ID = 1000060 and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
+				
+				union all
+				
+				select 0 as qty, sum(civ.qtyinternaluse) as qty1
+				from m_inventory ci
+				join m_inventoryline civ on ci.m_inventory_id  = civ.m_inventory_id and docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id = hh.m_product_id and hh.hsv_loaimat_id =1000034
+				where ci.ad_client_id = $P{AD_CLIENT_ID}  and ci.C_Campaign_ID = 1000060 and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
+			) as k	
+			union all
+			
+			select  0 as qty, sum(amtacctdr - amtacctcr) as "tt"
+			from (
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				join gl_journalline gl on fc.record_id = gl.gl_journal_id and fc.line_id = gl.gl_journalline_id and fc.Account_ID = gl.Account_ID and gl.IsGenerated = 'N'
+				join gl_journal a on a.gl_journal_id = fc.record_id and a.docstatus in ('CO', 'CL')
+				where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.C_Activity_ID = 1000272 and fc.ad_table_id = 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+			
+				
+				
+				union all
+				
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.C_Activity_ID = 1000272 and fc.ad_table_id <> 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+				) as t
+			join c_elementvalue acct on t.account_id = acct.c_elementvalue_id and acct.ad_client_id = $P{AD_CLIENT_ID} and  LEFT(acct.value,4) IN ('6274')
+			) as k
+		) as k
+	right join hsv_giathanh tp on tp.value = k.id and tp.isactive = 'Y'
+	where ad_client_id = $P{AD_CLIENT_ID} and tp.value = '18'
+	
+	union all
+	
+	select id, "name" as a1, hsv_dinhmuc as a2, qty as a3, tt as a4, case when qty <> 0 then round(tt / qty, 0) else 0 end as a5
+	from (
+		select '19' as id, sum(qty) as qty, sum(tt) as tt
+		from (
+			select  sum(qty) - sum(qty1) as qty, 0 as tt			
+			from (
+				select sum(civ.productionqty) as qty, 0 as qty1
+				from m_production ci
+				join m_productionplan civ on ci.m_production_id = civ.m_production_id and docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id = hh.m_product_id and hh.hsv_loaimat_id =1000034
+				where ci.ad_client_id = $P{AD_CLIENT_ID}  and ci.C_Campaign_ID = 1000060 and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
+				
+				union all
+				
+				select 0 as qty, sum(civ.qtyinternaluse) as qty1
+				from m_inventory ci
+				join m_inventoryline civ on ci.m_inventory_id  = civ.m_inventory_id and docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id = hh.m_product_id and hh.hsv_loaimat_id =1000034
+				where ci.ad_client_id = $P{AD_CLIENT_ID}  and ci.C_Campaign_ID = 1000060 and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
+			) as k	
+			union all
+			
+			select  0 as qty, sum(amtacctdr - amtacctcr) as "tt"
+			from (
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				join gl_journalline gl on fc.record_id = gl.gl_journal_id and fc.line_id = gl.gl_journalline_id and fc.Account_ID = gl.Account_ID and gl.IsGenerated = 'N'
+				join gl_journal a on a.gl_journal_id = fc.record_id and a.docstatus in ('CO', 'CL')
+				where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.C_Activity_ID = 1000272 and fc.ad_table_id = 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+				
+				
+				union all
+				
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.C_Activity_ID = 1000272 and fc.ad_table_id <> 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+				) as t
+			join c_elementvalue acct on t.account_id = acct.c_elementvalue_id and acct.ad_client_id = $P{AD_CLIENT_ID} and  LEFT(acct.value,4) IN ('6275')
+			) as k
+		) as k
+	right join hsv_giathanh tp on tp.value = k.id and tp.isactive = 'Y'
+	where ad_client_id = $P{AD_CLIENT_ID} and tp.value = '19'
+	
+	union all
+	
+	select id, "name" as a1, hsv_dinhmuc as a2, qty as a3, tt as a4, case when qty <> 0 then round(tt / qty, 0) else 0 end as a5
+	from (
+		select '20' as id, sum(qty) as qty, sum(tt) as tt
+		from (
+			select  sum(qty) - sum(qty1) as qty, 0 as tt			
+			from (
+				select sum(civ.productionqty) as qty, 0 as qty1
+				from m_production ci
+				join m_productionplan civ on ci.m_production_id = civ.m_production_id and docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id = hh.m_product_id and hh.hsv_loaimat_id =1000034
+				where ci.ad_client_id = $P{AD_CLIENT_ID}  and ci.C_Campaign_ID = 1000060 and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
+				
+				union all
+				
+				select 0 as qty, sum(civ.qtyinternaluse) as qty1
+				from m_inventory ci
+				join m_inventoryline civ on ci.m_inventory_id  = civ.m_inventory_id and docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id = hh.m_product_id and hh.hsv_loaimat_id =1000034
+				where ci.ad_client_id = $P{AD_CLIENT_ID}  and ci.C_Campaign_ID = 1000060 and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
+			) as k	
+			union all
+			
+			select  0 as qty, sum(amtacctdr - amtacctcr) as "tt"
+			from (
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				join gl_journalline gl on fc.record_id = gl.gl_journal_id and fc.line_id = gl.gl_journalline_id and fc.Account_ID = gl.Account_ID and gl.IsGenerated = 'N'
+				join gl_journal a on a.gl_journal_id = fc.record_id and a.docstatus in ('CO', 'CL')
+				where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.C_Activity_ID = 1000272 and fc.ad_table_id = 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+				
+			
+				
+				
+				union all
+				
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.C_Activity_ID = 1000272 and fc.ad_table_id <> 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+				) as t
+			join c_elementvalue acct on t.account_id = acct.c_elementvalue_id and acct.ad_client_id = $P{AD_CLIENT_ID} and  LEFT(acct.value,4) IN ('6276')
+			) as k
+		) as k
+	right join hsv_giathanh tp on tp.value = k.id and tp.isactive = 'Y'
+	where ad_client_id = $P{AD_CLIENT_ID} and tp.value = '20'
+	
+	union all
+	
+	select id, "name" as a1, hsv_dinhmuc as a2, qty as a3, tt as a4, case when qty <> 0 then round(tt / qty, 0) else 0 end as a5
+	from (
+		select '21' as id, sum(qty) as qty, sum(tt) as tt
+		from (
+			select  sum(qty) - sum(qty1) as qty, 0 as tt			
+			from (
+				select sum(civ.productionqty) as qty, 0 as qty1
+				from m_production ci
+				join m_productionplan civ on ci.m_production_id = civ.m_production_id and docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id = hh.m_product_id and hh.hsv_loaimat_id =1000034
+				where ci.ad_client_id = $P{AD_CLIENT_ID}  and ci.C_Campaign_ID = 1000060 and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
+				
+				union all
+				
+				select 0 as qty, sum(civ.qtyinternaluse) as qty1
+				from m_inventory ci
+				join m_inventoryline civ on ci.m_inventory_id  = civ.m_inventory_id and docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id = hh.m_product_id and hh.hsv_loaimat_id =1000034
+				where ci.ad_client_id = $P{AD_CLIENT_ID}  and ci.C_Campaign_ID = 1000060 and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
+			) as k		
+			union all
+			
+			select  0 as qty, sum(amtacctdr - amtacctcr) as "tt"
+			from (
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				join gl_journalline gl on fc.record_id = gl.gl_journal_id and fc.line_id = gl.gl_journalline_id and fc.Account_ID = gl.Account_ID and gl.IsGenerated = 'N'
+				join gl_journal a on a.gl_journal_id = fc.record_id and a.docstatus in ('CO', 'CL')
+				where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.C_Activity_ID = 1000272 and fc.ad_table_id = 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+		
+				
+				
+				union all
+				
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.C_Activity_ID = 1000272 and fc.ad_table_id <> 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+				) as t
+			join c_elementvalue acct on t.account_id = acct.c_elementvalue_id and acct.ad_client_id = $P{AD_CLIENT_ID} and  LEFT(acct.value,4) IN ('6277')
+			) as k
+		) as k
+	right join hsv_giathanh tp on tp.value = k.id and tp.isactive = 'Y'
+	where ad_client_id = $P{AD_CLIENT_ID} and tp.value = '21'
+	
+	union all
+	
+	select id, "name" as a1, hsv_dinhmuc as a2, qty as a3, tt as a4, case when qty <> 0 then round(tt / qty, 0) else 0 end as a5
+	from (
+		select '22' as id, sum(qty) as qty, sum(tt) as tt
+		from (
+			select  sum(qty) - sum(qty1) as qty, 0 as tt			
+			from (
+				select sum(civ.productionqty) as qty, 0 as qty1
+				from m_production ci
+				join m_productionplan civ on ci.m_production_id = civ.m_production_id and docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id = hh.m_product_id and hh.hsv_loaimat_id =1000034
+				where ci.ad_client_id = $P{AD_CLIENT_ID}  and ci.C_Campaign_ID = 1000060 and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
+				
+				union all
+				
+				select 0 as qty, sum(civ.qtyinternaluse) as qty1
+				from m_inventory ci
+				join m_inventoryline civ on ci.m_inventory_id  = civ.m_inventory_id and docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id = hh.m_product_id and hh.hsv_loaimat_id =1000034
+				where ci.ad_client_id = $P{AD_CLIENT_ID}  and ci.C_Campaign_ID = 1000060 and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
+			) as k		
+			union all
+			
+			select  0 as qty, sum(amtacctdr - amtacctcr) as "tt"
+			from (
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				join gl_journalline gl on fc.record_id = gl.gl_journal_id and fc.line_id = gl.gl_journalline_id and fc.Account_ID = gl.Account_ID and gl.IsGenerated = 'N'
+				join gl_journal a on a.gl_journal_id = fc.record_id and a.docstatus in ('CO', 'CL')
+				where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.C_Activity_ID = 1000272 and fc.ad_table_id = 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+				
+			
+				
+				
+				union all
+				
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.C_Activity_ID = 1000272 and fc.ad_table_id <> 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+				) as t
+			join c_elementvalue acct on t.account_id = acct.c_elementvalue_id and acct.ad_client_id = $P{AD_CLIENT_ID} and  LEFT(acct.value,4) IN ('6278')
+			) as k
+		) as k
+	right join hsv_giathanh tp on tp.value = k.id and tp.isactive = 'Y'
+	where ad_client_id = $P{AD_CLIENT_ID} and tp.value = '22'
+	
+	union all
+	
+	select id, "name" as a1, hsv_dinhmuc as a2, qty as a3, tt as a4, case when qty <> 0 then round(tt / qty, 0) else 0 end as a5
+	from (
+		select '23' as id, sum(qty) as qty, sum(tt) as tt
+		from (
+			select  -1*sum(fc.qty)  as qty, 0 as tt
+     		FROM fact_acct  fc
+     		join c_invoice ci on fc.record_id=ci.c_invoice_id and ci.docstatus in ('CO','CL')	and ci.issotrx = 'Y'	
+     		join m_product hh on fc.m_product_id = hh.m_product_id     and hh.M_AttributeSet_ID = 1000086
+     		WHERE  fc.dateacct<=$P{EndDate} and fc.dateacct >=$P{StartDate}
+      		and ci.c_doctype_id <> 1001044 and  fc.AD_Client_ID=$P{AD_CLIENT_ID}    and fc.ad_table_id=318
+			union all
+			
+			select  0 as qty, sum(amtacctdr - amtacctcr) as "tt"
+			from (
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				join gl_journalline gl on fc.record_id = gl.gl_journal_id and fc.line_id = gl.gl_journalline_id and fc.Account_ID = gl.Account_ID and gl.IsGenerated = 'N'
+				join gl_journal a on a.gl_journal_id = fc.record_id and a.docstatus in ('CO', 'CL')
+				where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.C_Activity_ID = 1000272 and fc.ad_table_id = 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+				
+			
+				
+				
+				union all
+				
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.C_Activity_ID = 1000272 and fc.ad_table_id <> 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+				) as t
+			join c_elementvalue acct on t.account_id = acct.c_elementvalue_id and acct.ad_client_id = $P{AD_CLIENT_ID} and  LEFT(acct.value,4) IN ('6411')
+			) as k
+		) as k
+	right join hsv_giathanh tp on tp.value = k.id and tp.isactive = 'Y'
+	where ad_client_id = $P{AD_CLIENT_ID} and tp.value = '23'
+	
+	union all
+	
+	select id, "name" as a1, hsv_dinhmuc as a2, qty as a3, tt as a4, case when qty <> 0 then round(tt / qty, 0) else 0 end as a5
+	from (
+		select '24' as id, sum(qty) as qty, sum(tt) as tt
+		from (
+			select  -1*sum(fc.qty)  as qty, 0 as tt
+     		FROM fact_acct  fc
+     		join c_invoice ci on fc.record_id=ci.c_invoice_id and ci.docstatus in ('CO','CL')	and ci.issotrx = 'Y'	
+     		join m_product hh on fc.m_product_id = hh.m_product_id     and hh.M_AttributeSet_ID = 1000086
+     		WHERE  fc.dateacct<=$P{EndDate} and fc.dateacct >=$P{StartDate}
+      		and ci.c_doctype_id <> 1001044 and  fc.AD_Client_ID=$P{AD_CLIENT_ID}    and fc.ad_table_id=318		
+			union all
+			
+			select  0 as qty, sum(amtacctdr - amtacctcr) as "tt"
+			from (
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				join gl_journalline gl on fc.record_id = gl.gl_journal_id and fc.line_id = gl.gl_journalline_id and fc.Account_ID = gl.Account_ID and gl.IsGenerated = 'N'
+				join gl_journal a on a.gl_journal_id = fc.record_id and a.docstatus in ('CO', 'CL')
+				where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.C_Activity_ID = 1000272 and fc.ad_table_id = 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+				
+				
+				
+				
+				union all
+				
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.C_Activity_ID = 1000272 and fc.ad_table_id <> 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+				) as t
+			join c_elementvalue acct on t.account_id = acct.c_elementvalue_id and acct.ad_client_id = $P{AD_CLIENT_ID} and  LEFT(acct.value,4) IN ('6417')
+			) as k
+		) as k
+	right join hsv_giathanh tp on tp.value = k.id and tp.isactive = 'Y'
+	where ad_client_id = $P{AD_CLIENT_ID} and tp.value = '24'
+	
+	union all
+	
+	select id, "name" as a1, hsv_dinhmuc as a2, qty as a3, tt as a4, case when qty <> 0 then round(tt / qty, 0) else 0 end as a5
+	from (
+		select '25' as id, sum(qty) as qty, sum(tt) as tt
+		from (
+			select  -1*sum(fc.qty)  as qty, 0 as tt
+     		FROM fact_acct  fc
+     		join c_invoice ci on fc.record_id=ci.c_invoice_id and ci.docstatus in ('CO','CL')	and ci.issotrx = 'Y'	
+     		join m_product hh on fc.m_product_id = hh.m_product_id     and hh.M_AttributeSet_ID = 1000086
+     		WHERE  fc.dateacct<=$P{EndDate} and fc.dateacct >=$P{StartDate}
+      		and ci.c_doctype_id <> 1001044 and  fc.AD_Client_ID=$P{AD_CLIENT_ID}    and fc.ad_table_id=318	
+			union all
+			
+			select  0 as qty, sum(amtacctdr - amtacctcr) as "tt"
+			from (
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				join gl_journalline gl on fc.record_id = gl.gl_journal_id and fc.line_id = gl.gl_journalline_id and fc.Account_ID = gl.Account_ID and gl.IsGenerated = 'N'
+				join gl_journal a on a.gl_journal_id = fc.record_id and a.docstatus in ('CO', 'CL')
+				where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.C_Activity_ID = 1000272 and fc.ad_table_id = 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+				
+			
+				
+				
+				union all
+				
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.C_Activity_ID = 1000272 and fc.ad_table_id <> 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+				) as t
+			join c_elementvalue acct on t.account_id = acct.c_elementvalue_id and acct.ad_client_id = $P{AD_CLIENT_ID} and  LEFT(acct.value,4) IN ('6418')
+			) as k
+		) as k
+	right join hsv_giathanh tp on tp.value = k.id and tp.isactive = 'Y'
+	where ad_client_id = $P{AD_CLIENT_ID} and tp.value = '25'
+	
+	union all
+	
+	select id, concat ("name", '(', tp.hsv_dinhmuc1, '%)') as a1, hsv_dinhmuc as a2, qty as a3, case when tp.hsv_dinhmuc1 <> 0 and tp.hsv_dinhmuc1 is not null then k.tt * hsv_dinhmuc1 / 100 else 0 end as a4, case when k.qty <> 0 and 
+				hsv_dinhmuc1 <> 0 and hsv_dinhmuc1 is not null then round((k.tt * hsv_dinhmuc1) / (k.qty * 100), 0) else 0 end as a5
+	from (
+		select '26' as id, sum(qty) as qty, sum(tt) as tt
+		from (
+					select  -1*sum(fc.qty)  as qty, 0 as tt
+     		FROM fact_acct  fc
+     		join c_invoice ci on fc.record_id=ci.c_invoice_id and ci.docstatus in ('CO','CL')	and ci.issotrx = 'Y'	
+     		join m_product hh on fc.m_product_id = hh.m_product_id     and hh.M_AttributeSet_ID = 1000086
+     		WHERE  fc.dateacct<=$P{EndDate} and fc.dateacct >=$P{StartDate}
+      		and ci.c_doctype_id <> 1001044 and  fc.AD_Client_ID=$P{AD_CLIENT_ID}    and fc.ad_table_id=318		
+			union all
+			
+			select  0 as qty, sum(amtacctdr - amtacctcr) as "tt"
+			from (
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				join gl_journalline gl on fc.record_id = gl.gl_journal_id and fc.line_id = gl.gl_journalline_id and fc.Account_ID = gl.Account_ID and gl.IsGenerated = 'N'
+				join gl_journal a on a.gl_journal_id = fc.record_id and a.docstatus in ('CO', 'CL')
+				where fc.ad_client_id = $P{AD_CLIENT_ID}  and fc.ad_table_id = 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+			
+				
+				union all
+				
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				where fc.ad_client_id = $P{AD_CLIENT_ID}  and fc.ad_table_id <> 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+				) as t
+			join c_elementvalue acct on t.account_id = acct.c_elementvalue_id and acct.ad_client_id = $P{AD_CLIENT_ID} and  LEFT(acct.value,4) IN ('6421')
+			) as k
+		) as k
+	right join hsv_giathanh tp on tp.value = k.id and tp.isactive = 'Y'
+	where ad_client_id = $P{AD_CLIENT_ID} and tp.value = '26'
+	
+	union all
+	
+	select id, concat ("name", '(', tp.hsv_dinhmuc1, '%)') as a1, hsv_dinhmuc as a2, qty as a3, case when tp.hsv_dinhmuc1 <> 0 and tp.hsv_dinhmuc1 is not null then k.tt * hsv_dinhmuc1 / 100 else 0 end as a4, case when k.qty <> 0 and 
+				hsv_dinhmuc1 <> 0 and hsv_dinhmuc1 is not null then round((k.tt * hsv_dinhmuc1) / (k.qty * 100), 0) else 0 end as a5
+	from (
+		select '27' as id, sum(qty) as qty, sum(tt) as tt
+		from (
+
+			select  -1*sum(fc.qty)  as qty, 0 as tt
+     		FROM fact_acct  fc
+     		join c_invoice ci on fc.record_id=ci.c_invoice_id and ci.docstatus in ('CO','CL')	and ci.issotrx = 'Y'	
+     		join m_product hh on fc.m_product_id = hh.m_product_id     and hh.M_AttributeSet_ID = 1000086
+     		WHERE  fc.dateacct<=$P{EndDate} and fc.dateacct >=$P{StartDate}
+      		and ci.c_doctype_id <> 1001044 and  fc.AD_Client_ID=$P{AD_CLIENT_ID}    and fc.ad_table_id=318
+      		union all
+			
+			select  0 as qty, sum(amtacctdr - amtacctcr) as "tt"
+			from (
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				join gl_journalline gl on fc.record_id = gl.gl_journal_id and fc.line_id = gl.gl_journalline_id and fc.Account_ID = gl.Account_ID and gl.IsGenerated = 'N'
+				join gl_journal a on a.gl_journal_id = fc.record_id and a.docstatus in ('CO', 'CL')
+				where fc.ad_client_id = $P{AD_CLIENT_ID}  and fc.ad_table_id = 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+			
+				
+				union all
+				
+				select fc.amtacctdr, fc.amtacctcr, fc.account_id
+				from fact_acct fc
+				where fc.ad_client_id = $P{AD_CLIENT_ID}  and fc.ad_table_id <> 224 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}
+				) as t
+			join c_elementvalue acct on t.account_id = acct.c_elementvalue_id and acct.ad_client_id = $P{AD_CLIENT_ID} and  LEFT(acct.value,4) IN ('6428')
+			) as k
+		) as k
+	right join hsv_giathanh tp on tp.value = k.id and tp.isactive = 'Y'
+	where ad_client_id = $P{AD_CLIENT_ID} and tp.value = '27'
+	) as k
+	
+) AS k JOIN hsv_giathanh tp ON tp.value = k.id  AND  tp.value = '30'
+WHERE ad_client_id =$P{AD_CLIENT_ID}]]>
+	</queryString>
+	<field name="id" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="id"/>
+	</field>
+	<field name="name" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="name"/>
+	</field>
+	<field name="hsv_dinhmuc" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.label" value="hsv_dinhmuc"/>
+	</field>
+	<field name="a30" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.label" value="a30"/>
+	</field>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<detail>
+		<band height="46" splitType="Stretch">
+			<textField>
+				<reportElement x="25" y="23" width="215" height="23" uuid="8016b7e0-ba75-4884-9fc8-0dcd4bf2069c">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{name}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.###">
+				<reportElement x="480" y="23" width="75" height="23" uuid="384d18dd-f2f2-4160-9f61-1e56b5feca2a">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{a30}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="0" y="23" width="25" height="23" uuid="d4e1231c-7aa2-46b9-bb36-682c35bc5172">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{id}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.###">
+				<reportElement x="240" y="23" width="60" height="23" uuid="c44db1a7-0341-4769-83fa-c02f10fb0f07">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{hsv_dinhmuc}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.###">
+				<reportElement x="370" y="23" width="110" height="23" uuid="424d6c2c-7d99-4c79-b21f-68a1db0d283f">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[""]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.###">
+				<reportElement x="300" y="23" width="70" height="23" uuid="6f940f88-95b5-42d3-a752-7dd37f6e1caf">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[""]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+</jasperReport>

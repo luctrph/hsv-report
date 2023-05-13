@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.4.3.final using JasperReports Library version 6.4.3  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Sub_haohut" pageWidth="572" pageHeight="46" columnWidth="572" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="5c3a5e64-7657-4e4b-b2f2-c66d7a004abc">
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="HSV"/>
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<parameter name="AD_CLIENT_ID" class="java.lang.Integer">
+		<defaultValueExpression><![CDATA[1000019]]></defaultValueExpression>
+	</parameter>
+	<parameter name="StartDate" class="java.util.Date">
+		<defaultValueExpression><![CDATA[new Date(119,0,1)]]></defaultValueExpression>
+	</parameter>
+	<parameter name="EndDate" class="java.util.Date">
+		<defaultValueExpression><![CDATA[NOW()]]></defaultValueExpression>
+	</parameter>
+	<queryString>
+		<![CDATA[select id,tp.description, tp.name,tp.hsv_dinhmuc,case when sum(a23)<>0 then round(sum(tt)/sum(a23),0) else 0 end as a12
+FROM(
+	select '12' as id,sum(t.amtacctdr-t.amtacctcr) as tt, 0 as a23 
+	FROM(
+		SELECT  fc.amtacctdr, fc.amtacctcr, fc.account_id,fc.C_Activity_ID,fc.dateacct,fc.ad_client_id
+		from fact_acct fc
+		join gl_journalline gl on fc.record_id = gl.gl_journal_id and fc.line_id = gl.gl_journalline_id and fc.Account_ID = gl.Account_ID and gl.IsGenerated = 'N'
+		join gl_journal a on a.gl_journal_id = fc.record_id and a.docstatus in ('CO', 'CL')
+		where  fc.ad_client_id = $P{AD_CLIENT_ID} and fc.ad_table_id = 224 
+		union all
+ 		SELECT  fc.amtacctdr, fc.amtacctcr, fc.account_id,fc.C_Activity_ID,fc.dateacct,fc.ad_client_id
+		from fact_acct fc
+		where  fc.ad_client_id = $P{AD_CLIENT_ID} and fc.ad_table_id <> 224 
+	) as t
+	join c_elementvalue acct on t.account_id = acct.c_elementvalue_id and  LEFT(acct.value, 4) in ('6277')
+	where t.C_Activity_ID=1000275  and t.ad_client_id = $P{AD_CLIENT_ID} and t.dateacct>=$P{StartDate} and t.dateacct<=$P{EndDate}
+
+	UNION ALL
+	
+	Select  '12' as id,0 as tt, sum(sl) as a23
+	FROM(
+		select  '2' as id,sl
+		from(
+			select '2' as id,sum(qtyinvoiced) as sl, sum(linenetamt) as tt  
+			from c_invoice ci
+			JOIN c_invoiceline civ on civ.c_invoice_id=ci.c_invoice_id and civ.m_product_id = 1015089
+ 			where issotrx = 'Y' and ci.ad_client_id = $P{AD_CLIENT_ID} and ci.dateacct>=$P{StartDate} and ci.dateacct<=$P{EndDate}
+		) as k 
+
+	UNION ALL
+	
+	SELECT  id, k.sl as tt 
+	FROM(
+		select '3' as id,sum(qtyinternaluse) as sl 
+		from m_inventory ci JOIN m_inventoryline civ on ci.m_inventory_id = civ.m_inventory_id and civ.m_product_id = 1015090 
+		where ci.docstatus in ('CO','CL') and ci.ad_client_id = $P{AD_CLIENT_ID}  and ci.movementdate >=$P{StartDate} and ci.movementdate<=$P{EndDate} 
+	) as k 
+) as k 
+) as k 
+  join hsv_kqthumua tp on tp.value = k.id
+where ad_client_id =$P{AD_CLIENT_ID} and value ='12'
+group by id,tp.description, tp.name,tp.hsv_dinhmuc]]>
+	</queryString>
+	<field name="id" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="id"/>
+	</field>
+	<field name="description" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="description"/>
+	</field>
+	<field name="name" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="name"/>
+	</field>
+	<field name="hsv_dinhmuc" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.label" value="hsv_dinhmuc"/>
+	</field>
+	<field name="a12" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.label" value="a12"/>
+	</field>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<detail>
+		<band height="45" splitType="Stretch">
+			<textField pattern="#,##0.###" isBlankWhenNull="true">
+				<reportElement x="30" y="22" width="221" height="23" uuid="8c69b337-7892-41c2-9257-2bf2edd6910d">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{name}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.###" isBlankWhenNull="true">
+				<reportElement x="455" y="22" width="111" height="23" uuid="93647db4-a889-42df-a3f2-0454884f9f83">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[""]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="0" y="22" width="30" height="23" uuid="4e24f3f7-74bc-4cf0-8722-dc114ba723de">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{description}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.###" isBlankWhenNull="true">
+				<reportElement x="251" y="22" width="65" height="23" uuid="e1f207ed-287a-4512-b510-2e6de697cf49">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{hsv_dinhmuc}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.###" isBlankWhenNull="true">
+				<reportElement x="316" y="22" width="80" height="23" uuid="48d8181b-66fc-4e63-97cc-942346ffeb05">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{a12}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.###" isBlankWhenNull="true">
+				<reportElement x="396" y="22" width="59" height="23" uuid="0df98526-144d-4d13-aaf9-31edc070c19a">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[""]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+</jasperReport>

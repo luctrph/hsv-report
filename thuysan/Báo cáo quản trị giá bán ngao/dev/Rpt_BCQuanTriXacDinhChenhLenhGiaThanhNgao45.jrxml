@@ -1,0 +1,1213 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.17.0.final using JasperReports Library version 6.17.0-6d93193241dd8cc42629e188b94f9e0bc5722efd  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Rpt_BCQuanTriXacDinhChenhLenhGiaThanhNgao45" pageWidth="842" pageHeight="595" orientation="Landscape" columnWidth="842" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="4023df51-1b73-46d9-adf6-650e3c9f2034">
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="NEW_DATAADAPTER.xml"/>
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="0"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="1000"/>
+	<parameter name="StartDate" class="java.util.Date">
+		<defaultValueExpression><![CDATA[new Date(100,0,1)]]></defaultValueExpression>
+	</parameter>
+	<parameter name="EndDate" class="java.util.Date">
+		<defaultValueExpression><![CDATA[new Date(100,0,1)]]></defaultValueExpression>
+	</parameter>
+	<parameter name="AD_CLIENT_ID" class="java.lang.Integer">
+		<defaultValueExpression><![CDATA[1000000]]></defaultValueExpression>
+	</parameter>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String">
+		<defaultValueExpression><![CDATA["dev/"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="EXPORT_TYPE" class="java.lang.String"/>
+	<parameter name="AD_Org_ID" class="java.lang.Integer"/>
+	<queryString language="SQL">
+		<![CDATA[select  bc.description,bc.value,bc.name,0 AS hsv_dinhmuc,0 as hsv_dinhmuc1,0 as gusd,0 as gvnd
+        ,case when sum(kq1.sl)<>0 then sum(kq1.cl*kq1.sl)/sum(kq1.sl) else 0 end as cl
+      
+from(  select '10045' as ct ,kq.dmnlct,kq.dmcpct,kq.gusd,kq.gvnd,kq.sl,kq.b
+
+                ,case when kq.gvnd<>0 then kq.gvnd-  kq.dmnlct- kq.dmcpct end  as cl
+        
+        from(--Tinh chi tieu 10001:Ngao nau dong bulk 11/16
+              select '1' as b, 'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd     ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao nau 11/16 dong bulk
+                      select '10001' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10001' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao nau 11/16 bulk
+                      union all
+  
+                      select '10001'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000036')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id=1000013 and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10002:Ngao nau 11/16 dong tui 1kg
+              union all
+
+              select '2' as b, 'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd     ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao nau 11/16 dong tui 1kg
+                      select '10002' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10002' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao nau 11/16 dong tui 1kg
+                      union all
+  
+                      select '10002'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000036')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id=1000005 and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+              --Tinh chi tieu 10003:Ngao nau 11/16 dong tui 0.5kg
+              union all
+
+              select  '3' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd     ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao nau 11/16 dong tui 0.5kg
+                      select '10003' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10003' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao nau 11/16 dong tui 0.5kg
+                      union all
+  
+                      select '10003'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000036')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000006','1000007','1000019') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10004:Ngao trang 11/16 dong bulk
+              union all
+
+              select  '1' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd    ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao trang 11/16 
+                      select '10004' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10004' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao trang 11/16 
+                      union all
+  
+                      select '10004'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000037')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000013') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10005:Ngao trang 11/16 dong tui 1kg
+              union all
+
+              select  '2' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd    ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao trang 11/16 dong tui 1kg
+                      select '10005' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10005' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao trang 11/16 dong tui 1kg
+                      union all
+  
+                      select '10005'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000037')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000005') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10006:Ngao trang 11/16 dong tui 0.5kg
+              union all
+
+              select  '3' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd    ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao trang 11/16 dong tui 0.5kg
+                      select '10006' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10006' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao trang 11/16 dong tui 0.5kg
+                      union all
+  
+                      select '10006'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000037')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000006','1000007','1000019') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10007:Ngao nau 17/22 dong bulk
+              union all
+
+              select  '1' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd      ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao trang 17/22 dong bulk
+                      select '10007' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10007' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao nau 17/22 dong bulk
+                      union all
+  
+                      select '10007'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000039')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000013') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10008:Ngao nau 17/22 dong tui 1kg
+              union all
+
+              select  '2' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd     ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao trang 17/22 dong bulk
+                      select '10008' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10008' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao nau 17/22 dong tui 1kg
+                      union all
+  
+                      select '10008'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000039')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000005') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10009:Ngao nau 17/22 dong tui 0.5kg
+              union all
+
+              select '3' as b, 'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd     ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao trang 17/22 dong tui 0.5kg
+                      select '10009' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10009' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao nau 17/22 dong tui 0.5kg
+                      union all
+  
+                      select '10009'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000039')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000006','1000007','1000019') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10010:Ngao trang 17/22 dong bulk
+              union all
+
+              select  '1' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd      ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao trang 17/22 dong bulk
+                      select '10010' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10010' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao trang 17/22 dong bulk
+                      union all
+  
+                      select '10010'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000038')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000013') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10011:Ngao trang 17/22 dong tui 1kg
+              union all
+
+              select  '2' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd      ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao trang 17/22 dong tui 1kg
+                      select '10011' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10011' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao trang 17/22 dong tui 1kg
+                      union all
+  
+                      select '10011'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000038')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000005') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10012:Ngao trang 17/22 dong tui 0.5kg
+              union all
+
+              select  '3' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd     ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao trang 17/22 dong tui 1kg
+                      select '10012' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10012' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao trang 17/22 dong tui 0.5kg
+                      union all
+  
+                      select '10012'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000038')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000006','1000007','1000019') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10013:Ngao nau 46 bulk
+              union all
+
+              select  '1' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd     ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao nau 46
+                      select '10013' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10013' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao nau 46
+                      union all
+  
+                      select '10013'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000028','1000097')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000013') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10014:Ngao nau 46 dong tui 1kg
+              union all
+
+              select  '2' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd    ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao nau 46 dong tui 1kg
+                      select '10014' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10014' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao nau 46 dong tui 1kg
+                      union all
+  
+                      select '10014'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000028','1000097')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000005') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10015:Ngao nau 46 dong tui 0.5kg
+              union all
+
+              select  '3' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd     ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao nau 46 dong tui 0.5kg
+                      select '10015' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10015' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao nau 46 dong tui 0.5kg
+                      union all
+  
+                      select '10015'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000028','1000097')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000006','1000007','1000019') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10016:Ngao trang 46 bulk
+              union all
+
+              select '1' as b, 'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd    ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao trang 46 bulk
+                      select '10016' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10016' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao trang 46 dong bulk
+                      union all
+  
+                      select '10016'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000029')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000013') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10017:Ngao trang 46 tui 1kg
+              union all
+
+              select  '2' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd     ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao trang 46 tui 1kg
+                      select '10017' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10017' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao trang 46 dong tui 1kg
+                      union all
+  
+                      select '10017'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000029')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000005') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10018:Ngao trang 46 tui 0.5kg
+              union all
+
+              select  '3' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd    ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao trang 46 tui 0.5kg
+                      select '10018' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10018' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao trang 46 dong tui 0.5kg
+                      union all
+  
+                      select '10018'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000029')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000006','1000007','1000019') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10019:Ngao nau 68 bulk
+              union all
+
+              select  '1' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd    ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao nau 68 bulk
+                      select '10019' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10019' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao nau 68 bulk
+                      union all
+  
+                      select '10019'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000031','1000098')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000013') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10020:Ngao nau 68 tui 1kg
+              union all
+
+              select  '2' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd     ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao nau 68 tui 1kg
+                      select '10020' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10020' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao nau 68 tui 1kg
+                      union all
+  
+                      select '10020'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000031','1000098')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000005') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10021:Ngao nau 68 tui 0.5kg
+              union all
+
+              select  '3' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd    ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao nau 68 tui 0.5kg
+                      select '10021' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10021' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao nau 68 tui 0.5kg
+                      union all
+  
+                      select '10021'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000031','1000098')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000006','1000007','1000019') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10022:Ngao trang 68 bulk
+              union all
+
+              select  '1' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd    ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao trang 68
+                      select '10022' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10022' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao trang 68 bulk
+                      union all
+  
+                      select '10022'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000030')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000013') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10023:Ngao trang 68 tui 1kg
+              union all
+
+              select  '2' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd     ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao trang 68 tui 1kg
+                      select '10023' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10023' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao trang 68 tui 1kg
+                      union all
+  
+                      select '10023'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000030')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000005') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10024:Ngao trang 68 tui 0.5kg
+              union all
+
+              select  '3' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd     ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao trang 68 tui 0.5kg
+                      select '10024' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10024' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao trang 68 tui 0.5kg
+                      union all
+  
+                      select '10024'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000030')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000006','1000007','1000019') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10025:Ngao nau 810 bulk
+              union all
+
+              select  '1' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd     ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao nau 810
+                      select '10025' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10025' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao nau 810
+                      union all
+  
+                      select '10025'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000032','1000099')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000013') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10026:Ngao nau 810 tui 1kg
+              union all
+
+              select  '2' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd     ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao nau 810 tui 1kg
+                      select '10026' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10026' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao nau 810 tui 1kg
+                      union all
+  
+                      select '10026'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000032','1000099')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000005') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10027:Ngao nau 810 tui 0.5kg
+              union all
+
+              select  '3' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd     ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao nau 810 tui 0.5kg
+                      select '10027' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10027' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao nau 810 tui 0.5kg
+                      union all
+  
+                      select '10027'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000032','1000099')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000006','1000007','1000019') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10028:Ngao trang 810 bulk
+              union all
+
+              select  '1' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd    ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao trang 810 bulk
+                      select '10028' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10028' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao trang 810 bulk
+                      union all
+  
+                      select '10028'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000033','1000100')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000013') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10029:Ngao trang 810 tui 1kg
+              union all
+
+              select  '2' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd     ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao trang 810 tui 1kg
+                      select '10029' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10029' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao trang 810 tui 1kg
+                      union all
+  
+                      select '10029'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000033','1000100')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000005') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10030:Ngao trang 810 tui 0.5kg
+              union all
+
+              select  '3' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd   ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao trang 810 tui 0.5kg
+                      select '10030' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10030' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao trang 810 tui 0.5kg
+                      union all
+  
+                      select '10030'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000033','1000100')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000006','1000007','1000019') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10031:Ngao trang 10012
+              union all
+
+              select  '1' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd    ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao trang 10012 bulk
+                      select '10031' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10031' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao trang 10012 bulk
+                      union all
+  
+                      select '10031'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000035')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000013') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10032:Ngao trang 10012 tui 1kg
+              union all
+
+              select  '2' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd    ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao trang 10012 tui 1kg
+                      select '10032' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10032' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao trang 10012 tui 1kg
+                      union all
+  
+                      select '10032'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000035')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000005') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10033:Ngao trang 10012 tui 0.5kg
+              union all
+
+              select  '3' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd   ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao trang 10012 tui 0.5kg
+                      select '10033' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10033' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao trang 10012 tui 0.5kg
+                      union all
+  
+                      select '10033'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000035')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000006','1000007','1000019') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10034:Ngao trang 10012 bulk
+              union all
+
+              select  '1' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd     ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao trang 10012 bulk
+                      select '10034' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10034' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao trang 10012 bulk
+                      union all
+  
+                      select '10034'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000034')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000013') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10035:Ngao trang 10012 1kg
+              union all
+
+              select  '2' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd    ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao trang 10012 1kg
+                      select '10035' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10035' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao trang 10012 1kg
+                      union all
+  
+                      select '10035'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000034')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000005') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10036:Ngao trang 10012 0.5kg
+              union all
+
+              select  '3' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd   ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao trang 10012 0.5kg
+                      select '10036' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10036' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao trang 10012 0.5kg
+                      union all
+  
+                      select '10036'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000034')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000006','1000007','1000019') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10037:Ngao nau 1215
+              union all
+
+              select  '1' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd   ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao nau 1215
+                      select '10037' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10037' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao nau 1215
+                      union all
+  
+                      select '10037'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000040')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000013') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10038:Ngao nau 1215 tui 1kg
+              union all
+
+              select  '2' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd     ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao nau 1215
+                      select '10038' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10038' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao nau 1215 tui 1kg
+                      union all
+  
+                      select '10038'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000040')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000005') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10039:Ngao nau 1215 tui 0.5kg
+              union all
+
+              select  '3' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd     ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao nau 1215 tui 0.5kg
+                      select '10039' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10039' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao nau 1215 tui 0.5kg
+                      union all
+  
+                      select '10039'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000040')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000006','1000007','1000019') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10040:Ngao trang bulk 1215
+              union all
+
+              select  '1' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd      ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao trang 1215 bulk
+                      select '10040' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10040' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao trang 1215 bulk
+                      union all
+  
+                      select '10040'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000041')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000013') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10041:Ngao trang 1215 tui 1kg
+              union all
+
+              select  '2' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd    ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao trang 1215 tui 1kg
+                      select '10041' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10041' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao trang 1215 tui 1kg
+                      union all
+  
+                      select '10041'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000041')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000005') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+
+              --Tinh chi tieu 10042:Ngao trang 1215 tui 0.5kg
+              union all
+
+              select  '3' as b,'I' as nhom,t.ct,sum(t.dmnlct) as dmnlct,sum(t.dmcpct) as dmcpct,sum(t.gusd) as gusd,sum(t.gvnd) as gvnd    ,COALESCE(sum(t.sl),0) as sl
+              from(  --Tinh dinh muc nguyen lieu chi tiet, chi phi chi tiet ngao trang 1215 tui 0.5kg
+                      select '10042' as ct,COALESCE(sum(hsv_dinhmuc),0) as dmnlct,COALESCE(sum(hsv_dinhmuc1),0) as dmcpct,0 as gusd,0 as gvnd,0 as sl
+                      from hsv_giathanhvan where value='10042' and ad_client_id=1000003
+                      --Tinh gia ban binh quan usd va vnd ngao trang 1215 tui 0.5kg
+                      union all
+  
+                      select '10042'as ct,0 as dmnlct,0 as dmcpct,-1*case when sum(t.qty)<>0 then sum(t.amtsourcecr)/sum(t.qty) else 0 end  as gusd,-1*case when sum(t.qty)<>0 then sum(t.amtacctcr)/sum(t.qty) else 0 end  as gvnd,COALESCE(sum(t.qty),0) as sl
+                      from(  SELECT f.dateacct,f.amtsourcecr,f.amtacctcr,f.account_id,f.qty ,f.AD_Client_ID
+                             FROM c_invoiceline cil  
+                             join c_invoice hd on hd.c_invoice_id=cil.c_invoice_id and hd.docstatus in ('CO','CL') and hd.C_DocType_ID=1000143 and hd.dateacct<=$P{EndDate} and hd.dateacct>=$P{StartDate}
+                             join Fact_Acct f on cil.c_invoice_id=f.record_id and cil.c_invoiceline_id=f.line_id and f.ad_table_id=318 and f.amtacctcr<>0 and f.c_currency_id=100
+                             join m_product hh on cil.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID in ('1000000') and  hh.hsv_C_thuoctinh_ID in ('1000041')
+                             join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      	              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in ('1000006','1000007','1000019') and gtt.m_attribute_id=1000001 
+                      	              WHERE tt.ad_client_id=1000003 
+                      					     ) tt on cil.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                             WHERE  cil.AD_Client_ID in ('1000003')
+
+                          ) as t 
+              ) as t      
+              group by t.ct
+      
+                    
+        ) as kq
+        join hsv_giathanhvan bc on bc.value=kq.ct and ad_client_id=1000003
+        order by  cast(bc.value as integer) asc
+        
+) as kq1
+join hsv_giathanhvan bc on bc.value=kq1.ct and ad_client_id=1000003
+where kq1.cl<>0 and kq1.b='1'
+group by bc.description,bc.value,bc.name]]>
+	</queryString>
+	<field name="value" class="java.lang.String"/>
+	<field name="name" class="java.lang.String"/>
+	<field name="hsv_dinhmuc" class="java.math.BigDecimal"/>
+	<field name="hsv_dinhmuc1" class="java.math.BigDecimal"/>
+	<field name="gusd" class="java.math.BigDecimal"/>
+	<field name="gvnd" class="java.math.BigDecimal"/>
+	<field name="description" class="java.lang.String"/>
+	<field name="cl" class="java.math.BigDecimal"/>
+	<group name="Nhom">
+		<groupExpression><![CDATA[$F{description}]]></groupExpression>
+		<groupHeader>
+			<band/>
+		</groupHeader>
+		<groupFooter>
+			<band>
+				<property name="local_mesure_unitheight" value="pixel"/>
+				<property name="com.jaspersoft.studio.unit.height" value="px"/>
+			</band>
+		</groupFooter>
+	</group>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<detail>
+		<band height="27" splitType="Stretch">
+			<property name="local_mesure_unitheight" value="pixel"/>
+			<property name="com.jaspersoft.studio.unit.height" value="px"/>
+			<textField>
+				<reportElement x="0" y="0" width="30" height="27" uuid="238320d9-52f4-4b8d-997b-4a9ee348cf20">
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					<property name="local_mesure_unitheight" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{description}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="30" y="0" width="525" height="27" uuid="d5d34af4-7867-4347-82a4-03db48dd2fc2">
+					<property name="local_mesure_unitwidth" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{name}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="555" y="0" width="64" height="27" uuid="ad8a628d-a337-49e6-9c36-9ea25bcb549e">
+					<property name="local_mesure_unitwidth" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{cl}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+</jasperReport>

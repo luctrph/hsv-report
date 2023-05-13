@@ -1,0 +1,905 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.17.0.final using JasperReports Library version 6.17.0-6d93193241dd8cc42629e188b94f9e0bc5722efd  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="BC ket qua san xuat go" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="58e9deab-527d-42dc-b1a4-198e04fd54d4">
+	<property name="net.sf.jasperreports.export.xls.detect.cell.type" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.rows" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.columns" value="true"/>
+	<property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+	<property name="net.sf.jasperreports.exports.xls.font.size.fix.enabled" value="true"/>
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="adempiere_7.1"/>
+	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
+	<parameter name="StartDate" class="java.util.Date"/>
+	<parameter name="EndDate" class="java.util.Date"/>
+	<parameter name="AD_Org_ID" class="java.lang.Integer"/>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String">
+		<defaultValueExpression><![CDATA["dev/"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="hq" class="java.lang.Double" isForPrompting="false"/>
+	<parameter name="EXPORT_TYPE" class="java.lang.String"/>
+	<queryString language="SQL">
+		<![CDATA[select   stt,id_dm,dm1.name as name_dm, chitieu, name_chitieu, qty,dg,tt
+from(
+select stt,id_dm , chitieu, dm.name as name_chitieu, qty,dg,tt
+from(
+---- Chi phí Nguyên  liệu Gỗ, ván cót -----
+
+select '883' as id_dm,* 
+from(
+select 1 as stt, '884' as chitieu , sum(qty) as qty,case when sum(qty)<>0 then  sum(tt)/sum(qty) else 0 end as dg, sum(tt)  as tt
+from(
+
+		select fc.qty as qty,case when fc.qty >0 then fc.amtacctdr else -1*fc.amtacctcr end as tt 
+		from fact_acct fc 
+		join m_inventory ci on fc.record_id=ci.m_inventory_id  and ci.docstatus in ('CO','CL') and ci.c_doctype_id = 1000326
+		join m_inventoryline civ on civ.m_inventory_id = ci.m_inventory_id and civ.qtyinternaluse = fc.qty and civ.m_product_id = fc.m_product_id 
+		JOIN m_attributesetinstance att ON civ.m_attributesetinstance_id = att.m_attributesetinstance_id  AND att.M_AttributeSet_ID in (1000065,0) 
+		join m_product hh on fc.m_product_id=hh.m_product_id and hh.M_Product_Category_ID=1000084 
+		where fc.ad_table_id=321  and fc.ad_client_id=$P{AD_CLIENT_ID}  and (fc.ad_org_id =$P{AD_Org_ID} or $P{AD_Org_ID} is null)
+		and ci.movementdate<=$P{EndDate} and ci.movementdate>=$P{StartDate}		
+) as k
+
+union all 
+
+select 2 as stt,'885' as chitieu,sum(miv.qtyentered) as qty, case when sum(miv.movementqty) <> 0 then sum(civ.linenetamt)/sum(miv.movementqty) end as dg , sum(civ.linenetamt) as tt
+from m_inout mi 
+join m_inoutline miv on mi.m_inout_id = miv.m_inout_id and mi.docstatus in ('CL','CO') and mi.issotrx ='N'
+join c_orderline civ on civ.c_orderline_id = miv.c_orderline_id 
+join m_product hh on civ.m_product_id = hh.m_product_id and hh.m_product_category_id = 1000085 and hh.M_AttributeSet_ID in (1000066,1000065)
+where mi.ad_client_id = $P{AD_CLIENT_ID} and (mi.ad_org_id =$P{AD_Org_ID} or $P{AD_Org_ID} is null) and  mi.dateacct >=$P{StartDate} and mi.dateacct <= $P{EndDate} 
+
+
+
+
+union all 
+select 3 as stt,'888' as chitieu,sum(miv.qtyentered) as qty, case when sum(miv.movementqty) <> 0 then sum(civ.linenetamt)/sum(miv.movementqty) end as dg , sum(civ.linenetamt) as tt
+from m_inout mi 
+join m_inoutline miv on mi.m_inout_id = miv.m_inout_id and mi.docstatus in ('CL','CO') and mi.issotrx ='N'
+join c_orderline civ on civ.c_orderline_id = miv.c_orderline_id 
+join m_product hh on hh.m_product_id = miv.m_product_id and hh.M_Product_ID=1007923
+where mi.ad_client_id = $P{AD_CLIENT_ID} and (mi.ad_org_id =$P{AD_Org_ID} or $P{AD_Org_ID} is null) and  mi.dateacct >=$P{StartDate} and mi.dateacct <= $P{EndDate}
+
+) as k
+union all 
+
+-----Chi phí PX bóc sấy -----------------------
+select '889' as dm_id,stt,chitieu, null::int4 as sl, null::int4 as dg, tt
+from(
+	select 4 as stt,'990' AS chitieu,COALESCE(sum(fc.amtacctdr-fc.amtacctcr),0) AS tt
+	FROM fact_acct fc 
+	JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) ='6275' 
+	WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} and (fc.ad_org_id =$P{AD_Org_ID} or $P{AD_Org_ID} is null)  AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND fc.C_Activity_ID=1000073
+	
+	union all
+	
+	select 5 as stt,'991' AS chitieu,COALESCE(sum(fc.amtacctdr-fc.amtacctcr),0) AS tt
+	FROM fact_acct fc 
+	JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,5) = '62211'
+	WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} and (fc.ad_org_id =$P{AD_Org_ID} or $P{AD_Org_ID} is null)  AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND fc.C_Activity_ID=1000073
+	
+	union all
+	
+	select 6 as stt,'992' AS chitieu,COALESCE(sum(fc.amtacctdr-fc.amtacctcr),0) AS tt
+	FROM fact_acct fc 
+	JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) = '6271'
+	WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} and (fc.ad_org_id =$P{AD_Org_ID} or $P{AD_Org_ID} is null) AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND fc.C_Activity_ID=1000073
+	
+	union all
+	
+	select 7 as stt,'993' AS chitieu,COALESCE(sum(fc.amtacctdr-fc.amtacctcr),0) AS tt
+	FROM fact_acct fc 
+	JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) in ('6272','6273')
+	WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} and (fc.ad_org_id =$P{AD_Org_ID} or $P{AD_Org_ID} is null)  AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND fc.C_Activity_ID=1000073
+	
+	union all
+	select 8 as stt,'994' AS chitieu,COALESCE(sum(fc.amtacctdr-fc.amtacctcr),0) AS tt
+	FROM fact_acct fc 
+	JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) = '6276'
+	WHERE  fc.ad_client_id=$P{AD_CLIENT_ID}  and (fc.ad_org_id =$P{AD_Org_ID} or $P{AD_Org_ID} is null) AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND fc.C_Activity_ID=1000073
+	union all
+	select 9 as stt,'995' AS chitieu,COALESCE(sum(fc.amtacctdr-fc.amtacctcr),0) AS tt
+	FROM fact_acct fc 
+	JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) in ('6277','6278','6412')
+	WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} and (fc.ad_org_id =$P{AD_Org_ID} or $P{AD_Org_ID} is null)  AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND fc.C_Activity_ID=1000073
+union all
+	select 10 as stt,'996' AS chitieu,COALESCE(sum(fc.amtacctdr-fc.amtacctcr),0) AS tt
+	FROM fact_acct fc 
+	JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,5) in ('62212','62213','62214')
+	WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} and (fc.ad_org_id =$P{AD_Org_ID} or $P{AD_Org_ID} is null)  AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND fc.C_Activity_ID=1000073
+
+) as t
+union all 
+
+----------Doanh thu bằng tiền ------------
+select '1050' as id_dm,stt, chitieu, qty, dg, tt 
+from(
+			
+	    	
+			select 11 as stt,'1053' as chitieu,sum(civ.qtyinvoiced) as qty, case when sum(civ.qtyinvoiced)<>0 then sum(civ.linenetamt)/sum(civ.qtyinvoiced) else 0 end as dg, sum(civ.linenetamt) as tt
+			from c_invoice ci 
+			join c_invoiceline civ on ci.c_invoice_id = civ.c_invoice_id and ci.issotrx ='Y' and ci.docstatus in('CL','CO') 
+			join m_inoutline biv on biv.m_inoutline_id = civ.m_inoutline_id 
+			join m_inout bi on biv.m_inout_id =  bi.m_inout_id 
+			join m_product  hh on hh.m_product_id = civ.m_product_id and hh.m_attributeset_id = 1000065 
+			where ci.ad_client_id = $P{AD_CLIENT_ID} and (ci.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null)  and ci.c_doctype_id <> 1000304 and  bi.dateacct >=$P{StartDate}  and bi.dateacct <= $P{EndDate}
+		
+			union all
+			
+			select 12 as stt,'1054' as chitieu,sum(civ.qtyinvoiced) as qty, case when sum(civ.qtyinvoiced)<>0 then sum(civ.linenetamt)/sum(civ.qtyinvoiced) else 0 end as dg, sum(civ.linenetamt) as tt
+			from c_invoice ci 
+			join c_invoiceline civ on ci.c_invoice_id = civ.c_invoice_id and ci.issotrx ='Y' and ci.docstatus in('CL','CO') 
+			join m_inoutline biv on biv.m_inoutline_id = civ.m_inoutline_id 
+			join m_inout bi on biv.m_inout_id =  bi.m_inout_id 
+			where ci.ad_client_id = $P{AD_CLIENT_ID} and (ci.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and civ.m_product_id = 1008358 and ci.c_doctype_id <> 1000304 and  bi.dateacct >=$P{StartDate} and bi.dateacct <= $P{EndDate}
+			
+			union all 
+			
+			select 13 as stt,'1055' as chitieu,sum(civ.qtyinvoiced) as qty, case when sum(civ.qtyinvoiced)<>0 then sum(civ.linenetamt)/sum(civ.qtyinvoiced) else 0 end as dg, sum(civ.linenetamt) as tt
+			from c_invoice ci 
+			join c_invoiceline civ on ci.c_invoice_id = civ.c_invoice_id and ci.issotrx ='Y' and ci.docstatus in('CL','CO') 
+			where ci.ad_client_id = $P{AD_CLIENT_ID} and (ci.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null)  and civ.m_product_id = 1007923   and ci.dateacct >=$P{StartDate} and ci.dateacct <= $P{EndDate}
+		
+			
+			union all 
+			select 14 as stt,'1056' as chitieu,sum(civ.qtyinvoiced) as qty, case when sum(civ.qtyinvoiced)<>0 then sum(civ.linenetamt)/sum(civ.qtyinvoiced) else 0 end as dg, sum(civ.linenetamt) as tt
+			from c_invoice ci 
+			join c_invoiceline civ on ci.c_invoice_id = civ.c_invoice_id and ci.issotrx ='Y' and ci.docstatus in('CL','CO') 
+			join m_inoutline biv on biv.m_inoutline_id = civ.m_inoutline_id 
+			join m_inout bi on biv.m_inout_id =  bi.m_inout_id 
+			where ci.ad_client_id = $P{AD_CLIENT_ID} and (ci.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null)  and civ.m_product_id = 1008359 and ci.c_doctype_id <> 1000304  and bi.dateacct >=$P{StartDate} and bi.dateacct <= $P{EndDate}
+			
+	) as t
+	union all
+select '1060' as id_dm,stt, chitieu, sl as qty, case when sl<>0 then tt/sl end as dg,tt 
+from(
+select 15 as stt,'1061' as chitieu, sldc-sldd as sl, ttdc-ttdd as tt
+from	(select  
+		sum(case when t.dateacct<$P{StartDate} and t.ad_table_id<>472 and t.ad_table_id<>473 and t.ad_table_id<>224 then t.qty else 0 end)+sum(case when t.dateacct<$P{StartDate} and  t.ad_table_id=224  and t.amtacctdr<>0 then t.qty else 0 end)-sum(case when t.dateacct<$P{StartDate} and  t.ad_table_id=224  and t.amtacctcr<>0 then t.qty else 0 end) sldd,
+		sum(case when t.dateacct<$P{StartDate} then t.amtacctdr-t.amtacctcr else 0 end) ttdd,
+		sum(case when t.ad_table_id<>472 and t.ad_table_id<>473 and t.ad_table_id<>224 and t.dateacct<=$P{EndDate} then t.qty else 0 end) +sum(case when  t.ad_table_id=224 and t.dateacct<=$P{EndDate} and t.amtacctdr<>0 then t.qty else 0 end) -sum(case when  t.ad_table_id=224 and t.dateacct<=$P{EndDate} and t.amtacctcr<>0 then t.qty else 0 end) sldc,
+		sum(case when t.dateacct<=$P{EndDate}then t.amtacctdr-t.amtacctcr else 0 end) ttdc
+	from  (	select ad_table_id,m_product_id,m_locator_id,dateacct,amtacctdr,amtacctcr,qty,c_uom_id 
+			from Fact_Acct fc
+			JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) in ('1551','1521') 
+			where  m_product_id is not null and  fc.dateacct<=$P{EndDate}
+		 	and fc.ad_client_id=$P{AD_CLIENT_ID} and (fc.ad_org_id = $P{AD_Org_ID} or  $P{AD_Org_ID} is null)  		 	 	
+	      ) as t
+	 	join m_product hh on t.m_product_id=hh.m_product_id 
+		where hh.M_Product_Category_ID=1000085 and hh.M_AttributeSet_ID=1000065
+		) as t1
+	union all 
+
+	select 16 as stt,'1062' as chitieu,sldc-sldd as sl, ttdc-ttdd as tt
+	from (
+		select  
+		sum(case when t.dateacct<$P{StartDate} and t.ad_table_id<>472 and t.ad_table_id<>473 and t.ad_table_id<>224 then t.qty else 0 end)+sum(case when t.dateacct<$P{StartDate} and  t.ad_table_id=224  and t.amtacctdr<>0 then t.qty else 0 end)-sum(case when t.dateacct<$P{StartDate} and  t.ad_table_id=224  and t.amtacctcr<>0 then t.qty else 0 end) sldd,
+		sum(case when t.dateacct<$P{StartDate} then t.amtacctdr-t.amtacctcr else 0 end) ttdd,
+		sum(case when t.ad_table_id<>472 and t.ad_table_id<>473 and t.ad_table_id<>224 and t.dateacct<=$P{EndDate} then t.qty else 0 end) +sum(case when  t.ad_table_id=224 and t.dateacct<=$P{EndDate} and t.amtacctdr<>0 then t.qty else 0 end) -sum(case when  t.ad_table_id=224 and t.dateacct<=$P{EndDate} and t.amtacctcr<>0 then t.qty else 0 end) sldc,
+		sum(case when t.dateacct<=$P{EndDate}then t.amtacctdr-t.amtacctcr else 0 end) ttdc
+		from  (	select ad_table_id,m_product_id,m_locator_id,dateacct,amtacctdr,amtacctcr,qty,c_uom_id 
+			from Fact_Acct fc
+			JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) in ('1551','1521') 
+			where  m_product_id is not null and  fc.dateacct<=$P{EndDate}
+		 	and fc.ad_client_id=$P{AD_CLIENT_ID} and (fc.ad_org_id = $P{AD_Org_ID} or  $P{AD_Org_ID} is null) 	 	
+	    ) as t
+	 	join m_product hh on t.m_product_id=hh.m_product_id 
+		where hh.M_Product_Category_ID=1000085 and hh.M_AttributeSet_ID=1000066
+		) as t1
+		union all 
+	select 17 as stt,'1063' as chitieu, sldc-sldd as sl, ttdc-ttdd as tt
+	from (
+		select  
+		sum(case when t.dateacct<$P{StartDate} and t.ad_table_id<>472 and t.ad_table_id<>473 and t.ad_table_id<>224 then t.qty else 0 end)+sum(case when t.dateacct<$P{StartDate} and  t.ad_table_id=224  and t.amtacctdr<>0 then t.qty else 0 end)-sum(case when t.dateacct<$P{StartDate} and  t.ad_table_id=224  and t.amtacctcr<>0 then t.qty else 0 end) sldd,
+		sum(case when t.dateacct<$P{StartDate} then t.amtacctdr-t.amtacctcr else 0 end) ttdd,
+		sum(case when t.ad_table_id<>472 and t.ad_table_id<>473 and t.ad_table_id<>224 and t.dateacct<=$P{EndDate} then t.qty else 0 end) +sum(case when  t.ad_table_id=224 and t.dateacct<=$P{EndDate} and t.amtacctdr<>0 then t.qty else 0 end) -sum(case when  t.ad_table_id=224 and t.dateacct<=$P{EndDate} and t.amtacctcr<>0 then t.qty else 0 end) sldc,
+		sum(case when t.dateacct<=$P{EndDate}then t.amtacctdr-t.amtacctcr else 0 end) ttdc
+	from  (	select ad_table_id,m_product_id,m_locator_id,dateacct,amtacctdr,amtacctcr,qty,c_uom_id 
+			from Fact_Acct fc
+			JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) in ('1551','1521') 
+			where  m_product_id is not null and  fc.dateacct<=$P{EndDate}
+		 	and fc.ad_client_id=$P{AD_CLIENT_ID} and (fc.ad_org_id = $P{AD_Org_ID}  or  $P{AD_Org_ID} is null) 		 	 	
+	      ) as t
+	 	join m_product hh on t.m_product_id=hh.m_product_id 
+		where hh.M_Product_Category_ID=1000538 and hh.M_AttributeSet_ID=1000065
+		) as t1
+	
+union all 
+select 18 as stt,'1064' as chitieu, sldc-sldd as sl, ttdc-ttdd as tt
+from	(select  
+		sum(case when t.dateacct<$P{StartDate} and t.ad_table_id<>472 and t.ad_table_id<>473 and t.ad_table_id<>224 then t.qty else 0 end)+sum(case when t.dateacct<$P{StartDate} and  t.ad_table_id=224  and t.amtacctdr<>0 then t.qty else 0 end)-sum(case when t.dateacct<$P{StartDate} and  t.ad_table_id=224  and t.amtacctcr<>0 then t.qty else 0 end) sldd,
+		sum(case when t.dateacct<$P{StartDate} then t.amtacctdr-t.amtacctcr else 0 end) ttdd,
+		sum(case when t.ad_table_id<>472 and t.ad_table_id<>473 and t.ad_table_id<>224 and t.dateacct<=$P{EndDate} then t.qty else 0 end) +sum(case when  t.ad_table_id=224 and t.dateacct<=$P{EndDate} and t.amtacctdr<>0 then t.qty else 0 end) -sum(case when  t.ad_table_id=224 and t.dateacct<=$P{EndDate} and t.amtacctcr<>0 then t.qty else 0 end) sldc,
+		sum(case when t.dateacct<=$P{EndDate}then t.amtacctdr-t.amtacctcr else 0 end) ttdc
+	from  (	select ad_table_id,m_product_id,m_locator_id,dateacct,amtacctdr,amtacctcr,qty,c_uom_id 
+			from Fact_Acct fc
+			JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) in ('1551','1521') 
+			where  m_product_id is not null and  fc.dateacct<=$P{EndDate}
+		 	and fc.ad_client_id=$P{AD_CLIENT_ID} and (fc.ad_org_id = $P{AD_Org_ID} or  $P{AD_Org_ID} is null)  		 	 	
+	      ) as t
+	 	join m_product hh on t.m_product_id=hh.m_product_id 
+		where hh.M_Product_Category_ID=1000538 and hh.M_AttributeSet_ID=1000066
+		) as t1
+
+
+)as t
+
+	---------------------------doanh thu chua ban----
+union all 
+--- chuyen kho di -chuyen kho den ---
+select '1069' as id_dm,stt, chitieu, qty, null::int4 as dg, tt
+from(
+	select 19 as stt,'10691' as chitieu, sum(qty) as qty, sum(tt) as tt
+	from(
+		select -1 *sum(qty) as qty, -1 *sum(fa.amtacctdr-fa.amtsourcecr) as tt
+		from fact_acct fa 
+		join m_product hh on fa.m_product_id = hh.m_product_id and hh.m_product_category_id = 1000085 and hh.m_attributeset_id = 1000065
+		join m_locator loc on loc.m_locator_id = fa.m_locator_id 
+		where fa.ad_table_id = 323 and fa.ad_client_id = $P{AD_CLIENT_ID} and (loc.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and fa.dateacct >= $P{StartDate} and fa.dateacct <= $P{EndDate}
+			
+		union all 
+		
+		select  sum(fa.qty) as qty1, sum(fa.amtacctdr-fa.amtsourcecr) as tt
+		from fact_acct fa 
+		join m_product hh on fa.m_product_id = hh.m_product_id and hh.m_product_category_id = 1000085 and hh.m_attributeset_id = 1000065
+		join m_movement ci on ci.m_movement_id = fa.record_id and ci.docstatus  in ('CL','CO')
+		join m_movementline civ on ci.m_movement_id = civ.m_movement_id and fa.line_id = civ.m_movementline_id 
+		join m_locator loc on loc.m_locator_id = civ.m_locatorto_id 
+		where fa.ad_table_id = 323 and fa.ad_client_id = $P{AD_CLIENT_ID} and (loc.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and fa.dateacct >= $P{StartDate} and fa.dateacct <= $P{EndDate}
+	) as k
+	union all 
+	
+	select 20 as stt,'10692' as chitieu, sum(qty) as qty, sum(tt) as tt
+	from(
+		select -1 *sum(qty) as qty, -1 *sum(fa.amtacctdr-fa.amtsourcecr) as tt
+		from fact_acct fa 
+		join m_product hh on fa.m_product_id = hh.m_product_id and hh.m_product_category_id = 1000085 and hh.m_attributeset_id = 1000066
+		join m_locator loc on loc.m_locator_id = fa.m_locator_id 
+		where fa.ad_table_id = 323 and fa.ad_client_id = $P{AD_CLIENT_ID} and (loc.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and fa.dateacct >= $P{StartDate} and fa.dateacct <= $P{EndDate}
+			
+		union all 
+		
+		select  sum(fa.qty) as qty1,  sum(fa.amtacctdr-fa.amtsourcecr) as tt
+		from fact_acct fa 
+		join m_product hh on fa.m_product_id = hh.m_product_id and hh.m_product_category_id = 1000085 and hh.m_attributeset_id = 1000066
+		join m_movement ci on ci.m_movement_id = fa.record_id and ci.docstatus  in ('CL','CO')
+		join m_movementline civ on ci.m_movement_id = civ.m_movement_id and fa.line_id = civ.m_movementline_id 
+		join m_locator loc on loc.m_locator_id = civ.m_locatorto_id 
+		where fa.ad_table_id = 323 and fa.ad_client_id = $P{AD_CLIENT_ID} and (loc.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and fa.dateacct >= $P{StartDate} and fa.dateacct <= $P{EndDate}
+	) as k
+	
+	union all 
+	
+	select 21 as stt,'10693' as chitieu, sum(qty) as qty, sum(tt) as tt
+	from(
+		select -1 *sum(qty) as qty, -1 *sum(fa.amtacctdr-fa.amtsourcecr) as tt
+		from fact_acct fa 
+		join m_product hh on fa.m_product_id = hh.m_product_id and hh.m_product_category_id = 1000538 and hh.m_attributeset_id = 1000065
+		join m_locator loc on loc.m_locator_id = fa.m_locator_id 
+		where fa.ad_table_id = 323 and fa.ad_client_id = $P{AD_CLIENT_ID} and (loc.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and fa.dateacct >= $P{StartDate} and fa.dateacct <= $P{EndDate}
+			
+		union all 
+		
+		select  sum(fa.qty) as qty1,  sum(fa.amtacctdr-fa.amtsourcecr) as tt
+		from fact_acct fa 
+		join m_product hh on fa.m_product_id = hh.m_product_id and hh.m_product_category_id = 1000538 and hh.m_attributeset_id = 1000065
+		join m_movement ci on ci.m_movement_id = fa.record_id and ci.docstatus  in ('CL','CO')
+		join m_movementline civ on ci.m_movement_id = civ.m_movement_id and fa.line_id = civ.m_movementline_id 
+		join m_locator loc on loc.m_locator_id = civ.m_locatorto_id 
+		where fa.ad_table_id = 323 and fa.ad_client_id = $P{AD_CLIENT_ID} and (loc.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and fa.dateacct >= $P{StartDate} and fa.dateacct <= $P{EndDate}
+	) as k
+	union all 
+	
+	select 22 as stt,'10694' as chitieu, sum(qty) as qty, sum(tt) as tt
+	from(
+		select -1 *sum(qty) as qty, -1 *sum(fa.amtacctdr-fa.amtsourcecr) as tt
+		from fact_acct fa 
+		join m_product hh on fa.m_product_id = hh.m_product_id and hh.m_product_category_id = 1000538 and hh.m_attributeset_id = 1000066
+		join m_locator loc on loc.m_locator_id = fa.m_locator_id 
+		where fa.ad_table_id = 323 and fa.ad_client_id = $P{AD_CLIENT_ID} and (loc.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and fa.dateacct >= $P{StartDate} and fa.dateacct <= $P{EndDate}
+			
+		union all 
+		
+		select  sum(fa.qty) as qty1,  sum(fa.amtacctdr-fa.amtsourcecr) as tt
+		from fact_acct fa 
+		join m_product hh on fa.m_product_id = hh.m_product_id and hh.m_product_category_id = 1000538 and hh.m_attributeset_id = 1000066
+		join m_movement ci on ci.m_movement_id = fa.record_id and ci.docstatus  in ('CL','CO')
+		join m_movementline civ on ci.m_movement_id = civ.m_movement_id and fa.line_id = civ.m_movementline_id 
+		join m_locator loc on loc.m_locator_id = civ.m_locatorto_id 
+		where fa.ad_table_id = 323 and fa.ad_client_id = $P{AD_CLIENT_ID} and (loc.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and fa.dateacct >= $P{StartDate} and fa.dateacct <= $P{EndDate}
+	) as k
+	
+) as t  
+union all 
+------Xuat kho phan xuong van ef ------
+	
+	select '10698' as id_dm,stt, chitieu, qty, case when qty<>0 then tt/qty end  as dg, tt
+	from(
+		select 23 as stt,'106981' as chitieu, sum(qty) as qty, sum(tt) as tt
+		from(
+			select -1 *sum(qty) as qty, -1 *sum(fa.amtacctdr-fa.amtsourcecr) as tt
+			from fact_acct fa 			
+			JOIN c_elementvalue acct ON fa.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2) in ('15')
+			where fa.ad_table_id = 321 and fa.M_Product_ID=1004071 and fa.c_activity_id =1000072 and fa.ad_client_id = $P{AD_CLIENT_ID} and (fa.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and fa.dateacct >= $P{StartDate} and fa.dateacct <= $P{EndDate}		
+		) as t
+		
+		union all 
+		
+		select 24 as stt,'106982' as chitieu, sum(qty) as qty, sum(tt) as tt
+		from(
+			select -1 *sum(qty) as qty, -1 *sum(fa.amtacctdr-fa.amtsourcecr) as tt
+			from fact_acct fa 			
+			JOIN c_elementvalue acct ON fa.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2) in ('15')
+			where fa.ad_table_id = 321 and fa.M_Product_ID=1004072 and fa.c_activity_id =1000072 and fa.ad_client_id = $P{AD_CLIENT_ID} and (fa.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and fa.dateacct >= $P{StartDate} and fa.dateacct <= $P{EndDate}		
+		) as t
+		
+		union all 
+		
+		select 25 as stt,'106983' as chitieu, sum(qty) as qty, sum(tt) as tt
+		from(
+			select -1 *sum(qty) as qty, -1 *sum(fa.amtacctdr-fa.amtsourcecr) as tt
+			from fact_acct fa 			
+			JOIN c_elementvalue acct ON fa.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2) in ('15')
+			where fa.ad_table_id = 321 and fa.M_Product_ID=1004070 and fa.c_activity_id =1000072 and fa.ad_client_id = $P{AD_CLIENT_ID} and (fa.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and fa.dateacct >= $P{StartDate} and fa.dateacct <= $P{EndDate}		
+		) as t
+		union all 
+		
+		select 26 as stt,'106984' as chitieu, sum(qty) as qty, sum(tt) as tt
+		from(
+			select -1 *sum(qty) as qty, -1 *sum(fa.amtacctdr-fa.amtsourcecr) as tt
+			from fact_acct fa 			
+			JOIN c_elementvalue acct ON fa.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2) in ('15')
+			where fa.ad_table_id = 321 and fa.M_Product_ID=1017260 and fa.c_activity_id =1000072 and fa.ad_client_id = $P{AD_CLIENT_ID} and (fa.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and fa.dateacct >= $P{StartDate} and fa.dateacct <= $P{EndDate}		
+		) as t
+	) as k
+	
+) as t left join hsv_giathanh dm on dm.value = t.chitieu and dm.ad_client_id = $P{AD_CLIENT_ID}
+) as t left join hsv_giathanh dm1 on dm1.value = t.id_dm and dm1.ad_client_id = $P{AD_CLIENT_ID}
+order by stt]]>
+	</queryString>
+	<field name="stt" class="java.lang.Integer">
+		<property name="com.jaspersoft.studio.field.name" value="stt"/>
+		<property name="com.jaspersoft.studio.field.label" value="stt"/>
+	</field>
+	<field name="id_dm" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="id_dm"/>
+		<property name="com.jaspersoft.studio.field.label" value="id_dm"/>
+	</field>
+	<field name="name_dm" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="name_dm"/>
+		<property name="com.jaspersoft.studio.field.label" value="name_dm"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="hsv_giathanh"/>
+	</field>
+	<field name="chitieu" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="chitieu"/>
+		<property name="com.jaspersoft.studio.field.label" value="chitieu"/>
+	</field>
+	<field name="name_chitieu" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="name_chitieu"/>
+		<property name="com.jaspersoft.studio.field.label" value="name_chitieu"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="hsv_giathanh"/>
+	</field>
+	<field name="qty" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="qty"/>
+		<property name="com.jaspersoft.studio.field.label" value="qty"/>
+	</field>
+	<field name="dg" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="dg"/>
+		<property name="com.jaspersoft.studio.field.label" value="dg"/>
+	</field>
+	<field name="tt" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="tt"/>
+		<property name="com.jaspersoft.studio.field.label" value="tt"/>
+	</field>
+	<variable name="sum_sl" class="java.math.BigDecimal" resetType="Group" resetGroup="Group1" calculation="Sum">
+		<variableExpression><![CDATA[$F{qty}]]></variableExpression>
+	</variable>
+	<variable name="sum_tt" class="java.math.BigDecimal" resetType="Group" resetGroup="Group1" calculation="Sum">
+		<variableExpression><![CDATA[$F{tt}]]></variableExpression>
+	</variable>
+	<variable name="stt" class="java.lang.Integer" incrementType="Group" incrementGroup="Group1">
+		<variableExpression><![CDATA[$V{Group1_COUNT}]]></variableExpression>
+	</variable>
+	<variable name="a1" class="java.lang.Double">
+		<variableExpression><![CDATA[$V{sum_dt}-$V{sum_cp}]]></variableExpression>
+	</variable>
+	<variable name="sum_cp" class="java.lang.Double" calculation="Sum">
+		<variableExpression><![CDATA[OR($F{id_dm}.equals("883"),$F{id_dm}.equals("889"))?$F{tt}:0]]></variableExpression>
+	</variable>
+	<variable name="sum_dt" class="java.lang.Double" calculation="Sum">
+		<variableExpression><![CDATA[OR($F{id_dm}.equals("1050"),$F{id_dm}.equals("1060"), $F{id_dm}.equals("1069"),$F{id_dm}.equals("10698"))?$F{tt}:0]]></variableExpression>
+	</variable>
+	<variable name="sl_ABC" class="java.lang.Double" calculation="Sum">
+		<variableExpression><![CDATA[OR($F{chitieu}.equals("106981"),$F{chitieu}.equals("106982"),$F{chitieu}.equals("106983"))?$F{qty}:0]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="a2" class="java.lang.Double">
+		<variableExpression><![CDATA[$V{sl_ABC}==0?0: $V{a1}/$V{sl_ABC}]]></variableExpression>
+	</variable>
+	<variable name="a3" class="java.lang.Double"/>
+	<group name="Group1">
+		<groupExpression><![CDATA[$F{name_dm}]]></groupExpression>
+		<groupHeader>
+			<band height="27">
+				<textField>
+					<reportElement x="0" y="0" width="560" height="27" uuid="0d6b4da1-8708-4287-86eb-34a9c389ec81">
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					</reportElement>
+					<box padding="2">
+						<pen lineWidth="0.0"/>
+						<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textElement verticalAlignment="Middle">
+						<font fontName="Arial" size="11" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{name_dm}]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupHeader>
+		<groupFooter>
+			<band height="27">
+				<textField>
+					<reportElement x="0" y="0" width="230" height="27" uuid="7947f332-d2f1-461c-9f5e-8988facc8917">
+						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="5366cc6e-077c-453c-a081-ca3abe946697"/>
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					</reportElement>
+					<box padding="2">
+						<pen lineWidth="0.0"/>
+						<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textElement verticalAlignment="Middle">
+						<font fontName="Arial" size="11" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA["Cộng nhóm"]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0" isBlankWhenNull="true">
+					<reportElement x="230" y="0" width="85" height="27" uuid="1c516439-9724-418d-b3b2-e45a060b599d">
+						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="e6247bdc-cda5-4c56-8155-23d465fbbd2a"/>
+						<property name="com.jaspersoft.studio.unit.x" value="px"/>
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					</reportElement>
+					<box padding="2">
+						<pen lineWidth="0.0"/>
+						<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" size="11" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{sum_sl}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0" isBlankWhenNull="true">
+					<reportElement x="315" y="0" width="85" height="27" uuid="850f56fb-45a2-4d46-acba-841604f9a5f6">
+						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="347d3c61-fa6a-4e27-9657-e5b023814458"/>
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					</reportElement>
+					<box padding="2">
+						<pen lineWidth="0.0"/>
+						<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" size="11" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{sum_sl}.doubleValue()==0?0:$V{sum_tt}.doubleValue()/$V{sum_sl}.doubleValue()]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0" isBlankWhenNull="true">
+					<reportElement x="400" y="0" width="160" height="27" uuid="411d1355-b88e-4d19-9526-fd39142cf440">
+						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="5c69203e-a9bd-47f5-b1ad-f1af04f08f95"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					</reportElement>
+					<box padding="2">
+						<pen lineWidth="0.0"/>
+						<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" size="11" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{sum_tt}]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupFooter>
+	</group>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="110" splitType="Stretch">
+			<printWhenExpression><![CDATA[$P{EXPORT_TYPE}==null]]></printWhenExpression>
+			<textField isBlankWhenNull="true">
+				<reportElement x="0" y="34" width="565" height="30" uuid="0c9a4f00-be14-46e4-8249-66c735194ac3">
+					<property name="local_mesure_unitheight" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="18" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["BÁO CÁO HIỆU QUẢ THU MUA - BÓC - SẤY "]]></textFieldExpression>
+			</textField>
+			<subreport>
+				<reportElement x="1" y="-2" width="479" height="45" uuid="f24d34ba-ede9-4e9a-b919-d7e2cd966b95"/>
+				<subreportParameter name="AD_CLIENT_ID">
+					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="SUBREPORT_DIR">
+					<subreportParameterExpression><![CDATA[$P{SUBREPORT_DIR}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="StartDate">
+					<subreportParameterExpression><![CDATA[$P{StartDate}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="EndDate">
+					<subreportParameterExpression><![CDATA[$P{EndDate}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="AD_Org_ID">
+					<subreportParameterExpression><![CDATA[$P{AD_Org_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"CompanyInfo.jasper"]]></subreportExpression>
+			</subreport>
+			<textField>
+				<reportElement x="1" y="82" width="564" height="20" uuid="bc1e4f8b-fe1f-452b-8952-590de5b1fe05">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Kỳ báo cáo : " + new SimpleDateFormat("dd/MM/yyyy").format($P{StartDate}) + " To "  + new SimpleDateFormat("dd/MM/yyyy").format($P{EndDate})]]></textFieldExpression>
+			</textField>
+			<subreport>
+				<reportElement x="140" y="60" width="280" height="21" uuid="cb740632-e839-44cd-a1d8-f3c3a687ea86"/>
+				<subreportParameter name="AD_CLIENT_ID">
+					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="SUBREPORT_DIR">
+					<subreportParameterExpression><![CDATA[$P{SUBREPORT_DIR}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="StartDate">
+					<subreportParameterExpression><![CDATA[$P{StartDate}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="EndDate">
+					<subreportParameterExpression><![CDATA[$P{EndDate}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="AD_Org_ID">
+					<subreportParameterExpression><![CDATA[$P{AD_Org_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="hq">
+					<subreportParameterExpression><![CDATA[$P{hq}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="EXPORT_TYPE">
+					<subreportParameterExpression><![CDATA[$P{EXPORT_TYPE}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"Sub_bophan.jasper"]]></subreportExpression>
+			</subreport>
+		</band>
+	</title>
+	<columnHeader>
+		<band height="27" splitType="Stretch">
+			<printWhenExpression><![CDATA[$V{PAGE_NUMBER}==1]]></printWhenExpression>
+			<staticText>
+				<reportElement x="30" y="0" width="200" height="27" uuid="43710c05-8230-4fcc-a5dc-7515f83ad8f5">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="5366cc6e-077c-453c-a081-ca3abe946697"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.0"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Nội dung]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="230" y="0" width="85" height="27" uuid="0cb91dc4-4d92-4d43-8a04-5d9818ff2700">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="e6247bdc-cda5-4c56-8155-23d465fbbd2a"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.0"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Số lượng]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="315" y="0" width="85" height="27" uuid="6acc0539-5fb6-45e0-9ea3-03a2bad43fec">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="347d3c61-fa6a-4e27-9657-e5b023814458"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.0"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Đơn giá]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="400" y="0" width="160" height="27" uuid="42b5bf90-f3b8-4af6-9cb7-d0260ba1f6b7">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="5c69203e-a9bd-47f5-b1ad-f1af04f08f95"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.0"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Thành tiền]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="0" y="0" width="30" height="27" uuid="6c39d602-9afc-49a9-8fe5-e0882a258356">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="5366cc6e-077c-453c-a081-ca3abe946697"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.0"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<text><![CDATA[STT]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="27" splitType="Stretch">
+			<textField>
+				<reportElement x="30" y="0" width="200" height="27" uuid="5a90a0a2-7c9a-49e6-8d19-c99c41160f3b">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="5366cc6e-077c-453c-a081-ca3abe946697"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.0"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{name_chitieu}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="230" y="0" width="85" height="27" uuid="d4f890f0-8f94-4ff2-904a-b164a7595d02">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="e6247bdc-cda5-4c56-8155-23d465fbbd2a"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.0"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{qty}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="315" y="0" width="85" height="27" uuid="f7383ced-ea6c-43fe-b663-805c98906ebf">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="347d3c61-fa6a-4e27-9657-e5b023814458"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.0"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{dg}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="400" y="0" width="160" height="27" uuid="29b3cc0c-ab58-4fb4-9208-79304250c777">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="5c69203e-a9bd-47f5-b1ad-f1af04f08f95"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.0"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{tt}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="0" y="0" width="30" height="27" uuid="5f582f5f-331c-46ee-982b-e17308252307">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="5366cc6e-077c-453c-a081-ca3abe946697"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.0"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{stt}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<pageFooter>
+		<band height="30" splitType="Stretch">
+			<printWhenExpression><![CDATA[$P{EXPORT_TYPE}==null]]></printWhenExpression>
+			<textField>
+				<reportElement x="0" y="0" width="280" height="30" uuid="4dc2146a-7a56-44d1-8f89-295c9be5024f">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{PAGE_NUMBER}]]></textFieldExpression>
+			</textField>
+			<textField evaluationTime="Report">
+				<reportElement x="280" y="0" width="276" height="30" uuid="1680e23f-bec9-47d7-ab12-6f1fce00b611">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA["/"+$V{PAGE_NUMBER}]]></textFieldExpression>
+			</textField>
+		</band>
+	</pageFooter>
+	<summary>
+		<band height="82" splitType="Stretch">
+			<subreport>
+				<reportElement x="0" y="0" width="559" height="32" uuid="51328efb-25de-4378-9e98-3b430f773d61">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+				</reportElement>
+				<subreportParameter name="AD_CLIENT_ID">
+					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="SUBREPORT_DIR">
+					<subreportParameterExpression><![CDATA[$P{SUBREPORT_DIR}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="StartDate">
+					<subreportParameterExpression><![CDATA[$P{StartDate}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="EndDate">
+					<subreportParameterExpression><![CDATA[$P{EndDate}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="AD_Org_ID">
+					<subreportParameterExpression><![CDATA[$P{AD_Org_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="EXPORT_TYPE">
+					<subreportParameterExpression><![CDATA[$P{EXPORT_TYPE}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="a2">
+					<subreportParameterExpression><![CDATA[$V{sl_ABC}==0?0:($V{sum_dt}-$V{sum_cp})/$V{sl_ABC}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="a1">
+					<subreportParameterExpression><![CDATA[$V{sum_dt}-$V{sum_cp}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="a3">
+					<subreportParameterExpression><![CDATA[$V{sl_ABC}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"Sub_ketqua.jasper"]]></subreportExpression>
+			</subreport>
+			<staticText>
+				<reportElement key="staticText-8" positionType="Float" x="0" y="66" width="118" height="16" uuid="bbd76e77-0326-4b6f-9b82-331761ec60e1">
+					<printWhenExpression><![CDATA[$P{EXPORT_TYPE}==null]]></printWhenExpression>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Lập biểu]]></text>
+			</staticText>
+			<staticText>
+				<reportElement key="staticText-8" positionType="Float" x="180" y="66" width="148" height="16" uuid="f1225036-e53e-4590-8103-a2419f120c93">
+					<printWhenExpression><![CDATA[$P{EXPORT_TYPE}==null]]></printWhenExpression>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Kiểm soát]]></text>
+			</staticText>
+			<textField pattern="" isBlankWhenNull="false">
+				<reportElement key="textField-4" positionType="Float" x="340" y="46" width="227" height="19" forecolor="#000000" backcolor="#FFFFFF" uuid="dfeff340-dd40-4c0a-abda-81cac1cdd63c">
+					<printWhenExpression><![CDATA[$P{EXPORT_TYPE}==null]]></printWhenExpression>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Ngày in: " + new SimpleDateFormat("dd/MM/yyyy hh24:mm").format(new Date())]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement key="staticText-8" positionType="Float" x="374" y="66" width="182" height="16" uuid="a5ecb477-3213-4bd4-8ed6-2f0aad8cc9d8">
+					<printWhenExpression><![CDATA[$P{EXPORT_TYPE}==null]]></printWhenExpression>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Giám đốc]]></text>
+			</staticText>
+			<textField>
+				<reportElement positionType="Float" x="70" y="34" width="141" height="30" uuid="da2dcd6c-47c1-40e8-b016-0b6364cf70a8"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[$V{sl_ABC}]]></textFieldExpression>
+			</textField>
+		</band>
+	</summary>
+</jasperReport>

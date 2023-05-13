@@ -1,0 +1,1104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.5.1.final using JasperReports Library version 6.5.1  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Rpt_BCQuanTriGiaThanhVanEpTongCongChiPhi_TruongSon" pageWidth="822" pageHeight="595" orientation="Landscape" columnWidth="822" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="4023df51-1b73-46d9-adf6-650e3c9f2034">
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="One Empty Record"/>
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="169"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="824"/>
+	<property name="com.jaspersoft.studio.unit." value="pixel"/>
+	<parameter name="StartDate" class="java.util.Date">
+		<defaultValueExpression><![CDATA[new Date(100,0,1)]]></defaultValueExpression>
+	</parameter>
+	<parameter name="EndDate" class="java.util.Date">
+		<defaultValueExpression><![CDATA[new Date(100,0,1)]]></defaultValueExpression>
+	</parameter>
+	<parameter name="AD_CLIENT_ID" class="java.lang.Integer">
+		<defaultValueExpression><![CDATA[1000000]]></defaultValueExpression>
+	</parameter>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String">
+		<defaultValueExpression><![CDATA["dev/"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="EXPORT_TYPE" class="java.lang.String"/>
+	<parameter name="AD_Org_ID" class="java.lang.Integer"/>
+	<queryString language="SQL">
+		<![CDATA[SELECT
+        sum(case when $P{AD_Org_ID}=1000119 and t.chitieu <>'1000' and t.chitieu <> '1004' then gt.hsv_dinhmuc else
+		case when $P{AD_Org_ID}=1000047 and t.chitieu <>'1000' and t.chitieu <> '1004'  then gt.hsv_dinhmuc05 else 
+		case when $P{AD_Org_ID} is null and  t.chitieu <>'1000' and t.chitieu <> '1004' then gt.hsv_dinhmuc end end end) AS b
+        ,sum(case when t.chitieu in ('1000','999','1001','1002','1003','1004','10031')then 0 
+         else case when  sl1.c<>0 and t.chitieu in ('1018','1019') then t.d/sl1.c else case when (sl3.c+sl3.c1*gt.hsv_dinhmuc1/100+sl3.c2*gt.hsv_dinhmuc2/100)<>0 and t.chitieu in ('1006') then t.d/(sl3.c+sl3.c1*gt.hsv_dinhmuc1/100+sl3.c2*gt.hsv_dinhmuc2/100) 
+         else case when t.chitieu in ('1005') then t.e ELSE t.d/(sl2.c+sl2.c1*gt.hsv_dinhmuc1/100+sl2.c2*gt.hsv_dinhmuc2/100+sl2.c3*gt.hsv_dinhmuc3/100+sl2.c4*gt.hsv_dinhmuc4/100) end end end end) as e
+         ,sum(case when t.chitieu in ('1000','999','1001','1002','1003','1004','10031')then 0 else case when t.chitieu in ('1000','999','1001','1002','1003','1004','1005','10031')then t.e 
+         else case when  sl1.c<>0 and t.chitieu in ('1018','1019') then t.d/sl1.c else case when (sl3.c+sl3.c1*gt.hsv_dinhmuc1/100+sl3.c2*gt.hsv_dinhmuc2/100)<>0 and t.chitieu in ('1006') then t.d/(sl3.c+sl3.c1*gt.hsv_dinhmuc1/100+sl3.c2*gt.hsv_dinhmuc2/100) else t.d/(sl2.c+sl2.c1*gt.hsv_dinhmuc1/100+sl2.c2*gt.hsv_dinhmuc2/100+sl2.c3*gt.hsv_dinhmuc3/100+sl2.c4*gt.hsv_dinhmuc4/100) end end end -case when $P{AD_Org_ID}=1000119 then gt.hsv_dinhmuc else case when $P{AD_Org_ID}=1000047 then gt.hsv_dinhmuc05  else gt.hsv_dinhmuc end end  end) as g
+         
+FROM(
+      --Chi tieu 999:Ván lỗi xuất bán 
+      SELECT 'I' as nhom,'999' AS chitieu,0 AS b,COALESCE(sum(t.sl))/1000000000 AS c,COALESCE(sum(t.tt)) AS d,sum(CASE WHEN t.sl<>0 THEN t.tt/(1000000000*t.sl) ELSE 0 END) AS e
+      FROM (SELECT fc.account_id,COALESCE(sum(fc.amtacctcr),0)-COALESCE(sum(fc.amtacctdr),0) AS tt
+                    ,-1*COALESCE(sum(fc.qty*hh.ShelfWidth *hh.ShelfDepth *hh.ShelfHeight),0) AS sl 
+            FROM fact_acct fc 
+            	    JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+            	    JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000130','1000131') 
+               		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id<>224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND fc.C_Activity_ID=1000072
+            	    GROUP BY fc.account_id
+				
+                  UNION ALL
+				
+                  SELECT fc.account_id,COALESCE(sum(fc.amtacctcr),0)-COALESCE(sum(fc.amtacctdr),0) AS tt
+                    ,-1*COALESCE(sum(fc.qty*hh.ShelfWidth *hh.ShelfDepth *hh.ShelfHeight),0) AS sl  
+                  FROM fact_acct fc 
+               		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+               		JOIN gl_journalline gl ON  Fc.record_id=gl.gl_journal_id AND Fc.line_id=gl.gl_journalline_id AND Fc.Account_ID=gl.Account_ID
+                                   AND gl.IsGenerated='N'
+             	    JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000130','1000131') 
+               		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id=224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND fc.C_Activity_ID=1000072
+                  GROUP BY fc.account_id
+  
+            
+           ) AS t        
+
+      UNION ALL  
+      --xuát bán ván xuất khẩu : chi tieu 1000
+      SELECT 'I' as nhom,'1000' AS chitieu,0 AS b,COALESCE(sum(t.sl)) AS c,COALESCE(sum(t.tt)) AS d,sum(CASE WHEN t.sl<>0 THEN t.tt/t.sl ELSE 0 END) AS e
+      FROM (SELECT fc.account_id,COALESCE(sum(fc.amtacctcr),0)-COALESCE(sum(fc.amtacctdr),0) AS tt,-1*COALESCE(sum(fc.qty),0) AS sl FROM fact_acct fc 
+            	    JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+            	    JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000064','1000136') 
+               		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id<>224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND fc.C_Activity_ID=1000072
+            	    GROUP BY fc.account_id
+				
+                  UNION ALL
+				
+                  SELECT fc.account_id,COALESCE(sum(fc.amtacctcr),0)-COALESCE(sum(fc.amtacctdr),0) AS tt,-1*COALESCE(sum(fc.qty),0) AS sl  FROM fact_acct fc 
+               		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+               		JOIN gl_journalline gl ON  Fc.record_id=gl.gl_journal_id AND Fc.line_id=gl.gl_journalline_id AND Fc.Account_ID=gl.Account_ID
+                                   AND gl.IsGenerated='N'
+             	    JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000064','1000136') 
+               		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id=224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND fc.C_Activity_ID=1000072
+                  GROUP BY fc.account_id
+  
+            
+           ) AS t        
+
+      UNION ALL
+      --ván sản xuất  kiêm lần 1 (tấm): chi tieu 1001  
+      SELECT 'II' as nhom,'1001' AS chitieu,0 AS b
+            ,sum(case when t.movementdate<=$P{EndDate} then t.sl else 0 end)-sum(case when t.movementdate<$P{StartDate} then t.sl else 0 end) AS c  ,0 AS d, 0 AS e
+      FROM( select m_transaction.AD_Org_ID,hh.value ,hh.name ,m_transaction.m_product_id,m_transaction.movementdate,m_transaction.movementtype,m_transaction.movementqty as sl
+            from m_transaction 
+            join m_product hh on m_transaction.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID IN ('1000064','1000136') 
+		    where m_transaction.movementdate<=$P{EndDate} and m_transaction.ad_client_id=$P{AD_CLIENT_ID} 
+                AND (m_transaction.m_locator_id in (select m_locator_id from m_locator where AD_Org_ID=$P{AD_Org_ID} ) or $P{AD_Org_ID} is null )
+          ) AS t
+
+      UNION ALL
+
+      --Ván sản xuất  kiêm lần 1 (m3) duoc quy doi: chi tieu 1002  sp.ShelfDepth*sp.ShelfWidth*sp.ShelfHeight
+      SELECT 'III' as nhom,'1002' AS chitieu,0 AS b
+            ,sum(case when t.movementdate<=$P{EndDate} then t.sl else 0 end)-sum(case when t.movementdate<$P{StartDate} then t.sl else 0 end) AS c  ,0 AS d, 0 AS e
+      FROM( select m_transaction.AD_Org_ID,hh.value ,hh.name ,m_transaction.m_product_id,m_transaction.movementdate,m_transaction.movementtype
+                    ,m_transaction.movementqty*hh.ShelfDepth*hh.ShelfWidth*hh.ShelfHeight/1000000000 as sl
+            from m_transaction 
+            join m_product hh on m_transaction.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID IN ('1000134','1000135','1000131') 
+		    where m_transaction.movementdate<=$P{EndDate} and m_transaction.ad_client_id=$P{AD_CLIENT_ID}
+                    AND (m_transaction.m_locator_id in (select m_locator_id from m_locator where AD_Org_ID=$P{AD_Org_ID} ) or $P{AD_Org_ID} is null )
+      		) AS t
+        
+      UNION ALL
+      --Chi tieu 1003
+      SELECT 'III' as nhom,'1003' AS chitieu,0 AS b
+            ,sum(case when t.movementdate<=$P{EndDate} then t.sl else 0 end)-sum(case when t.movementdate<$P{StartDate} then t.sl else 0 end) AS c  ,0 AS d, 0 AS e
+      FROM( select m_transaction.AD_Org_ID,hh.value ,hh.name ,m_transaction.m_product_id,m_transaction.movementdate,m_transaction.movementtype
+                    ,m_transaction.movementqty*hh.ShelfDepth*hh.ShelfWidth*hh.ShelfHeight/1000000000 as sl
+            from m_transaction 
+            join m_product hh on m_transaction.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID IN ('1000130','1000133') 
+		    where m_transaction.movementdate<=$P{EndDate} and m_transaction.ad_client_id=$P{AD_CLIENT_ID} 
+                      AND (m_transaction.m_locator_id in (select m_locator_id from m_locator where AD_Org_ID=$P{AD_Org_ID} ) or $P{AD_Org_ID} is null )
+      		) AS t
+      		
+      	 UNION ALL
+      --Chi tieu 10031
+      SELECT 'III' as nhom,'10031' AS chitieu,0 AS b
+            ,sum(case when t.movementdate<=$P{EndDate} then t.sl else 0 end)-sum(case when t.movementdate<$P{StartDate} then t.sl else 0 end) AS c  ,0 AS d, 0 AS e
+      FROM( select m_transaction.AD_Org_ID,hh.value ,hh.name ,m_transaction.m_product_id,m_transaction.movementdate,m_transaction.movementtype
+                    ,m_transaction.movementqty*hh.ShelfDepth*hh.ShelfWidth*hh.ShelfHeight/1000000000 as sl
+            from m_transaction 
+            join m_product hh on m_transaction.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID IN ('1000132') 
+		    where m_transaction.movementdate<=$P{EndDate} and m_transaction.ad_client_id=$P{AD_CLIENT_ID} 
+                      AND (m_transaction.m_locator_id in (select m_locator_id from m_locator where AD_Org_ID=$P{AD_Org_ID} ) or $P{AD_Org_ID} is null )
+      		) AS t
+      		
+
+      UNION ALL
+
+      --Chi phi san xuat 
+      SELECT 'III' as nhom,'1004' AS chitieu,0 AS b,0 AS c  ,0 AS d, 0 AS e FROM ad_client WHERE ad_client_id=1000006
+
+      UNION ALL
+
+      --nguyên liệu   (2 600 x 1.17) 
+       SELECT 'II' as nhom,'1005' AS chitieu,0 AS b,0 AS c  ,sum(Amountdg1)  AS d, case when sum(hsv_dinhmuc1)<> 0 then  sum(Amountdg1)/sum(hsv_dinhmuc1) else 0 end AS e 
+      FROM hsv_nhatky_qtri  
+      WHERE ad_client_id=1000006  and dateacct>=$P{StartDate} AND dateacct<=$P{EndDate} and  HSV_solieu_ID=1000013 AND (AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)
+      
+      UNION ALL
+      
+      --Ván lót mặt  10051: Xuat su dung voi  M_PartType_ID=1000104
+      SELECT 'II' as nhom,'10051' AS chitieu,0 AS b,0 AS c  ,sum(t.tt) AS d, 0 AS e
+      FROM(         SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) AS tt,'10051' AS chitieu FROM fact_acct fc 
+	           		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id --and left(acct.value,4) in ('6211')
+	           		JOIN m_inventory m ON  Fc.record_id=m.m_inventory_id AND m.c_doctype_id IN ('1000326') AND m.docstatus IN ('CO','CL')
+	           		JOIN m_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_PartType_ID=1000104
+	           		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id=321 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} 
+	           					AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND fc.C_Activity_ID=1000072
+           		
+           		    UNION ALL
+              
+	               SELECT -1*COALESCE(sum(pl.Qtyinternaluse),0) AS sl,0 AS tt,'10051' AS chitieu FROM m_inventoryline pl
+	               JOIN m_product hh ON pl.m_product_id=hh.m_product_id AND hh.M_PartType_ID=1000104
+	               JOIN m_inventory p ON pl.m_inventory_id=p.m_inventory_id  AND p.docstatus IN ('CO','CL') AND p.c_doctype_id IN ('1000326')
+	                 					AND P.movementdate>=$P{StartDate} AND p.movementdate<=$P{EndDate} AND p.C_Activity_ID=1000072
+	               WHERE  pl.ad_client_id=$P{AD_CLIENT_ID} AND (pl.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)
+			
+      		) AS t
+
+
+      UNION ALL
+      
+      --ván mặt chi tieu 1006: Xuat su dung voi M_PartType_ID=1000008
+      SELECT 'III' as nhom,'1006' AS chitieu,0 AS b,0 AS c  ,sum(t.tt) AS d, 0 AS e
+      FROM(         SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) AS tt,'1006' AS chitieu FROM fact_acct fc 
+	           		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id --and left(acct.value,4) in ('6211')
+	           		JOIN m_inventory m ON  Fc.record_id=m.m_inventory_id AND m.c_doctype_id IN ('1000326') AND m.docstatus IN ('CO','CL')
+	           		JOIN m_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_PartType_ID=1000008
+	           		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id=321 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} 
+	           					AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND fc.C_Activity_ID=1000072
+           		
+           		    UNION ALL
+              
+	               SELECT -1*COALESCE(sum(pl.Qtyinternaluse),0) AS sl,0 AS tt,'1006' AS chitieu FROM m_inventoryline pl
+	               JOIN m_product hh ON pl.m_product_id=hh.m_product_id AND hh.M_PartType_ID=1000008
+	               JOIN m_inventory p ON pl.m_inventory_id=p.m_inventory_id  AND p.docstatus IN ('CO','CL') AND p.c_doctype_id IN ('1000326')
+	                 					AND P.movementdate>=$P{StartDate} AND p.movementdate<=$P{EndDate} AND p.C_Activity_ID=1000072
+	               WHERE  pl.ad_client_id=$P{AD_CLIENT_ID} AND (pl.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)
+			
+      		) AS t
+		
+      UNION ALL
+      
+      --keo (115 kg * 8 000) chi tieu 1007:  Xuat su dung voi M_PartType_ID=1000009
+      SELECT 'II' as nhom,'1007' AS chitieu,0 AS b,0 AS c  ,sum(t.tt) AS d, 0 AS e
+      FROM(         SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) AS tt,'1006' AS chitieu FROM fact_acct fc 
+	           		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id --and left(acct.value,4) in ('6211')
+	           		JOIN m_inventory m ON  Fc.record_id=m.m_inventory_id AND m.c_doctype_id IN ('1000326') AND m.docstatus IN ('CO','CL')
+	           		JOIN m_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_PartType_ID=1000009
+	           		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id=321 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} 
+	           					AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND fc.C_Activity_ID=1000072
+           		
+           		    UNION ALL
+              
+	               SELECT -1*COALESCE(sum(pl.Qtyinternaluse),0) AS sl,0 AS tt,'1006' AS chitieu FROM m_inventoryline pl
+	               JOIN m_product hh ON pl.m_product_id=hh.m_product_id AND hh.M_PartType_ID=1000009
+	               JOIN m_inventory p ON pl.m_inventory_id=p.m_inventory_id  AND p.docstatus IN ('CO','CL') AND p.c_doctype_id IN ('1000326')
+	                 					AND P.movementdate>=$P{StartDate} AND p.movementdate<=$P{EndDate} AND p.C_Activity_ID=1000072
+	               WHERE  pl.ad_client_id=$P{AD_CLIENT_ID} AND (pl.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)
+			
+      		) AS t
+		
+      UNION ALL
+
+      --nhuom chi tieu 1008:  Xuat su dung voi M_PartType_ID=1000022
+      SELECT 'II' as nhom,'1008' AS chitieu,0 AS b,0 AS c  ,sum(t.tt) AS d, 0 AS e
+      FROM(         SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) AS tt,'1008' AS chitieu FROM fact_acct fc 
+	           		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id --and left(acct.value,4) in ('6211')
+	           		JOIN m_inventory m ON  Fc.record_id=m.m_inventory_id AND m.c_doctype_id IN ('1000326') AND m.docstatus IN ('CO','CL')
+	           		JOIN m_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_PartType_ID=1000022
+	           		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id=321 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} 
+	           					AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND fc.C_Activity_ID=1000072
+           		
+           		    UNION ALL
+              
+	               SELECT -1*COALESCE(sum(pl.Qtyinternaluse),0) AS sl,0 AS tt,'1008' AS chitieu FROM m_inventoryline pl
+	               JOIN m_product hh ON pl.m_product_id=hh.m_product_id AND hh.M_PartType_ID=1000022
+	               JOIN m_inventory p ON pl.m_inventory_id=p.m_inventory_id  AND p.docstatus IN ('CO','CL') AND p.c_doctype_id IN ('1000326')
+	                 					AND P.movementdate>=$P{StartDate} AND p.movementdate<=$P{EndDate} AND p.C_Activity_ID=1000072
+	               WHERE  pl.ad_client_id=$P{AD_CLIENT_ID} AND (pl.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)
+			
+      		) AS t
+		
+      UNION ALL
+
+       --Ba chi tieu 1009:  Xuat su dung voi M_PartType_ID=1000023
+      SELECT 'II' as nhom,'1009' AS chitieu,0 AS b,0 AS c  ,sum(t.tt) AS d, 0 AS e
+      FROM(         SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) AS tt,'1009' AS chitieu FROM fact_acct fc 
+	           		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id --and left(acct.value,4) in ('6211')
+	           		JOIN m_inventory m ON  Fc.record_id=m.m_inventory_id AND m.c_doctype_id IN ('1000326') AND m.docstatus IN ('CO','CL')
+	           		JOIN m_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_PartType_ID=1000023
+	           		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id=321 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} 
+	           					AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND fc.C_Activity_ID=1000072
+           		
+           		    UNION ALL
+              
+	               SELECT -1*COALESCE(sum(pl.Qtyinternaluse),0) AS sl,0 AS tt,'1009' AS chitieu FROM m_inventoryline pl
+	               JOIN m_product hh ON pl.m_product_id=hh.m_product_id AND hh.M_PartType_ID=1000023
+	               JOIN m_inventory p ON pl.m_inventory_id=p.m_inventory_id  AND p.docstatus IN ('CO','CL') AND p.c_doctype_id IN ('1000326')
+	                 					AND P.movementdate>=$P{StartDate} AND p.movementdate<=$P{EndDate} AND p.C_Activity_ID=1000072
+	               WHERE  pl.ad_client_id=$P{AD_CLIENT_ID} AND (pl.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)
+			
+      		) AS t
+		
+      UNION ALL
+
+      --Chà nhám chi tieu 1010:  Xuat su dung voi M_PartType_ID=1000087
+      SELECT 'II' as nhom,'1010' AS chitieu,0 AS b,0 AS c  ,sum(t.tt) AS d, 0 AS e
+      FROM(         SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) AS tt,'1009' AS chitieu FROM fact_acct fc 
+	           		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id --and left(acct.value,4) in ('6211')
+	           		JOIN m_inventory m ON  Fc.record_id=m.m_inventory_id AND m.c_doctype_id IN ('1000326') AND m.docstatus IN ('CO','CL')
+	           		JOIN m_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_PartType_ID=1000087
+	           		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id=321 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} 
+	           					AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND fc.C_Activity_ID=1000072
+           		
+           		    UNION ALL
+              
+	               SELECT -1*COALESCE(sum(pl.Qtyinternaluse),0) AS sl,0 AS tt,'1009' AS chitieu FROM m_inventoryline pl
+	               JOIN m_product hh ON pl.m_product_id=hh.m_product_id AND hh.M_PartType_ID=1000087
+	               JOIN m_inventory p ON pl.m_inventory_id=p.m_inventory_id  AND p.docstatus IN ('CO','CL') AND p.c_doctype_id IN ('1000326')
+	                 					AND P.movementdate>=$P{StartDate} AND p.movementdate<=$P{EndDate} AND p.C_Activity_ID=1000072
+	               WHERE  pl.ad_client_id=$P{AD_CLIENT_ID} AND (pl.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)
+			
+      		) AS t
+		
+      UNION ALL
+
+      --vật tư khác , bao tay ..chi tieu 1011:  Xuat su dung voi M_PartType_ID=1000026
+      SELECT 'II' as nhom,'1011' AS chitieu,0 AS b,0 AS c  ,sum(t.tt) AS d, 0 AS e
+      FROM(         SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) AS tt,'1009' AS chitieu FROM fact_acct fc 
+	           		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id --and left(acct.value,4) in ('6211')
+	           		JOIN m_inventory m ON  Fc.record_id=m.m_inventory_id AND m.c_doctype_id IN ('1000326') AND m.docstatus IN ('CO','CL')
+	           		JOIN m_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_PartType_ID=1000026
+	           		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id=321 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} 
+	           					AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND fc.C_Activity_ID=1000072
+           		
+           		    UNION ALL
+              
+	               SELECT -1*COALESCE(sum(pl.Qtyinternaluse),0) AS sl,0 AS tt,'1009' AS chitieu FROM m_inventoryline pl
+	               JOIN m_product hh ON pl.m_product_id=hh.m_product_id AND hh.M_PartType_ID=1000026
+	               JOIN m_inventory p ON pl.m_inventory_id=p.m_inventory_id  AND p.docstatus IN ('CO','CL') AND p.c_doctype_id IN ('1000326')
+	                 					AND P.movementdate>=$P{StartDate} AND p.movementdate<=$P{EndDate} AND p.C_Activity_ID=1000072
+	               WHERE  pl.ad_client_id=$P{AD_CLIENT_ID} AND (pl.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)
+			
+      		) AS t
+		
+      UNION ALL
+
+      --xang dầu chi tieu 1012:  Xuat su dung voi M_PartType_ID=1000025
+      SELECT 'II' as nhom,'1012' AS chitieu,0 AS b,0 AS c  ,sum(t.tt) AS d, 0 AS e
+      FROM(         SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) AS tt,'1009' AS chitieu FROM fact_acct fc 
+	           		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id --and left(acct.value,4) in ('6211')
+	           		JOIN m_inventory m ON  Fc.record_id=m.m_inventory_id AND m.c_doctype_id IN ('1000326') AND m.docstatus IN ('CO','CL')
+	           		JOIN m_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_PartType_ID=1000025
+	           		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id=321 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} 
+	           					AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND fc.C_Activity_ID=1000072
+           		
+           		    UNION ALL
+              
+	               SELECT -1*COALESCE(sum(pl.Qtyinternaluse),0) AS sl,0 AS tt,'1009' AS chitieu FROM m_inventoryline pl
+	               JOIN m_product hh ON pl.m_product_id=hh.m_product_id AND hh.M_PartType_ID=1000025
+	               JOIN m_inventory p ON pl.m_inventory_id=p.m_inventory_id  AND p.docstatus IN ('CO','CL') AND p.c_doctype_id IN ('1000326')
+	                 					AND P.movementdate>=$P{StartDate} AND p.movementdate<=$P{EndDate} AND p.C_Activity_ID=1000072
+	               WHERE  pl.ad_client_id=$P{AD_CLIENT_ID} AND (pl.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)
+			
+      		) AS t
+		
+      UNION ALL
+      
+      --Tien dien chi tieu 1013: tai khoan 6275  
+      SELECT 'II' as nhom,'1013' AS chitieu,0 AS b,0 AS c  ,sum(t.tt) AS d, 0 AS e
+      FROM(        
+              SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0)-COALESCE(sum(fc.amtacctcr),0) AS tt,'13' AS chitieu FROM fact_acct fc 
+           		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) IN ('6275')
+           		WHERE  fc.ad_client_id=1000006  AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND fc.C_Activity_ID=1000072
+					AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)
+      		) AS t
+
+      UNION ALL
+
+      --Bao bi chi tieu 1014:  Xuat su dung voi M_PartType_ID=1000024
+      SELECT 'II' as nhom,'1014' AS chitieu,0 AS b,0 AS c  ,sum(t.tt) AS d, 0 AS e
+      FROM(         SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) AS tt,'1009' AS chitieu FROM fact_acct fc 
+	           		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id --and left(acct.value,4) in ('6211')
+	           		JOIN m_inventory m ON  Fc.record_id=m.m_inventory_id AND m.c_doctype_id IN ('1000326') AND m.docstatus IN ('CO','CL')
+	           		JOIN m_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_PartType_ID=1000024
+	           		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id=321 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} 
+	           					AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND fc.C_Activity_ID=1000072
+           		
+           		    UNION ALL
+              
+	               SELECT -1*COALESCE(sum(pl.Qtyinternaluse),0) AS sl,0 AS tt,'1009' AS chitieu FROM m_inventoryline pl
+	               JOIN m_product hh ON pl.m_product_id=hh.m_product_id AND hh.M_PartType_ID=1000024
+	               JOIN m_inventory p ON pl.m_inventory_id=p.m_inventory_id  AND p.docstatus IN ('CO','CL') AND p.c_doctype_id IN ('1000326')
+	                 					AND P.movementdate>=$P{StartDate} AND p.movementdate<=$P{EndDate} AND p.C_Activity_ID=1000072
+	               WHERE  pl.ad_client_id=$P{AD_CLIENT_ID} AND (pl.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)
+			
+      		) AS t
+		
+
+      UNION ALL
+
+      --Sua chua chi tieu 1015: PS Nợ-PS Có 6273
+      SELECT 'II' as nhom,'1015' AS chitieu,0 AS b,0 AS c  ,sum(t.tt) AS d, 0 AS e
+      FROM(        
+              SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0)-COALESCE(sum(fc.amtacctcr),0) AS tt,'13' AS chitieu FROM fact_acct fc 
+           		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) IN ('6273')
+           		WHERE  fc.ad_client_id=1000006  AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND fc.C_Activity_ID=1000072
+					AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)
+      		) AS t
+		
+      UNION ALL
+
+       --Nhan cong chi tieu 1016: tai khoan 62211  
+      SELECT 'II' as nhom,'1016' AS chitieu,0 AS b,0 AS c  ,sum(t.tt) AS d, 0 AS e
+      FROM(        
+              SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0)-COALESCE(sum(fc.amtacctcr),0) AS tt,'13' AS chitieu FROM fact_acct fc 
+           		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,5) IN ('62211')
+           		WHERE  fc.ad_client_id=1000006  AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND fc.C_Activity_ID=1000072
+					AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)
+			) AS t		
+
+
+      UNION ALL
+
+      --Chi nhân công P xưởng: Tai khoan 62711
+      SELECT 'II' as nhom,'1017' AS chitieu,0 AS b,0 AS c  ,sum(t.tt) AS d, 0 AS e
+      FROM(        
+              SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0)-COALESCE(sum(fc.amtacctcr),0) AS tt,'13' AS chitieu FROM fact_acct fc 
+           		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,5) IN ('62711')
+           		WHERE  fc.ad_client_id=1000006  AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND fc.C_Activity_ID=1000072
+					AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)
+           ) AS t 
+           
+      UNION ALL
+      
+      --Chi phi van chuyen  chi tieu 1018: tai khoan 6412
+      SELECT 'I' as nhom,'1018' AS chitieu,0 AS b,0 AS c  ,sum(t.tt) AS d, 0 AS e
+      FROM(        
+              SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) AS tt,'13' AS chitieu FROM fact_acct fc 
+           		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) IN ('6412')
+           		WHERE  fc.ad_client_id=1000006  AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND fc.C_Activity_ID=1000072
+					AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)
+           ) AS t   
+      
+      
+      UNION ALL    
+          
+      --Chi phi ban hang  chi tieu 1019: tai khoan 6411 phân bổ theo doanh thu ban hang van xuat khau cua tung bo phan
+      SELECT 'I' as nhom,'1019' AS chitieu,0 AS b,0 AS c
+      		,case when $P{AD_Org_ID}=1000047 then sum(t.cpbh)*sum(t.slts)/sum(t.sltb) else case when $P{AD_Org_ID}=1000119 then sum(t.cpbh)*sum(t.slth)/sum(t.sltb) else sum(t.cpbh) end end AS d,0 AS e
+      FROM (		--Tong so luong ban toan cong ty
+      				SELECT -1*COALESCE(sum(fc.qty),0) AS sltb,0 as slts,0 as slth,0 as cpbh 
+      				FROM fact_acct fc 
+            	    JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+            	    JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000064') 
+               		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id<>224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND fc.C_Activity_ID=1000072
+            	    
+                  	UNION ALL
+					SELECT -1*COALESCE(sum(fc.qty),0) AS sltb,0 as slts,0 as slth,0 as cpbh  
+	                FROM fact_acct fc 
+              		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+               		JOIN gl_journalline gl ON  Fc.record_id=gl.gl_journal_id AND Fc.line_id=gl.gl_journalline_id AND Fc.Account_ID=gl.Account_ID
+                                   AND gl.IsGenerated='N'
+             	    JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000064') 
+               		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id=224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND fc.C_Activity_ID=1000072
+                    
+  					UNION ALL
+					--Bo phan Thanh Hoa	fc.AD_Org_ID=1000119
+      				SELECT 0 AS sltb,0 as slts,-1*COALESCE(sum(fc.qty),0) as slth,0 as cpbh 
+      				FROM fact_acct fc 
+            	    JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+            	    JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000064') 
+               		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id<>224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate}and fc.AD_Org_ID=1000119 AND fc.C_Activity_ID=1000072
+            	    
+                  	UNION all
+                  	
+					SELECT 0 AS sltb,0 as slts,-1*COALESCE(sum(fc.qty),0) as slth,0 as cpbh  
+	                FROM fact_acct fc 
+              		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+               		JOIN gl_journalline gl ON  Fc.record_id=gl.gl_journal_id AND Fc.line_id=gl.gl_journalline_id AND Fc.Account_ID=gl.Account_ID
+                                   AND gl.IsGenerated='N'
+             	    JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000064') 
+               		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id=224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.AD_Org_ID=1000119 AND fc.C_Activity_ID=1000072
+
+  					UNION ALL
+					--Bo phan Truong son fc.AD_Org_ID=1000047
+      				SELECT 0 AS sltb,-1*COALESCE(sum(fc.qty),0) as slts,0 as slth,0 as cpbh 
+      				FROM fact_acct fc 
+            	    JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+            	    JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000064') 
+               		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id<>224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate}and fc.AD_Org_ID=1000047 AND fc.C_Activity_ID=1000072
+            	    
+                  	UNION all
+                  	
+					SELECT 0 AS sltb,-1*COALESCE(sum(fc.qty),0) as slts,0 as slth,0 as cpbh  
+	                FROM fact_acct fc 
+              		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+               		JOIN gl_journalline gl ON  Fc.record_id=gl.gl_journal_id AND Fc.line_id=gl.gl_journalline_id AND Fc.Account_ID=gl.Account_ID
+                                   AND gl.IsGenerated='N'
+             	    JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000064') 
+               		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id=224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.AD_Org_ID=1000047 AND fc.C_Activity_ID=1000072			
+               		
+               		union all
+               		--Chi phi
+               		SELECT 0 AS sltb,0 AS slts,0 AS slth,COALESCE(sum(fc.amtacctdr),0) AS cp 
+               		FROM fact_acct fc 
+           			JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) IN ('6411')
+           			WHERE  fc.ad_client_id=1000006  AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND fc.C_Activity_ID=1000072
+						AND fc.AD_Org_ID=1000038
+            
+           ) AS t    
+      
+      UNION ALL     
+       --Chi phi khac  chi tieu 1020: tai khoan (6272 6273,6275,6276,6277,6278)  trừ các các chi tieu đã tính gồm (1007 đến 1015)
+      SELECT 'II' as nhom,'1020' AS chitieu,0 AS b,0 AS c  ,sum(t.tt) AS d, 0 AS e
+      FROM(        
+              SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0)-COALESCE(sum(fc.amtacctcr),0) AS tt,'13' AS chitieu FROM fact_acct fc 
+           		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) IN ('6272','6273','6275','6276','6277','6278')
+           		WHERE  fc.ad_client_id=1000006  AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND fc.C_Activity_ID=1000072
+					AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)
+			  
+			  UNION ALL
+			  
+			  -- Tru du chi tieu 1013: Tien dien , sua chua : tai khoan 6275
+			  SELECT 0 AS sl,-1*(COALESCE(sum(fc.amtacctdr),0)-COALESCE(sum(fc.amtacctcr),0)) AS tt,'13' AS chitieu FROM fact_acct fc 
+           		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) IN ('6275')
+           		WHERE  fc.ad_client_id=1000006  AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND fc.C_Activity_ID=1000072
+					AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)		
+					
+			  UNION ALL
+			  --tru chi tieu 1007
+			  SELECT 0 AS sl,-1*COALESCE(sum(fc.amtacctdr),0) AS tt,'1006' AS chitieu FROM fact_acct fc 
+	           		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id --and left(acct.value,4) in ('6211')
+	           		JOIN m_inventory m ON  Fc.record_id=m.m_inventory_id AND m.c_doctype_id IN ('1000326') AND m.docstatus IN ('CO','CL')
+	           		JOIN m_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_PartType_ID=1000009
+	           		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id=321 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} 
+	           					AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND fc.C_Activity_ID=1000072
+	           					
+	          UNION ALL
+			  --tru chi tieu 1008
+			  SELECT 0 AS sl,-1*COALESCE(sum(fc.amtacctdr),0) AS tt,'1006' AS chitieu FROM fact_acct fc 
+	           		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id --and left(acct.value,4) in ('6211')
+	           		JOIN m_inventory m ON  Fc.record_id=m.m_inventory_id AND m.c_doctype_id IN ('1000326') AND m.docstatus IN ('CO','CL')
+	           		JOIN m_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_PartType_ID=1000022
+	           		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id=321 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} 
+	           					AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND fc.C_Activity_ID=1000072 					
+	           					
+	          UNION ALL
+			  --tru chi tieu 1009
+			  SELECT 0 AS sl,-1*COALESCE(sum(fc.amtacctdr),0) AS tt,'1006' AS chitieu FROM fact_acct fc 
+	           		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id --and left(acct.value,4) in ('6211')
+	           		JOIN m_inventory m ON  Fc.record_id=m.m_inventory_id AND m.c_doctype_id IN ('1000326') AND m.docstatus IN ('CO','CL')
+	           		JOIN m_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_PartType_ID=1000023
+	           		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id=321 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} 
+	           					AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND fc.C_Activity_ID=1000072 					
+	           					
+	           					
+	          UNION ALL
+			  --tru chi tieu 1010
+			  SELECT 0 AS sl,-1*COALESCE(sum(fc.amtacctdr),0) AS tt,'1006' AS chitieu FROM fact_acct fc 
+	           		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id --and left(acct.value,4) in ('6211')
+	           		JOIN m_inventory m ON  Fc.record_id=m.m_inventory_id AND m.c_doctype_id IN ('1000326') AND m.docstatus IN ('CO','CL')
+	           		JOIN m_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_PartType_ID=1000087
+	           		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id=321 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} 
+	           					AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND fc.C_Activity_ID=1000072 					
+	           					
+	          UNION ALL
+			  --tru chi tieu 1011
+			  SELECT 0 AS sl,-1*COALESCE(sum(fc.amtacctdr),0) AS tt,'1006' AS chitieu FROM fact_acct fc 
+	           		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id --and left(acct.value,4) in ('6211')
+	           		JOIN m_inventory m ON  Fc.record_id=m.m_inventory_id AND m.c_doctype_id IN ('1000326') AND m.docstatus IN ('CO','CL')
+	           		JOIN m_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_PartType_ID=1000026
+	           		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id=321 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} 
+	           					AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND fc.C_Activity_ID=1000072 					
+	           					
+	          UNION ALL
+			  --tru chi tieu 1012
+			  SELECT 0 AS sl,-1*COALESCE(sum(fc.amtacctdr),0) AS tt,'1006' AS chitieu FROM fact_acct fc 
+	           		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id --and left(acct.value,4) in ('6211')
+	           		JOIN m_inventory m ON  Fc.record_id=m.m_inventory_id AND m.c_doctype_id IN ('1000326') AND m.docstatus IN ('CO','CL')
+	           		JOIN m_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_PartType_ID=1000025
+	           		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id=321 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} 
+	           					AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND fc.C_Activity_ID=1000072 					
+	           					
+	           					
+	          UNION ALL
+			  --tru chi tieu 1014
+			  SELECT 0 AS sl,-1*COALESCE(sum(fc.amtacctdr),0) AS tt,'1006' AS chitieu FROM fact_acct fc 
+	           		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id --and left(acct.value,4) in ('6211')
+	           		JOIN m_inventory m ON  Fc.record_id=m.m_inventory_id AND m.c_doctype_id IN ('1000326') AND m.docstatus IN ('CO','CL')
+	           		JOIN m_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_PartType_ID=1000024
+	           		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id=321 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} 
+	           					AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND fc.C_Activity_ID=1000072 					
+	           					
+	           					
+			-- tru di chi tieu 1015:
+			  union all
+			  
+		      SELECT 0 AS sl,-1*(COALESCE(sum(fc.amtacctdr),0)-COALESCE(sum(fc.amtacctcr),0)) AS tt,'15' AS chitieu FROM fact_acct fc 
+        	  JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) IN ('6273')
+           	  WHERE  fc.ad_client_id=1000006  AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND fc.C_Activity_ID=1000072
+					AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)
+      	
+			  		
+           ) AS t     
+
+      --Chi tieu 21:chi ho tro BHXH tai khoan 62212
+      union all 
+      
+      SELECT 'II' as nhom,'1021' AS chitieu,0 AS b,0 AS c  ,sum(t.tt) AS d, 0 AS e
+      FROM(        
+              SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) AS tt,'13' AS chitieu FROM fact_acct fc 
+           		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,5) IN ('62212')
+           		WHERE  fc.ad_client_id=1000006  AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND fc.C_Activity_ID=1000072
+					AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)
+           ) AS t   
+           
+     --Chi tieu 22:chi ho tro an ca tai khoan 62213
+      union all 
+      
+      SELECT 'II' as nhom,'1022' AS chitieu,0 AS b,0 AS c  ,sum(t.tt) AS d, 0 AS e
+      FROM(        
+              SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) AS tt,'13' AS chitieu FROM fact_acct fc 
+           		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,5) IN ('62213')
+           		WHERE  fc.ad_client_id=1000006  AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND fc.C_Activity_ID=1000072
+					AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)
+           ) AS t     
+
+      --Chi tieu 23:chi luong tháng 13,lễ tết, thưởng tai khoan 62214
+      union all 
+      
+      SELECT 'II' as nhom,'1023' AS chitieu,0 AS b,0 AS c  ,sum(t.tt) AS d, 0 AS e
+      FROM(        
+              SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) AS tt,'13' AS chitieu FROM fact_acct fc 
+           		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,5) IN ('62214')
+           		WHERE  fc.ad_client_id=1000006  AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND fc.C_Activity_ID=1000072
+					AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)
+           ) AS t     
+           
+      --Chi tieu 24: Luong co khi ky thuat tai khoan 62712 phan bo theo doanh thu
+      union all
+      
+      SELECT 'II' as nhom,'1024' AS chitieu,0 AS b,0 AS c
+      		,case when $P{AD_Org_ID}=1000047 then sum(t.cpbh)*sum(t.slts)/sum(t.sltb) else case when $P{AD_Org_ID}=1000119 then sum(t.cpbh)*sum(t.slth)/sum(t.sltb) else sum(t.cpbh) end end AS d,0 AS e
+      FROM (		--Tong so luong ban toan cong ty
+      				SELECT -1*COALESCE(sum(fc.qty),0) AS sltb,0 as slts,0 as slth,0 as cpbh 
+      				FROM fact_acct fc 
+            	    JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+            	    JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000064') 
+               		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id<>224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND fc.C_Activity_ID=1000072
+            	    
+                  	UNION ALL
+					SELECT -1*COALESCE(sum(fc.qty),0) AS sltb,0 as slts,0 as slth,0 as cpbh  
+	                FROM fact_acct fc 
+              		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+               		JOIN gl_journalline gl ON  Fc.record_id=gl.gl_journal_id AND Fc.line_id=gl.gl_journalline_id AND Fc.Account_ID=gl.Account_ID
+                                   AND gl.IsGenerated='N'
+             	    JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000064') 
+               		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id=224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND fc.C_Activity_ID=1000072
+                    
+  					UNION ALL
+					--Bo phan Thanh Hoa	fc.AD_Org_ID=1000119
+      				SELECT 0 AS sltb,0 as slts,-1*COALESCE(sum(fc.qty),0) as slth,0 as cpbh 
+      				FROM fact_acct fc 
+            	    JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+            	    JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000064') 
+               		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id<>224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate}and fc.AD_Org_ID=1000119 AND fc.C_Activity_ID=1000072
+            	    
+                  	UNION all
+                  	
+					SELECT 0 AS sltb,0 as slts,-1*COALESCE(sum(fc.qty),0) as slth,0 as cpbh  
+	                FROM fact_acct fc 
+              		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+               		JOIN gl_journalline gl ON  Fc.record_id=gl.gl_journal_id AND Fc.line_id=gl.gl_journalline_id AND Fc.Account_ID=gl.Account_ID
+                                   AND gl.IsGenerated='N'
+             	    JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000064') 
+               		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id=224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.AD_Org_ID=1000119 AND fc.C_Activity_ID=1000072
+
+  					UNION ALL
+					--Bo phan Truong son fc.AD_Org_ID=1000047
+      				SELECT 0 AS sltb,-1*COALESCE(sum(fc.qty),0) as slts,0 as slth,0 as cpbh 
+      				FROM fact_acct fc 
+            	    JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+            	    JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000064') 
+               		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id<>224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate}and fc.AD_Org_ID=1000047 AND fc.C_Activity_ID=1000072
+            	    
+                  	UNION all
+                  	
+					SELECT 0 AS sltb,-1*COALESCE(sum(fc.qty),0) as slts,0 as slth,0 as cpbh  
+	                FROM fact_acct fc 
+              		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+               		JOIN gl_journalline gl ON  Fc.record_id=gl.gl_journal_id AND Fc.line_id=gl.gl_journalline_id AND Fc.Account_ID=gl.Account_ID
+                                   AND gl.IsGenerated='N'
+             	    JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000064') 
+               		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id=224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.AD_Org_ID=1000047 AND fc.C_Activity_ID=1000072			
+
+               		union all
+               		--Chi phi
+               		SELECT 0 AS sltb,0 AS slts,0 AS slth,COALESCE(sum(fc.amtacctdr),0) AS cp 
+               		FROM fact_acct fc 
+           			JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,5) IN ('62712')
+           			WHERE  fc.ad_client_id=1000006  AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND fc.C_Activity_ID=1000072
+		    
+           ) AS t    
+      		
+    --Chi tieu 25: Chi Luong quan ly van phong TCT 6421 phan bo theo doanh thu
+      union all
+      
+      SELECT 'II' as nhom,'1025' AS chitieu,0 AS b,0 AS c
+      		,case when $P{AD_Org_ID}=1000047 then sum(t.cpbh)*sum(t.slts)/sum(t.sltb) else case when $P{AD_Org_ID}=1000119 then sum(t.cpbh)*sum(t.slth)/sum(t.sltb) else sum(t.cpbh) end end AS d,0 AS e
+      FROM (		--Tong so luong ban toan cong ty
+      				SELECT -1*COALESCE(sum(fc.qty),0) AS sltb,0 as slts,0 as slth,0 as cpbh 
+      				FROM fact_acct fc 
+            	    JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+            	    JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000064') 
+               		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id<>224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND fc.C_Activity_ID=1000072
+            	    
+                  	UNION ALL
+					SELECT -1*COALESCE(sum(fc.qty),0) AS sltb,0 as slts,0 as slth,0 as cpbh  
+	                FROM fact_acct fc 
+              		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+               		JOIN gl_journalline gl ON  Fc.record_id=gl.gl_journal_id AND Fc.line_id=gl.gl_journalline_id AND Fc.Account_ID=gl.Account_ID
+                                   AND gl.IsGenerated='N'
+             	    JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000064') 
+               		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id=224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND fc.C_Activity_ID=1000072
+                    
+  					UNION ALL
+					--Bo phan Thanh Hoa	fc.AD_Org_ID=1000119
+      				SELECT 0 AS sltb,0 as slts,-1*COALESCE(sum(fc.qty),0) as slth,0 as cpbh 
+      				FROM fact_acct fc 
+            	    JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+            	    JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000064') 
+               		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id<>224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate}and fc.AD_Org_ID=1000119 AND fc.C_Activity_ID=1000072
+            	    
+                  	UNION all
+                  	
+					SELECT 0 AS sltb,0 as slts,-1*COALESCE(sum(fc.qty),0) as slth,0 as cpbh  
+	                FROM fact_acct fc 
+              		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+               		JOIN gl_journalline gl ON  Fc.record_id=gl.gl_journal_id AND Fc.line_id=gl.gl_journalline_id AND Fc.Account_ID=gl.Account_ID
+                                   AND gl.IsGenerated='N'
+             	    JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000064') 
+               		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id=224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.AD_Org_ID=1000119 AND fc.C_Activity_ID=1000072
+
+  					UNION ALL
+					--Bo phan Truong son fc.AD_Org_ID=1000047
+      				SELECT 0 AS sltb,-1*COALESCE(sum(fc.qty),0) as slts,0 as slth,0 as cpbh 
+      				FROM fact_acct fc 
+            	    JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+            	    JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000064') 
+               		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id<>224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate}and fc.AD_Org_ID=1000047 AND fc.C_Activity_ID=1000072
+            	    
+                  	UNION all
+                  	
+					SELECT 0 AS sltb,-1*COALESCE(sum(fc.qty),0) as slts,0 as slth,0 as cpbh  
+	                FROM fact_acct fc 
+              		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+               		JOIN gl_journalline gl ON  Fc.record_id=gl.gl_journal_id AND Fc.line_id=gl.gl_journalline_id AND Fc.Account_ID=gl.Account_ID
+                                   AND gl.IsGenerated='N'
+             	    JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000064') 
+               		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id=224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.AD_Org_ID=1000047 AND fc.C_Activity_ID=1000072			
+		
+               		union all
+               		--Chi phi
+               		SELECT 0 AS sltb,0 AS slts,0 AS slth,COALESCE(sum(fc.amtacctdr),0) AS cp 
+               		FROM fact_acct fc 
+           			JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) IN ('6421')
+           			WHERE  fc.ad_client_id=1000006  AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} --AND fc.C_Activity_ID=1000072
+						--AND fc.AD_Org_ID=1000038
+            
+           ) AS t       
+           
+    --Chi tieu 26: Chi khac van phong TCT 6427 phan bo theo doanh thu
+      union all
+      
+      SELECT 'II' as nhom,'1026' AS chitieu,0 AS b,0 AS c
+      		,case when $P{AD_Org_ID}=1000047 then sum(t.cpbh)*sum(t.slts)/sum(t.sltb) else case when $P{AD_Org_ID}=1000119 then sum(t.cpbh)*sum(t.slth)/sum(t.sltb) else sum(t.cpbh) end end AS d,0 AS e
+      FROM (		--Tong so luong ban toan cong ty
+      				SELECT -1*COALESCE(sum(fc.qty),0) AS sltb,0 as slts,0 as slth,0 as cpbh 
+      				FROM fact_acct fc 
+            	    JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+            	    JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000064') 
+               		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id<>224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND fc.C_Activity_ID=1000072
+            	    
+                  	UNION ALL
+					SELECT -1*COALESCE(sum(fc.qty),0) AS sltb,0 as slts,0 as slth,0 as cpbh  
+	                FROM fact_acct fc 
+              		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+               		JOIN gl_journalline gl ON  Fc.record_id=gl.gl_journal_id AND Fc.line_id=gl.gl_journalline_id AND Fc.Account_ID=gl.Account_ID
+                                   AND gl.IsGenerated='N'
+             	    JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000064') 
+               		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id=224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND fc.C_Activity_ID=1000072
+                    
+  					UNION ALL
+					--Bo phan Thanh Hoa	fc.AD_Org_ID=1000119
+      				SELECT 0 AS sltb,0 as slts,-1*COALESCE(sum(fc.qty),0) as slth,0 as cpbh 
+      				FROM fact_acct fc 
+            	    JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+            	    JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000064') 
+               		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id<>224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate}and fc.AD_Org_ID=1000119 AND fc.C_Activity_ID=1000072
+            	    
+                  	UNION all
+                  	
+					SELECT 0 AS sltb,0 as slts,-1*COALESCE(sum(fc.qty),0) as slth,0 as cpbh  
+	                FROM fact_acct fc 
+              		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+               		JOIN gl_journalline gl ON  Fc.record_id=gl.gl_journal_id AND Fc.line_id=gl.gl_journalline_id AND Fc.Account_ID=gl.Account_ID
+                                   AND gl.IsGenerated='N'
+             	    JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000064') 
+               		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id=224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.AD_Org_ID=1000119 AND fc.C_Activity_ID=1000072
+
+  					UNION ALL
+					--Bo phan Truong son fc.AD_Org_ID=1000047
+      				SELECT 0 AS sltb,-1*COALESCE(sum(fc.qty),0) as slts,0 as slth,0 as cpbh 
+      				FROM fact_acct fc 
+            	    JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+            	    JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000064') 
+               		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id<>224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate}and fc.AD_Org_ID=1000047 AND fc.C_Activity_ID=1000072
+            	    
+                  	UNION all
+                  	
+					SELECT 0 AS sltb,-1*COALESCE(sum(fc.qty),0) as slts,0 as slth,0 as cpbh  
+	                FROM fact_acct fc 
+              		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+               		JOIN gl_journalline gl ON  Fc.record_id=gl.gl_journal_id AND Fc.line_id=gl.gl_journalline_id AND Fc.Account_ID=gl.Account_ID
+                                   AND gl.IsGenerated='N'
+             	    JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000064') 
+               		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id=224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.AD_Org_ID=1000047 AND fc.C_Activity_ID=1000072			
+			
+               		union all
+               		--Chi phi
+               		SELECT 0 AS sltb,0 AS slts,0 AS slth,COALESCE(sum(fc.amtacctdr),0) AS cp 
+               		FROM fact_acct fc 
+           			JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,5) IN ('6427')
+           			WHERE  fc.ad_client_id=1000006  AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND fc.C_Activity_ID=1000072
+						AND fc.AD_Org_ID=1000038
+            
+           ) AS t
+           
+) AS t
+JOIN hsv_giathanh gt ON t.chitieu=gt.value AND gt.AD_CLIENT_ID=$P{AD_CLIENT_ID}
+--So luong xuat ban
+left join(
+            SELECT 'I' as nhom,'1000' AS chitieu,0 AS b,COALESCE(sum(t.sl)) AS c,COALESCE(sum(t.tt)) AS d,sum(CASE WHEN t.sl<>0 THEN t.tt/t.sl ELSE 0 END) AS e
+                  FROM (SELECT fc.account_id,COALESCE(sum(fc.amtacctcr),0)-COALESCE(sum(fc.amtacctdr),0) AS tt,-1*COALESCE(sum(fc.qty),0) AS sl FROM fact_acct fc 
+                                JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+                                JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000064','1000136') 
+                                WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id<>224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND fc.C_Activity_ID=1000072
+                                GROUP BY fc.account_id
+                            
+                              UNION ALL
+                            
+                              SELECT fc.account_id,COALESCE(sum(fc.amtacctcr),0)-COALESCE(sum(fc.amtacctdr),0) AS tt,-1*COALESCE(sum(fc.qty),0) AS sl  FROM fact_acct fc 
+                                JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+                                JOIN gl_journalline gl ON  Fc.record_id=gl.gl_journal_id AND Fc.line_id=gl.gl_journalline_id AND Fc.Account_ID=gl.Account_ID
+                                               AND gl.IsGenerated='N'
+                                JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000064','1000136') 
+                                WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id=224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND fc.C_Activity_ID=1000072
+                              GROUP BY fc.account_id
+  
+            
+           ) AS t        
+
+) as sl1 on t.nhom=sl1.nhom
+--So luong dung de tinh chi phi san xuat
+ left join (     
+            SELECT 'II' as nhom,'1002' AS chitieu,0 AS b,sum(t.sl) AS c  ,sum(t.sl1) as c1 , sum(t.sl2) as c2, sum(t.sl3) as c3, sum(t.sl4) as c4
+	     	FROM(   --Chi tieu 999
+			      	SELECT fc.account_id,-1*COALESCE(sum(fc.qty*hh.ShelfWidth *hh.ShelfDepth *hh.ShelfHeight),0)/1000000000 AS sl,0 as sl1,0 as sl2,0 as sl3,0 as sl4 
+                    FROM fact_acct fc 
+            	    JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+            	    JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000130','1000131') 
+               		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id<>224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} 
+                                AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND fc.C_Activity_ID=1000072
+            	    GROUP BY fc.account_id
+				
+                    UNION ALL
+				
+                    SELECT fc.account_id,-1*COALESCE(sum(fc.qty*hh.ShelfWidth *hh.ShelfDepth *hh.ShelfHeight),0)/1000000000 AS sl,0 as sl1,0 as sl2,0 as sl3,0 as sl4  
+                    FROM fact_acct fc 
+               		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+               		JOIN gl_journalline gl ON  Fc.record_id=gl.gl_journal_id AND Fc.line_id=gl.gl_journalline_id AND Fc.Account_ID=gl.Account_ID
+                                   AND gl.IsGenerated='N'
+             	    JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000130','1000131') 
+               		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id=224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} 
+                            AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND fc.C_Activity_ID=1000072
+                    GROUP BY fc.account_id
+                    
+                    --Chi tieu 1000
+                    union all
+                    
+                    SELECT fc.account_id,-1*COALESCE(sum(fc.qty),0) AS sl,0 as sl1,0 as sl2,0 as sl3,0 as sl4
+                    FROM fact_acct fc 
+            	    JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+            	    JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000064','1000136') 
+               		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id<>224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} 
+                            AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND fc.C_Activity_ID=1000072
+            	    GROUP BY fc.account_id
+				
+                   UNION ALL
+				
+                    SELECT fc.account_id,-1*COALESCE(sum(fc.qty),0) AS sl,0 as sl1,0 as sl2,0 as sl3,0 as sl4
+                    FROM fact_acct fc 
+               		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+               		JOIN gl_journalline gl ON  Fc.record_id=gl.gl_journal_id AND Fc.line_id=gl.gl_journalline_id AND Fc.Account_ID=gl.Account_ID
+                                   AND gl.IsGenerated='N'
+             	    JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000064','1000136') 
+               		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id=224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} 
+                            AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND fc.C_Activity_ID=1000072
+                    GROUP BY fc.account_id
+                   
+                    --Chi tieu 1001: Tinh theo % phan bo hsv_dinhmuc1
+                    
+                    union all
+                    
+                   	--select t.AD_Org_ID,t.sl*gt.hsv_dinhmuc1/100 as sl
+                   	select t.AD_Org_ID,0 as sl,t.sl as sl1,0 as sl2,0 as sl3,0 as sl4
+				    from(	select '1001' as ct,m.AD_Org_ID
+	                            ,sum(case when m.movementdate<=$P{EndDate} then m.movementqty else 0 end)-sum(case when m.movementdate<$P{StartDate} then m.movementqty else 0 end) AS sl
+		                    from m_transaction m
+		                    join m_product hh on m.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID IN ('1000064','1000136') 
+		                    where m.movementdate<=$P{EndDate} and m.ad_client_id=$P{AD_CLIENT_ID} 
+					                AND (m.m_locator_id in (select m_locator_id from m_locator where AD_Org_ID=$P{AD_Org_ID} ) or $P{AD_Org_ID} is null )
+		                    group by m.AD_Org_ID
+		                 ) as t   
+                    JOIN hsv_giathanh gt ON t.ct=gt.value AND gt.AD_CLIENT_ID=$P{AD_CLIENT_ID}
+                    
+                     --Chi tieu 1002: tinh theo % phan bo        
+			      	union all
+			      	
+--					select t.AD_Org_ID,t.sl*gt.hsv_dinhmuc2/100 as sl
+					select t.AD_Org_ID,0 as sl,0 as sl1,t.sl as sl2,0 as sl3,0 as sl4
+				    from(  select '1002' as ct,m.AD_Org_ID
+		                            ,sum(case when m.movementdate<=$P{EndDate} then m.movementqty*hh.ShelfDepth*hh.ShelfWidth*hh.ShelfHeight end )/1000000000 
+		                            -sum(case when m.movementdate<$P{StartDate} then m.movementqty*hh.ShelfDepth*hh.ShelfWidth*hh.ShelfHeight end )/1000000000 as sl
+		                    from m_transaction m
+		                    join m_product hh on m.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID IN ('1000134','1000135','1000131') 
+		                    where m.movementdate<=$P{EndDate} and m.ad_client_id=$P{AD_CLIENT_ID} 
+		                            AND (m.m_locator_id in (select m_locator_id from m_locator where AD_Org_ID=$P{AD_Org_ID} ) or $P{AD_Org_ID} is null )
+		                    group by m.AD_Org_ID
+	                    ) as t
+                    JOIN hsv_giathanh gt ON t.ct=gt.value AND gt.AD_CLIENT_ID=$P{AD_CLIENT_ID}
+                                                
+                    --Chi tieu 1003
+                    union all
+                    
+					--select 0 as b,t1.sl*gt.hsv_dinhmuc3/100  as sl
+					select 0 as b,0 as sl,0 as sl1,0 as sl2,t1.sl as sl3,0 as sl4
+                    from(	SELECT '1003' as ct,0 AS b,sum(case when t.movementdate<=$P{EndDate} then t.sl else 0 end)-sum(case when t.movementdate<$P{StartDate} then t.sl else 0 end) AS sl
+		      				FROM( select m_transaction.AD_Org_ID,hh.value ,hh.name ,m_transaction.m_product_id,m_transaction.movementdate,m_transaction.movementtype
+		                    						,m_transaction.movementqty*hh.ShelfDepth*hh.ShelfWidth*hh.ShelfHeight/1000000000 as sl
+		            			  from m_transaction 
+		  						  join m_product hh on m_transaction.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID IN ('1000130','1000133') 
+								  where m_transaction.movementdate<=$P{EndDate} and m_transaction.ad_client_id=$P{AD_CLIENT_ID} 
+						                      AND (m_transaction.m_locator_id in (select m_locator_id from m_locator where AD_Org_ID=$P{AD_Org_ID} ) or $P{AD_Org_ID} is null )
+					      		) AS t
+					      ) as t1		
+                    JOIN hsv_giathanh gt ON t1.ct=gt.value AND gt.AD_CLIENT_ID=$P{AD_CLIENT_ID}
+                    
+                    --Chi tieu 10031:
+                    union all
+                    
+					--select 0 as b,t1.sl*gt.hsv_dinhmuc4/100  as sl
+					select 0 as b,0 as sl,0 as sl1,0 as sl2,0 as sl3,t1.sl as sl4
+                    from(	SELECT '10031' as ct,0 AS b,sum(case when t.movementdate<=$P{EndDate} then t.sl else 0 end)-sum(case when t.movementdate<$P{StartDate} then t.sl else 0 end) AS sl
+		      				FROM( select m_transaction.AD_Org_ID,hh.value ,hh.name ,m_transaction.m_product_id,m_transaction.movementdate,m_transaction.movementtype
+		                    						,m_transaction.movementqty*hh.ShelfDepth*hh.ShelfWidth*hh.ShelfHeight/1000000000 as sl
+		            			  from m_transaction 
+		  						  join m_product hh on m_transaction.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID IN ('1000132') 
+								  where m_transaction.movementdate<=$P{EndDate} and m_transaction.ad_client_id=$P{AD_CLIENT_ID} 
+						                      AND (m_transaction.m_locator_id in (select m_locator_id from m_locator where AD_Org_ID=$P{AD_Org_ID} ) or $P{AD_Org_ID} is null )
+					      		) AS t
+					      ) as t1		
+                    JOIN hsv_giathanh gt ON t1.ct=gt.value AND gt.AD_CLIENT_ID=$P{AD_CLIENT_ID}
+                    
+			      		
+                ) AS t
+            ) as sl2 on t.nhom=sl2.nhom    
+            
+ --So luong de tinh chi phi van mat
+ 
+ left join (     
+            SELECT 'III' as nhom,'1002' AS chitieu,0 AS b,sum(t.sl) AS c  ,sum(t.sl1) as c1 , sum(t.sl2) as c2
+	     	FROM(  	
+                    --Chi tieu 1000
+                    
+                    SELECT fc.account_id,-1*COALESCE(sum(fc.qty),0) AS sl,0 as sl1,0 as sl2 
+                    FROM fact_acct fc 
+            	    JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+            	    JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000064','1000136') 
+               		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id<>224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} 
+                            AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND fc.C_Activity_ID=1000072
+            	    GROUP BY fc.account_id
+				
+                   UNION ALL
+				
+                    SELECT fc.account_id,-1*COALESCE(sum(fc.qty),0) AS sl,0 as sl1,0 as sl2
+                    FROM fact_acct fc 
+               		JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+               		JOIN gl_journalline gl ON  Fc.record_id=gl.gl_journal_id AND Fc.line_id=gl.gl_journalline_id AND Fc.Account_ID=gl.Account_ID
+                                   AND gl.IsGenerated='N'
+             	    JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID IN ('1000064','1000136') 
+               		WHERE  fc.ad_client_id=1000006 AND fc.ad_table_id=224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} 
+                            AND (fc.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND fc.C_Activity_ID=1000072
+                    GROUP BY fc.account_id
+                   
+                    --Chi tieu 1001
+                    
+                    union all
+                    
+		           	--select 0 as b,t.sl*gt.hsv_dinhmuc1/100  as sl
+		           	select 0 as b,0 as sl,t.sl as sl1,0 as sl2
+                    from(  	select '1001' as ct,m.AD_Org_ID
+		                            ,sum(case when m.movementdate<=$P{EndDate} then m.movementqty else 0 end)-sum(case when m.movementdate<$P{StartDate} then m.movementqty else 0 end) AS sl
+		                    from m_transaction m
+		                    join m_product hh on m.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID IN ('1000064','1000136') 
+		                    where m.movementdate<=$P{EndDate} and m.ad_client_id=$P{AD_CLIENT_ID} 
+					                AND (m.m_locator_id in (select m_locator_id from m_locator where AD_Org_ID=$P{AD_Org_ID} ) or $P{AD_Org_ID} is null )
+		                    group by m.AD_Org_ID      
+		                 
+		                 ) as t
+                    JOIN hsv_giathanh gt ON t.ct=gt.value AND gt.AD_CLIENT_ID=$P{AD_CLIENT_ID}     
+
+                    --Chi tieu 1002: tinh theo % phan bo        
+			      	union all
+			      	
+					--select t.AD_Org_ID,t.sl*gt.hsv_dinhmuc2/100 as sl
+					select t.AD_Org_ID,0 as sl,0 as sl1,t.sl as sl2
+				    from(  select '1002' as ct,m.AD_Org_ID
+		                            ,sum(case when m.movementdate<=$P{EndDate} then m.movementqty*hh.ShelfDepth*hh.ShelfWidth*hh.ShelfHeight end )/1000000000 
+		                            -sum(case when m.movementdate<$P{StartDate} then m.movementqty*hh.ShelfDepth*hh.ShelfWidth*hh.ShelfHeight end )/1000000000 as sl
+		                    from m_transaction m
+		                    join m_product hh on m.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID IN ('1000134','1000135','1000131') 
+		                    where m.movementdate<=$P{EndDate} and m.ad_client_id=$P{AD_CLIENT_ID} 
+		                            AND (m.m_locator_id in (select m_locator_id from m_locator where AD_Org_ID=$P{AD_Org_ID} ) or $P{AD_Org_ID} is null )
+		                    group by m.AD_Org_ID
+	                    ) as t
+                    JOIN hsv_giathanh gt ON t.ct=gt.value AND gt.AD_CLIENT_ID=$P{AD_CLIENT_ID}
+                                        			      		
+                ) AS t
+            ) as sl3 on t.nhom=sl3.nhom
+]]>
+	</queryString>
+	<field name="e" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.label" value="e41"/>
+	</field>
+	<field name="g" class="java.math.BigDecimal"/>
+	<field name="b" class="java.math.BigDecimal"/>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<columnHeader>
+		<band height="28" splitType="Stretch">
+			<property name="local_mesure_unitheight" value="pixel"/>
+			<property name="com.jaspersoft.studio.unit.height" value="px"/>
+			<textField>
+				<reportElement x="1" y="1" width="289" height="27" uuid="26392cd2-b2bf-432e-8d5f-eb071717651f">
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					<property name="local_mesure_unitheight" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Cộng chi phí "]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="721" y="1" width="80" height="27" uuid="e00b6464-3901-4f79-8703-5fbe66c894fa">
+					<property name="local_mesure_unitwidth" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{g}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="620" y="1" width="101" height="27" uuid="a542fdf4-23e8-4eb2-b57f-cbbe6c8d0d53">
+					<property name="local_mesure_unitwidth" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{e}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="290" y="1" width="100" height="27" uuid="d8f30cc4-f052-440d-8923-7384a7a58e73">
+					<property name="local_mesure_unitheight" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{b}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.###" isBlankWhenNull="true">
+				<reportElement x="390" y="1" width="99" height="27" uuid="2b51b0c5-86c7-47b9-a9df-8e91040d7db0">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="489" y="1" width="130" height="27" uuid="71b870b0-385f-4601-9d52-a161034f6ba2">
+					<property name="local_mesure_unitwidth" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+			</textField>
+		</band>
+	</columnHeader>
+</jasperReport>

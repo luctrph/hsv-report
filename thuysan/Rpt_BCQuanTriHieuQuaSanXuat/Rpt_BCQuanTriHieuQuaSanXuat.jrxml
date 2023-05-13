@@ -1,0 +1,1358 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.17.0.final using JasperReports Library version 6.17.0-6d93193241dd8cc42629e188b94f9e0bc5722efd  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Rpt_BCQuanTriHieuQuaSanXuat" pageWidth="595" pageHeight="842" columnWidth="595" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="4023df51-1b73-46d9-adf6-650e3c9f2034">
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="adempiere_7.1"/>
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="0"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="1000"/>
+	<property name="com.jaspersoft.studio.unit." value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.pageHeight" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.pageWidth" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.topMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.bottomMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.leftMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.rightMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.columnWidth" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.columnSpacing" value="pixel"/>
+	<parameter name="StartDate" class="java.util.Date">
+		<defaultValueExpression><![CDATA[new Date(100,0,1)]]></defaultValueExpression>
+	</parameter>
+	<parameter name="EndDate" class="java.util.Date">
+		<defaultValueExpression><![CDATA[NOW()]]></defaultValueExpression>
+	</parameter>
+	<parameter name="AD_CLIENT_ID" class="java.lang.Integer">
+		<defaultValueExpression><![CDATA[1000000]]></defaultValueExpression>
+	</parameter>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String">
+		<defaultValueExpression><![CDATA["dev/"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="DVType" class="java.lang.String"/>
+	<queryString language="SQL">
+		<![CDATA[select	row_number() over() as stt,upper(t.dvt) as dvt,dm.name
+	,case when 	t.ct in ('1001','1003','1004','1006') then t.sl else round(t.sl,0) end as sl
+from(	--chi tieu 1001: so luong ngao nguyen lieu mua
+		select '1001' as ct,'Kg' as dvt,COALESCE(sum(mil.movementqty ),0) as sl
+		from m_inoutline mil
+		join m_inout mi on mi.m_inout_id =mil.m_inout_id and mi.issotrx ='N' and docstatus in ('CO','CL') 
+		join ( select dgl.C_OrderLine_id
+				from HSV_PhieuDanhGia dgl
+				join HSV_ThuMua dg on dg.HSV_ThuMua_ID=dgl.HSV_ThuMua_ID and dg.DateTo>=$P{StartDate} and dg.DateTo<=$P{EndDate} 
+					and (dg.dvtype=$P{DVType} or $P{DVType} is null) 
+				where dgl.ad_client_id =$P{AD_CLIENT_ID}
+			) po on po.C_OrderLine_id=mil.C_OrderLine_id
+		where mil.ad_client_id =$P{AD_CLIENT_ID} and mil.M_Product_ID=1000017
+		
+		union all
+		
+		--chi tieu 1002: Thanh tien ngao nguyen lieu mua
+		select '1002' as ct,'VNĐ' as dvt,COALESCE(sum(od.priceactual*mil.movementqty ),0) as sl
+		from m_inoutline mil
+		join m_inout mi on mi.m_inout_id =mil.m_inout_id and mi.issotrx ='N' and docstatus in ('CO','CL') 
+		join C_OrderLine od on od.C_OrderLine_id=mil.C_OrderLine_id
+		join ( select dgl.C_OrderLine_id
+				from HSV_PhieuDanhGia dgl
+				join HSV_ThuMua dg on dg.HSV_ThuMua_ID=dgl.HSV_ThuMua_ID and dg.DateTo>=$P{StartDate} and dg.DateTo<=$P{EndDate} 
+						and (dg.dvtype=$P{DVType} or $P{DVType} is null) 
+				where dgl.ad_client_id =$P{AD_CLIENT_ID}
+			) po on po.C_OrderLine_id=mil.C_OrderLine_id
+		where mil.ad_client_id =$P{AD_CLIENT_ID} and mil.M_Product_ID=1000017
+		
+		--Chi tieu 1003:Số lượng TP ngao NC nhập kho (NET) 
+		union all
+		
+		select '1003' as ct,'Kg' as dvt,COALESCE(sum(case when t.C_Campaign_ID=1000018 and $P{DVType}='TS' then t.slts else case when t.C_Campaign_ID=1000007 and $P{DVType}='VH'then t.slvh else t.slts+t.slvh end end ),0) as sl
+		from(select t.hsv_stt,t.C_Campaign_ID,t.value,t.ngay,t.HSV_C_Thuoctinh_id,sum(t.slts*tt.hsv_dinhmuc) as slts,sum(t.slvh*tt.hsv_dinhmuc) as slvh
+			from(	select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+								,COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.productionqty end ),0) as slvh
+								,COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.productionqty end ),0) as slts
+						from m_productionplan pl
+						join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+								join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+								where hh.M_AttributeSet_ID=1000000 and hh.ad_client_id=$P{AD_CLIENT_ID}
+							 ) hh on pl.m_product_id=hh.m_product_id
+						join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL')
+										AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+						where pl.ad_client_id=$P{AD_CLIENT_ID} 
+						group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered,hh.HSV_C_Thuoctinh_id
+					)  as t 					
+				join (select  distinct tt.m_attributesetinstance_id,tt1.hsv_dinhmuc from m_attributeinstance tt
+						join m_attributevalue tt1 on tt1.m_attribute_id =tt.m_attribute_id  and tt1.m_attributevalue_id =tt.m_attributevalue_id  and tt1.M_Attribute_ID=1000010 
+						where tt.ad_client_id=$P{AD_CLIENT_ID}
+					  )	tt on tt.m_attributesetinstance_id=t.m_attributesetinstance_id			
+				group by t.C_Campaign_ID,t.value,t.hsv_stt ,t.ngay,t.HSV_C_Thuoctinh_id
+				
+				--Ngao du tru,loai
+				union all
+				
+				select t.hsv_stt,t.C_Campaign_ID,t.value,t.ngay,t.HSV_C_Thuoctinh_id,sum(t.slts) as slts,sum(t.slvh) as slvh
+				from(	select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+									,COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.productionqty end ),0) as slvh
+									,COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.productionqty end ),0) as slts
+							from m_productionplan pl
+							join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+									join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+									where hh.M_AttributeSet_ID in ('1000001','1000006') and hh.ad_client_id=$P{AD_CLIENT_ID}
+								 ) hh on pl.m_product_id=hh.m_product_id
+							join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') 
+											AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+							where pl.ad_client_id=$P{AD_CLIENT_ID} 
+							group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,hh.HSV_C_Thuoctinh_id,p.DateOrdered
+						)  as t 					
+					group by t.C_Campaign_ID,t.value,t.hsv_stt,t.ngay,t.HSV_C_Thuoctinh_id
+					
+				--Tru di so luong ngao xuat dung 	
+				union all
+				
+				select t.hsv_stt,t.C_Campaign_ID,t.value,t.ngay,t.HSV_C_Thuoctinh_id,sum(t.slts) as slts,sum(t.slvh) as slvh
+				from(	select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+									,-1*COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.qtyinternaluse end ),0) as slvh
+									,-1*COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.qtyinternaluse end ),0) as slts
+							from M_InventoryLine pl
+							join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+									join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+									where hh.M_AttributeSet_ID in ('1000006') and hh.ad_client_id=$P{AD_CLIENT_ID}
+								 ) hh on pl.m_product_id=hh.m_product_id
+							join M_Inventory p on pl.M_Inventory_id=p.M_Inventory_id  and p.docstatus in ('CO','CL') and p.C_DocType_ID=1000167
+											AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+							where pl.ad_client_id=$P{AD_CLIENT_ID} 
+							group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,hh.HSV_C_Thuoctinh_id,p.DateOrdered
+						)  as t 					
+					group by t.C_Campaign_ID,t.value,t.hsv_stt,t.ngay,t.HSV_C_Thuoctinh_id	
+					
+			) as t
+		
+			
+		--Chi tieu 1004:số lượng Ngao NL xuất làm ngao Mãnh, Thịt 
+		union all
+		
+		select '1004' as ct,'Kg' as dvt,COALESCE(sum(case when t.C_Campaign_ID=1000018 and $P{DVType}='TS' then t.slts else case when t.C_Campaign_ID=1000007 and $P{DVType}='VH'then t.slvh else t.slts+t.slvh end end ),0) as sl
+		from(select t.C_Campaign_ID,t.hsv_stt,t.value,t.ngay,t.HSV_C_Thuoctinh_id,sum(t.slts) as slts,sum(t.slvh) as slvh
+			from(	select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+							,COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.productionqty*14 end ),0) as slvh
+							,COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.productionqty*14 end ),0) as slts
+					from m_productionplan pl
+					join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+							join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+							where hh.M_AttributeSet_ID in ('1000012') and hh.ad_client_id=$P{AD_CLIENT_ID}
+						 ) hh on pl.m_product_id=hh.m_product_id
+					join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') 
+									AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+					where pl.ad_client_id=$P{AD_CLIENT_ID} 
+					group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,hh.HSV_C_Thuoctinh_id,p.DateOrdered
+					
+					--31*2
+					union all
+					
+					select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+							,COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.productionqty*2 end ),0) as slvh
+							,COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.productionqty*2 end ),0) as slts
+					from m_productionplan pl
+					join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+							join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+							where hh.M_AttributeSet_ID in ('1000031') and hh.ad_client_id=$P{AD_CLIENT_ID}
+						 ) hh on pl.m_product_id=hh.m_product_id
+					join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') 
+									AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+					where pl.ad_client_id=$P{AD_CLIENT_ID} 
+					group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,hh.HSV_C_Thuoctinh_id,p.DateOrdered
+					
+				)  as t 					
+			group by t.C_Campaign_ID,t.value,t.hsv_stt,t.ngay,t.HSV_C_Thuoctinh_id
+			
+			) as t
+		
+		--Chi tieu 1005: Thanh tien nhap kho gia quy dinh
+		union all
+		
+		select '1005' as ct,'VNĐ' as dvt
+				,COALESCE(sum(case when t.C_Campaign_ID=1000018 and $P{DVType}='TS' then t.slts*l.hsv_dongialuong else case when t.C_Campaign_ID=1000007 and $P{DVType}='VH'then t.slvh*l.hsv_dongialuong else (t.slts+t.slvh)*l.hsv_dongialuong end end ),0) as sl
+		from(select t.hsv_stt,t.C_Campaign_ID,t.value,t.ngay,t.HSV_C_Thuoctinh_id,sum(t.slts*tt.hsv_dinhmuc) as slts,sum(t.slvh*tt.hsv_dinhmuc) as slvh
+			from(	select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+								,COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.productionqty end ),0) as slvh
+								,COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.productionqty end ),0) as slts
+						from m_productionplan pl
+						join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+								join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+								where hh.M_AttributeSet_ID=1000000 and hh.ad_client_id=$P{AD_CLIENT_ID}
+							 ) hh on pl.m_product_id=hh.m_product_id
+						join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL')
+										AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+						where pl.ad_client_id=$P{AD_CLIENT_ID} 
+						group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered,hh.HSV_C_Thuoctinh_id
+					)  as t 					
+				join (select  distinct tt.m_attributesetinstance_id,tt1.hsv_dinhmuc from m_attributeinstance tt
+						join m_attributevalue tt1 on tt1.m_attribute_id =tt.m_attribute_id  and tt1.m_attributevalue_id =tt.m_attributevalue_id  and tt1.M_Attribute_ID=1000010 
+						where tt.ad_client_id=$P{AD_CLIENT_ID}
+					  )	tt on tt.m_attributesetinstance_id=t.m_attributesetinstance_id			
+				group by t.C_Campaign_ID,t.value,t.hsv_stt ,t.ngay,t.HSV_C_Thuoctinh_id
+				
+				--Ngao du tru,loai
+				union all
+				
+				select t.hsv_stt,t.C_Campaign_ID,t.value,t.ngay,t.HSV_C_Thuoctinh_id,sum(t.slts) as slts,sum(t.slvh) as slvh
+				from(	select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+									,COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.productionqty end ),0) as slvh
+									,COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.productionqty end ),0) as slts
+							from m_productionplan pl
+							join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+									join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+									where hh.M_AttributeSet_ID in ('1000001','1000006') and hh.ad_client_id=$P{AD_CLIENT_ID}
+								 ) hh on pl.m_product_id=hh.m_product_id
+							join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') 
+											AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+							where pl.ad_client_id=$P{AD_CLIENT_ID} 
+							group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,hh.HSV_C_Thuoctinh_id,p.DateOrdered
+						)  as t 					
+					group by t.C_Campaign_ID,t.value,t.hsv_stt,t.ngay,t.HSV_C_Thuoctinh_id
+					
+				--Tru di xuat dung 
+				--Ngao du tru,loai
+				union all
+				
+				select t.hsv_stt,t.C_Campaign_ID,t.value,t.ngay,t.HSV_C_Thuoctinh_id,sum(t.slts) as slts,sum(t.slvh) as slvh
+				from(	select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+									,-1*COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.qtyinternaluse end ),0) as slvh
+									,-1*COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.qtyinternaluse end ),0) as slts
+							from m_inventoryline pl
+							join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+									join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+									where hh.M_AttributeSet_ID in ('1000006') and hh.ad_client_id=$P{AD_CLIENT_ID}
+								 ) hh on pl.m_product_id=hh.m_product_id
+							join m_inventory p on pl.m_inventory_id=p.m_inventory_id  and p.docstatus in ('CO','CL') and p.C_DocType_ID=1000167 
+											AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+							where pl.ad_client_id=$P{AD_CLIENT_ID} 
+							group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,hh.HSV_C_Thuoctinh_id,p.DateOrdered
+						)  as t 					
+					group by t.C_Campaign_ID,t.value,t.hsv_stt,t.ngay,t.HSV_C_Thuoctinh_id
+			
+					
+				--Ngao Manh,thit
+				union all
+		
+				select t.C_Campaign_ID,t.hsv_stt,t.value,t.ngay,t.HSV_C_Thuoctinh_id,sum(t.slts) as slts,sum(t.slvh) as slvh
+				from(	select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+								,COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.productionqty*14 end ),0) as slvh
+								,COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.productionqty*14 end ),0) as slts
+						from m_productionplan pl
+						join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+								join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+								where hh.M_AttributeSet_ID in ('1000012') and hh.ad_client_id=$P{AD_CLIENT_ID}
+							 ) hh on pl.m_product_id=hh.m_product_id
+						join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') 
+										AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+						where pl.ad_client_id=$P{AD_CLIENT_ID} 
+						group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,hh.HSV_C_Thuoctinh_id,p.DateOrdered
+						
+						--31*2
+						union all
+						
+						select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+								,COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.productionqty*2 end ),0) as slvh
+								,COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.productionqty*2 end ),0) as slts
+						from m_productionplan pl
+						join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+								join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+								where hh.M_AttributeSet_ID in ('1000031') and hh.ad_client_id=$P{AD_CLIENT_ID}
+							 ) hh on pl.m_product_id=hh.m_product_id
+						join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') 
+										AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+						where pl.ad_client_id=$P{AD_CLIENT_ID} 
+						group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,hh.HSV_C_Thuoctinh_id,p.DateOrdered
+						
+					)  as t 					
+				group by t.C_Campaign_ID,t.value,t.hsv_stt,t.ngay,t.HSV_C_Thuoctinh_id
+				
+												
+			) as t
+		--Lien ket voi bang don gia luong
+		left join (select l.EndDate,l.StartDate ,ln.hsv_C_thuoctinh_ID,ln.hsv_dongialuong,ln.AD_Org_ID   
+		       from  hsv_dgluongLine ln
+		       join hsv_dgluong l on l.hsv_loaidongia_ID in('1000020') and l.hsv_dgluong_ID=ln.hsv_dgluong_ID and l.ad_client_id=$P{AD_CLIENT_ID}
+		     ) as l on t.hsv_C_thuoctinh_ID=l.hsv_C_thuoctinh_ID  and t.ngay>=l.StartDate and t.ngay<=l.EndDate    
+		
+		
+		--Chi tieu 1006:Tỷ lệ thu hồi = Tổng nguyên liệu / Tổng thành phẩm 
+		union all
+		
+		select '1006' as ct,'NL/TP' as dvt,case when COALESCE(sum(t.sltp),0)<>0 then COALESCE(sum(t.slnl),0)/COALESCE(sum(t.sltp),0) else 0 end  as sl
+		from(	--Thanh Pham
+				select '1006' as ct,0 as slnl
+						,COALESCE(sum(case when t.C_Campaign_ID=1000018 and $P{DVType}='TS' then t.slts else case when t.C_Campaign_ID=1000007 and $P{DVType}='VH'then t.slvh else (t.slts+t.slvh) end end ),0) as sltp
+				from(select t.hsv_stt,t.C_Campaign_ID,t.value,t.ngay,t.HSV_C_Thuoctinh_id,sum(t.slts*tt.hsv_dinhmuc) as slts,sum(t.slvh*tt.hsv_dinhmuc) as slvh
+					from(	select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+										,COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.productionqty end ),0) as slvh
+										,COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.productionqty end ),0) as slts
+								from m_productionplan pl
+								join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+										join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+										where hh.M_AttributeSet_ID=1000000 and hh.ad_client_id=$P{AD_CLIENT_ID}
+									 ) hh on pl.m_product_id=hh.m_product_id
+								join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL')
+												AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+								where pl.ad_client_id=$P{AD_CLIENT_ID} 
+								group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered,hh.HSV_C_Thuoctinh_id
+							)  as t 					
+						join (select  distinct tt.m_attributesetinstance_id,tt1.hsv_dinhmuc from m_attributeinstance tt
+								join m_attributevalue tt1 on tt1.m_attribute_id =tt.m_attribute_id  and tt1.m_attributevalue_id =tt.m_attributevalue_id  and tt1.M_Attribute_ID=1000010 
+								where tt.ad_client_id=$P{AD_CLIENT_ID}
+							  )	tt on tt.m_attributesetinstance_id=t.m_attributesetinstance_id			
+						group by t.C_Campaign_ID,t.value,t.hsv_stt ,t.ngay,t.HSV_C_Thuoctinh_id
+						
+						--Ngao du tru,loai
+						union all
+						
+						select t.hsv_stt,t.C_Campaign_ID,t.value,t.ngay,t.HSV_C_Thuoctinh_id,sum(t.slts) as slts,sum(t.slvh) as slvh
+						from(	select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+											,COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.productionqty end ),0) as slvh
+											,COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.productionqty end ),0) as slts
+									from m_productionplan pl
+									join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+											join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+											where hh.M_AttributeSet_ID in ('1000001','1000006') and hh.ad_client_id=$P{AD_CLIENT_ID}
+										 ) hh on pl.m_product_id=hh.m_product_id
+									join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') 
+													AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+									where pl.ad_client_id=$P{AD_CLIENT_ID} 
+									group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,hh.HSV_C_Thuoctinh_id,p.DateOrdered
+								)  as t 					
+							group by t.C_Campaign_ID,t.value,t.hsv_stt,t.ngay,t.HSV_C_Thuoctinh_id
+						
+						--Tru di ngao loai xuat dung
+						union all
+						
+						select t.hsv_stt,t.C_Campaign_ID,t.value,t.ngay,t.HSV_C_Thuoctinh_id,sum(t.slts) as slts,sum(t.slvh) as slvh
+						from(	select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+											,-1*COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.qtyinternaluse end ),0) as slvh
+											,-1*COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.qtyinternaluse end ),0) as slts
+									from m_inventoryline pl
+									join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+											join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+											where hh.M_AttributeSet_ID in ('1000006') and hh.ad_client_id=$P{AD_CLIENT_ID}
+										 ) hh on pl.m_product_id=hh.m_product_id
+									join m_inventory p on pl.m_inventory_id=p.m_inventory_id  and p.docstatus in ('CO','CL') and p.C_DocType_ID=1000167 
+													AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+									where pl.ad_client_id=$P{AD_CLIENT_ID} 
+									group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,hh.HSV_C_Thuoctinh_id,p.DateOrdered
+								)  as t 					
+							group by t.C_Campaign_ID,t.value,t.hsv_stt,t.ngay,t.HSV_C_Thuoctinh_id
+						
+							
+						--Ngao Manh,thit
+						union all
+				
+						select t.C_Campaign_ID,t.hsv_stt,t.value,t.ngay,t.HSV_C_Thuoctinh_id,sum(t.slts) as slts,sum(t.slvh) as slvh
+						from(	select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+										,COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.productionqty*14 end ),0) as slvh
+										,COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.productionqty*14 end ),0) as slts
+								from m_productionplan pl
+								join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+										join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+										where hh.M_AttributeSet_ID in ('1000012') and hh.ad_client_id=$P{AD_CLIENT_ID}
+									 ) hh on pl.m_product_id=hh.m_product_id
+								join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') 
+												AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+								where pl.ad_client_id=$P{AD_CLIENT_ID} 
+								group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,hh.HSV_C_Thuoctinh_id,p.DateOrdered
+								
+								--31*2
+								union all
+								
+								select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+										,COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.productionqty*2 end ),0) as slvh
+										,COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.productionqty*2 end ),0) as slts
+								from m_productionplan pl
+								join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+										join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+										where hh.M_AttributeSet_ID in ('1000031') and hh.ad_client_id=$P{AD_CLIENT_ID}
+									 ) hh on pl.m_product_id=hh.m_product_id
+								join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') 
+												AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+								where pl.ad_client_id=$P{AD_CLIENT_ID} 
+								group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,hh.HSV_C_Thuoctinh_id,p.DateOrdered
+								
+							)  as t 					
+						group by t.C_Campaign_ID,t.value,t.hsv_stt,t.ngay,t.HSV_C_Thuoctinh_id
+				
+					) as t
+					
+					--Nguye lieu
+					
+					union all
+		
+					select '1001' as ct,COALESCE(sum(mil.movementqty ),0) as slnl,0 as sltp
+					from m_inoutline mil
+					join m_inout mi on mi.m_inout_id =mil.m_inout_id and mi.issotrx ='N' and docstatus in ('CO','CL') 
+					join ( select dgl.C_OrderLine_id
+							from HSV_PhieuDanhGia dgl
+							join HSV_ThuMua dg on dg.HSV_ThuMua_ID=dgl.HSV_ThuMua_ID and dg.DateTo>=$P{StartDate} and dg.DateTo<=$P{EndDate} 
+								and (dg.dvtype=$P{DVType} or $P{DVType} is null) 
+							where dgl.ad_client_id =$P{AD_CLIENT_ID}
+						) po on po.C_OrderLine_id=mil.C_OrderLine_id
+					where mil.ad_client_id =$P{AD_CLIENT_ID} and mil.M_Product_ID=1000017
+		
+			) as t		
+			
+		--Chi tieu 1007:Hiệu quả Thu mua SX (Tiền nhập - tiền mua)
+		
+		union all
+		
+		select '1007' as ct,'VNĐ' as dvt,sum(case when t.ct='1005' then t.sl end )-sum(case when t.ct='1002' then t.sl end) as sl
+		from(--Thanh tien mua
+				select '1002' as ct,COALESCE(sum(od.priceactual*mil.movementqty ),0) as sl
+				from m_inoutline mil
+				join m_inout mi on mi.m_inout_id =mil.m_inout_id and mi.issotrx ='N' and docstatus in ('CO','CL') 
+				join C_OrderLine od on od.C_OrderLine_id=mil.C_OrderLine_id
+				join ( select dgl.C_OrderLine_id
+						from HSV_PhieuDanhGia dgl
+						join HSV_ThuMua dg on dg.HSV_ThuMua_ID=dgl.HSV_ThuMua_ID and dg.DateTo>=$P{StartDate} and dg.DateTo<=$P{EndDate} 
+								and (dg.dvtype=$P{DVType} or $P{DVType} is null) 
+						where dgl.ad_client_id =$P{AD_CLIENT_ID}
+					) po on po.C_OrderLine_id=mil.C_OrderLine_id
+				where mil.ad_client_id =$P{AD_CLIENT_ID} and mil.M_Product_ID=1000017
+				
+			--Thanh tien thanh pham	
+				union all
+		
+				select '1005' as ct,COALESCE(sum(case when t.C_Campaign_ID=1000018 and $P{DVType}='TS' then t.slts*l.hsv_dongialuong else case when t.C_Campaign_ID=1000007 and $P{DVType}='VH'then t.slvh*l.hsv_dongialuong else (t.slts+t.slvh)*l.hsv_dongialuong end end ),0) as sl
+				from(select t.hsv_stt,t.C_Campaign_ID,t.value,t.ngay,t.HSV_C_Thuoctinh_id,sum(t.slts*tt.hsv_dinhmuc) as slts,sum(t.slvh*tt.hsv_dinhmuc) as slvh
+					from(	select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+										,COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.productionqty end ),0) as slvh
+										,COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.productionqty end ),0) as slts
+								from m_productionplan pl
+								join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+										join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+										where hh.M_AttributeSet_ID=1000000 and hh.ad_client_id=$P{AD_CLIENT_ID}
+									 ) hh on pl.m_product_id=hh.m_product_id
+								join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL')
+												AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+								where pl.ad_client_id=$P{AD_CLIENT_ID} 
+								group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered,hh.HSV_C_Thuoctinh_id
+							)  as t 					
+						join (select  distinct tt.m_attributesetinstance_id,tt1.hsv_dinhmuc from m_attributeinstance tt
+								join m_attributevalue tt1 on tt1.m_attribute_id =tt.m_attribute_id  and tt1.m_attributevalue_id =tt.m_attributevalue_id  and tt1.M_Attribute_ID=1000010 
+								where tt.ad_client_id=$P{AD_CLIENT_ID}
+							  )	tt on tt.m_attributesetinstance_id=t.m_attributesetinstance_id			
+						group by t.C_Campaign_ID,t.value,t.hsv_stt ,t.ngay,t.HSV_C_Thuoctinh_id
+						
+						--Ngao du tru,loai
+						union all
+						
+						select t.hsv_stt,t.C_Campaign_ID,t.value,t.ngay,t.HSV_C_Thuoctinh_id,sum(t.slts) as slts,sum(t.slvh) as slvh
+						from(	select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+											,COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.productionqty end ),0) as slvh
+											,COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.productionqty end ),0) as slts
+									from m_productionplan pl
+									join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+											join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+											where hh.M_AttributeSet_ID in ('1000001','1000006') and hh.ad_client_id=$P{AD_CLIENT_ID}
+										 ) hh on pl.m_product_id=hh.m_product_id
+									join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') 
+													AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+									where pl.ad_client_id=$P{AD_CLIENT_ID} 
+									group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,hh.HSV_C_Thuoctinh_id,p.DateOrdered
+								)  as t 					
+							group by t.C_Campaign_ID,t.value,t.hsv_stt,t.ngay,t.HSV_C_Thuoctinh_id
+							
+						--Tru di ngao loai xuat dung
+						union all
+						
+						select t.hsv_stt,t.C_Campaign_ID,t.value,t.ngay,t.HSV_C_Thuoctinh_id,sum(t.slts) as slts,sum(t.slvh) as slvh
+						from(	select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+											,-1*COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.qtyinternaluse end ),0) as slvh
+											,-1*COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.qtyinternaluse end ),0) as slts
+									from m_inventoryline pl
+									join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+											join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+											where hh.M_AttributeSet_ID in ('1000006') and hh.ad_client_id=$P{AD_CLIENT_ID}
+										 ) hh on pl.m_product_id=hh.m_product_id
+									join m_inventory p on pl.m_inventory_id=p.m_inventory_id  and p.docstatus in ('CO','CL') and p.C_DocType_ID=1000167 
+													AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+									where pl.ad_client_id=$P{AD_CLIENT_ID} 
+									group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,hh.HSV_C_Thuoctinh_id,p.DateOrdered
+								)  as t 					
+							group by t.C_Campaign_ID,t.value,t.hsv_stt,t.ngay,t.HSV_C_Thuoctinh_id	
+							
+						--Ngao Manh,thit
+						union all
+				
+						select t.C_Campaign_ID,t.hsv_stt,t.value,t.ngay,t.HSV_C_Thuoctinh_id,sum(t.slts) as slts,sum(t.slvh) as slvh
+						from(	select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+										,COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.productionqty*14 end ),0) as slvh
+										,COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.productionqty*14 end ),0) as slts
+								from m_productionplan pl
+								join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+										join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+										where hh.M_AttributeSet_ID in ('1000012') and hh.ad_client_id=$P{AD_CLIENT_ID}
+									 ) hh on pl.m_product_id=hh.m_product_id
+								join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') 
+												AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+								where pl.ad_client_id=$P{AD_CLIENT_ID} 
+								group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,hh.HSV_C_Thuoctinh_id,p.DateOrdered
+								
+								--31*2
+								union all
+								
+								select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+										,COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.productionqty*2 end ),0) as slvh
+										,COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.productionqty*2 end ),0) as slts
+								from m_productionplan pl
+								join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+										join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+										where hh.M_AttributeSet_ID in ('1000031') and hh.ad_client_id=$P{AD_CLIENT_ID}
+									 ) hh on pl.m_product_id=hh.m_product_id
+								join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') 
+												AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+								where pl.ad_client_id=$P{AD_CLIENT_ID} 
+								group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,hh.HSV_C_Thuoctinh_id,p.DateOrdered
+								
+							)  as t 					
+						group by t.C_Campaign_ID,t.value,t.hsv_stt,t.ngay,t.HSV_C_Thuoctinh_id
+						
+										
+					) as t
+				--Lien ket voi bang don gia luong
+				left join (select l.EndDate,l.StartDate ,ln.hsv_C_thuoctinh_ID,ln.hsv_dongialuong,ln.AD_Org_ID   
+				       from  hsv_dgluongLine ln
+				       join hsv_dgluong l on l.hsv_loaidongia_ID in('1000020') and l.hsv_dgluong_ID=ln.hsv_dgluong_ID and l.ad_client_id=$P{AD_CLIENT_ID}
+				     ) as l on t.hsv_C_thuoctinh_ID=l.hsv_C_thuoctinh_ID  and t.ngay>=l.StartDate and t.ngay<=l.EndDate    
+								
+			) as t
+			
+		union all
+		--Chi tieu 1008:Hiệu quảTM,SX  /1 kg thành phẩm 
+		
+		select '1008' as ct,'VNĐ/Kg' as dvt,case when sum(case when t.ct='1006' then t.sl end)<>0 then sum(case when t.ct='1007' then t.sl end)/sum(case when t.ct='1006' then t.sl end) else 0 end as sl
+		from(
+			--Hieu qua san xuat
+			select '1007' as ct,sum(case when t.ct='1005' then t.sl end )-sum(case when t.ct='1002' then t.sl end) as sl
+			from(--Thanh tien mua
+					select '1002' as ct,COALESCE(sum(od.priceactual*mil.movementqty ),0) as sl
+					from m_inoutline mil
+					join m_inout mi on mi.m_inout_id =mil.m_inout_id and mi.issotrx ='N' and docstatus in ('CO','CL') 
+					join C_OrderLine od on od.C_OrderLine_id=mil.C_OrderLine_id
+					join ( select dgl.C_OrderLine_id
+							from HSV_PhieuDanhGia dgl
+							join HSV_ThuMua dg on dg.HSV_ThuMua_ID=dgl.HSV_ThuMua_ID and dg.DateTo>=$P{StartDate} and dg.DateTo<=$P{EndDate} 
+									and (dg.dvtype=$P{DVType} or $P{DVType} is null) 
+							where dgl.ad_client_id =$P{AD_CLIENT_ID}
+						) po on po.C_OrderLine_id=mil.C_OrderLine_id
+					where mil.ad_client_id =$P{AD_CLIENT_ID} and mil.M_Product_ID=1000017
+					
+				--Thanh tien thanh pham	
+					union all
+			
+					select '1005' as ct,COALESCE(sum(case when t.C_Campaign_ID=1000018 and $P{DVType}='TS' then t.slts*l.hsv_dongialuong else case when t.C_Campaign_ID=1000007 and $P{DVType}='VH'then t.slvh*l.hsv_dongialuong else (t.slts+t.slvh)*l.hsv_dongialuong end end ),0) as sl
+					from(select t.hsv_stt,t.C_Campaign_ID,t.value,t.ngay,t.HSV_C_Thuoctinh_id,sum(t.slts*tt.hsv_dinhmuc) as slts,sum(t.slvh*tt.hsv_dinhmuc) as slvh
+						from(	select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+											,COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.productionqty end ),0) as slvh
+											,COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.productionqty end ),0) as slts
+									from m_productionplan pl
+									join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+											join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+											where hh.M_AttributeSet_ID=1000000 and hh.ad_client_id=$P{AD_CLIENT_ID}
+										 ) hh on pl.m_product_id=hh.m_product_id
+									join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL')
+													AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+									where pl.ad_client_id=$P{AD_CLIENT_ID} 
+									group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered,hh.HSV_C_Thuoctinh_id
+								)  as t 					
+							join (select  distinct tt.m_attributesetinstance_id,tt1.hsv_dinhmuc from m_attributeinstance tt
+									join m_attributevalue tt1 on tt1.m_attribute_id =tt.m_attribute_id  and tt1.m_attributevalue_id =tt.m_attributevalue_id  and tt1.M_Attribute_ID=1000010 
+									where tt.ad_client_id=$P{AD_CLIENT_ID}
+								  )	tt on tt.m_attributesetinstance_id=t.m_attributesetinstance_id			
+							group by t.C_Campaign_ID,t.value,t.hsv_stt ,t.ngay,t.HSV_C_Thuoctinh_id
+							
+							--Ngao du tru,loai
+							union all
+							
+							select t.hsv_stt,t.C_Campaign_ID,t.value,t.ngay,t.HSV_C_Thuoctinh_id,sum(t.slts) as slts,sum(t.slvh) as slvh
+							from(	select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+												,COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.productionqty end ),0) as slvh
+												,COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.productionqty end ),0) as slts
+										from m_productionplan pl
+										join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+												join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+												where hh.M_AttributeSet_ID in ('1000001','1000006') and hh.ad_client_id=$P{AD_CLIENT_ID}
+											 ) hh on pl.m_product_id=hh.m_product_id
+										join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') 
+														AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+										where pl.ad_client_id=$P{AD_CLIENT_ID} 
+										group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,hh.HSV_C_Thuoctinh_id,p.DateOrdered
+									)  as t 					
+								group by t.C_Campaign_ID,t.value,t.hsv_stt,t.ngay,t.HSV_C_Thuoctinh_id
+								
+							--Tru di ngao loai xuat dung
+							union all
+							
+							select t.hsv_stt,t.C_Campaign_ID,t.value,t.ngay,t.HSV_C_Thuoctinh_id,sum(t.slts) as slts,sum(t.slvh) as slvh
+							from(	select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+												,-1*COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.qtyinternaluse end ),0) as slvh
+												,-1*COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.qtyinternaluse end ),0) as slts
+										from m_inventoryline pl
+										join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+												join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+												where hh.M_AttributeSet_ID in ('1000006') and hh.ad_client_id=$P{AD_CLIENT_ID}
+											 ) hh on pl.m_product_id=hh.m_product_id
+										join m_inventory p on pl.m_inventory_id=p.m_inventory_id  and p.docstatus in ('CO','CL') and p.C_DocType_ID=1000167 
+														AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+										where pl.ad_client_id=$P{AD_CLIENT_ID} 
+										group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,hh.HSV_C_Thuoctinh_id,p.DateOrdered
+									)  as t 					
+								group by t.C_Campaign_ID,t.value,t.hsv_stt,t.ngay,t.HSV_C_Thuoctinh_id	
+								
+							--Ngao Manh,thit
+							union all
+					
+							select t.C_Campaign_ID,t.hsv_stt,t.value,t.ngay,t.HSV_C_Thuoctinh_id,sum(t.slts) as slts,sum(t.slvh) as slvh
+							from(	select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+											,COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.productionqty*14 end ),0) as slvh
+											,COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.productionqty*14 end ),0) as slts
+									from m_productionplan pl
+									join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+											join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+											where hh.M_AttributeSet_ID in ('1000012') and hh.ad_client_id=$P{AD_CLIENT_ID}
+										 ) hh on pl.m_product_id=hh.m_product_id
+									join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') 
+													AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+									where pl.ad_client_id=$P{AD_CLIENT_ID} 
+									group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,hh.HSV_C_Thuoctinh_id,p.DateOrdered
+									
+									--31*2
+									union all
+									
+									select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+											,COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.productionqty*2 end ),0) as slvh
+											,COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.productionqty*2 end ),0) as slts
+									from m_productionplan pl
+									join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+											join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+											where hh.M_AttributeSet_ID in ('1000031') and hh.ad_client_id=$P{AD_CLIENT_ID}
+										 ) hh on pl.m_product_id=hh.m_product_id
+									join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') 
+													AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+									where pl.ad_client_id=$P{AD_CLIENT_ID} 
+									group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,hh.HSV_C_Thuoctinh_id,p.DateOrdered
+									
+								)  as t 					
+							group by t.C_Campaign_ID,t.value,t.hsv_stt,t.ngay,t.HSV_C_Thuoctinh_id
+							
+											
+						) as t
+					--Lien ket voi bang don gia luong
+					left join (select l.EndDate,l.StartDate ,ln.hsv_C_thuoctinh_ID,ln.hsv_dongialuong,ln.AD_Org_ID   
+					       from  hsv_dgluongLine ln
+					       join hsv_dgluong l on l.hsv_loaidongia_ID in('1000020') and l.hsv_dgluong_ID=ln.hsv_dgluong_ID and l.ad_client_id=$P{AD_CLIENT_ID}
+					     ) as l on t.hsv_C_thuoctinh_ID=l.hsv_C_thuoctinh_ID  and t.ngay>=l.StartDate and t.ngay<=l.EndDate    
+					
+				) as t
+				
+				--Thanh pham
+				union all
+				
+				select '1006' as ct,COALESCE(sum(case when t.C_Campaign_ID=1000018 and $P{DVType}='TS' then t.slts else case when t.C_Campaign_ID=1000007 and $P{DVType}='VH'then t.slvh else (t.slts+t.slvh) end end ),0) as sl
+				from(select t.hsv_stt,t.C_Campaign_ID,t.value,t.ngay,t.HSV_C_Thuoctinh_id,sum(t.slts*tt.hsv_dinhmuc) as slts,sum(t.slvh*tt.hsv_dinhmuc) as slvh
+					from(	select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+										,COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.productionqty end ),0) as slvh
+										,COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.productionqty end ),0) as slts
+								from m_productionplan pl
+								join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+										join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+										where hh.M_AttributeSet_ID=1000000 and hh.ad_client_id=$P{AD_CLIENT_ID}
+									 ) hh on pl.m_product_id=hh.m_product_id
+								join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL')
+												AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+								where pl.ad_client_id=$P{AD_CLIENT_ID} 
+								group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered,hh.HSV_C_Thuoctinh_id
+							)  as t 					
+						join (select  distinct tt.m_attributesetinstance_id,tt1.hsv_dinhmuc from m_attributeinstance tt
+								join m_attributevalue tt1 on tt1.m_attribute_id =tt.m_attribute_id  and tt1.m_attributevalue_id =tt.m_attributevalue_id  and tt1.M_Attribute_ID=1000010 
+								where tt.ad_client_id=$P{AD_CLIENT_ID}
+							  )	tt on tt.m_attributesetinstance_id=t.m_attributesetinstance_id			
+						group by t.C_Campaign_ID,t.value,t.hsv_stt ,t.ngay,t.HSV_C_Thuoctinh_id
+						
+						--Ngao du tru,loai
+						union all
+						
+						select t.hsv_stt,t.C_Campaign_ID,t.value,t.ngay,t.HSV_C_Thuoctinh_id,sum(t.slts) as slts,sum(t.slvh) as slvh
+						from(	select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+											,COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.productionqty end ),0) as slvh
+											,COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.productionqty end ),0) as slts
+									from m_productionplan pl
+									join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+											join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+											where hh.M_AttributeSet_ID in ('1000001','1000006') and hh.ad_client_id=$P{AD_CLIENT_ID}
+										 ) hh on pl.m_product_id=hh.m_product_id
+									join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') 
+													AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+									where pl.ad_client_id=$P{AD_CLIENT_ID} 
+									group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,hh.HSV_C_Thuoctinh_id,p.DateOrdered
+								)  as t 					
+							group by t.C_Campaign_ID,t.value,t.hsv_stt,t.ngay,t.HSV_C_Thuoctinh_id
+							
+						--Tru di ngao loai xuat dung
+						union all
+						
+						select t.hsv_stt,t.C_Campaign_ID,t.value,t.ngay,t.HSV_C_Thuoctinh_id,sum(t.slts) as slts,sum(t.slvh) as slvh
+						from(	select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+											,-1*COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.qtyinternaluse end ),0) as slvh
+											,-1*COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.qtyinternaluse end ),0) as slts
+									from m_inventoryline pl
+									join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+											join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+											where hh.M_AttributeSet_ID in ('1000006') and hh.ad_client_id=$P{AD_CLIENT_ID}
+										 ) hh on pl.m_product_id=hh.m_product_id
+									join m_inventory p on pl.m_inventory_id=p.m_inventory_id  and p.docstatus in ('CO','CL') and p.C_DocType_ID=1000167 
+													AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+									where pl.ad_client_id=$P{AD_CLIENT_ID} 
+									group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,hh.HSV_C_Thuoctinh_id,p.DateOrdered
+								)  as t 					
+							group by t.C_Campaign_ID,t.value,t.hsv_stt,t.ngay,t.HSV_C_Thuoctinh_id	
+							
+						--Ngao Manh,thit
+						union all
+				
+						select t.C_Campaign_ID,t.hsv_stt,t.value,t.ngay,t.HSV_C_Thuoctinh_id,sum(t.slts) as slts,sum(t.slvh) as slvh
+						from(	select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+										,COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.productionqty*14 end ),0) as slvh
+										,COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.productionqty*14 end ),0) as slts
+								from m_productionplan pl
+								join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+										join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+										where hh.M_AttributeSet_ID in ('1000012') and hh.ad_client_id=$P{AD_CLIENT_ID}
+									 ) hh on pl.m_product_id=hh.m_product_id
+								join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') 
+												AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+								where pl.ad_client_id=$P{AD_CLIENT_ID} 
+								group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,hh.HSV_C_Thuoctinh_id,p.DateOrdered
+								
+								--31*2
+								union all
+								
+								select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+										,COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.productionqty*2 end ),0) as slvh
+										,COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.productionqty*2 end ),0) as slts
+								from m_productionplan pl
+								join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+										join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+										where hh.M_AttributeSet_ID in ('1000031') and hh.ad_client_id=$P{AD_CLIENT_ID}
+									 ) hh on pl.m_product_id=hh.m_product_id
+								join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') 
+												AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+								where pl.ad_client_id=$P{AD_CLIENT_ID} 
+								group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,hh.HSV_C_Thuoctinh_id,p.DateOrdered
+								
+							)  as t 					
+						group by t.C_Campaign_ID,t.value,t.hsv_stt,t.ngay,t.HSV_C_Thuoctinh_id
+				
+					) as t
+		) as t	
+		--Chi tieu 1009:Chi phí phát sinh sử lý NL
+		union all
+
+		select  '1009' as ct,'VNĐ' as dvt
+				,COALESCE(sum(case when t.M_Product_ID in ('1008590','1017740') and t.hsv_soi='Y'  then t.sl*dg.hsv_cpsoi end ),0)
+				+COALESCE(sum(case when t.M_Product_ID in ('1008590','1017740') and t.hsv_soc='Y'  then t.sl*dg.hsv_cpsoc end ),0)
+				+COALESCE(sum(case when t.M_Product_ID in ('1008590','1017740') and t.hsv_khuay='Y'  then t.sl*dg.hsv_cpkhuay end ),0) as sl
+				
+		from(	select '1009' as ct,'VNĐ' as dvt,pdg.M_Product_ID,tm.Dateto as ngay,pdg.hsv_soluong as sl,pdg.hsv_soi,pdg.hsv_soc,pdg.hsv_khuay
+				from  HSV_PhieuDanhGia pdg
+				join  HSV_ThuMua tm on tm.hsv_thumua_id =pdg.hsv_thumua_id and tm.Dateto>=$P{StartDate} and tm.Dateto<=$P{EndDate} and (tm.DVType=$P{DVType} or $P{DVType} is null )
+				where pdg.M_Product_ID in ('1008590','1017740') and pdg.ad_client_id =$P{AD_CLIENT_ID}
+			) as t
+			join (select dg.startdate,dg.enddate ,dgl.M_Product_ID,dgl.hsv_cpsoi,dgl.hsv_cpsoc,dgl.hsv_cpkhuay
+					from hsv_dgngaomau dg
+					join hsv_dgngaomline dgl on dg.hsv_dgngaomau_id=dgl.hsv_dgngaomau_id
+					where dg.ad_client_id =$P{AD_CLIENT_ID} 
+				) dg on t.ngay>=dg.startdate and t.ngay<=dg.enddate and t.M_Product_ID=dg.M_Product_ID
+			
+		
+		--Chi tieu 1010:chi phí sử lý nl/1 kg thành phẩm  bằng chỉ tiêu 1009/ (chỉ tiêu 1003 +chỉ tiêu 1004) 
+		union all
+		
+		select '1010' as ct,'VNĐ/Kg' as dvt,case when sum(t.sltp)<>0 then sum(t.cp)/sum(t.sltp) else 0 end  as sl
+		from(	select  '1009' as ct,0 as sltp
+						,(COALESCE(sum(case when t.M_Product_ID in ('1008590','1017740') and t.hsv_soi='Y'  then t.sl*dg.hsv_cpsoi end),0)
+						+COALESCE(sum(case when t.M_Product_ID in ('1008590','1017740') and t.hsv_soc='Y'  then t.sl*dg.hsv_cpsoc end ),0)
+						+COALESCE(sum(case when t.M_Product_ID in ('1008590','1017740') and t.hsv_khuay='Y'  then t.sl*dg.hsv_cpkhuay end ),0)) as cp
+						
+				from(	select '1009' as ct,'VNĐ' as dvt,pdg.M_Product_ID,tm.Dateto as ngay,pdg.hsv_soluong as sl,pdg.hsv_soi,pdg.hsv_soc,pdg.hsv_khuay
+						from  HSV_PhieuDanhGia pdg
+						join  HSV_ThuMua tm on tm.hsv_thumua_id =pdg.hsv_thumua_id and tm.Dateto>=$P{StartDate} and tm.Dateto<=$P{EndDate} and (tm.DVType=$P{DVType} or $P{DVType} is null )
+						where pdg.M_Product_ID in ('1008590','1017740') and pdg.ad_client_id =$P{AD_CLIENT_ID}
+					) as t
+					join (select dg.startdate,dg.enddate ,dgl.M_Product_ID,dgl.hsv_cpsoi,dgl.hsv_cpsoc,dgl.hsv_cpkhuay
+							from hsv_dgngaomau dg
+							join hsv_dgngaomline dgl on dg.hsv_dgngaomau_id=dgl.hsv_dgngaomau_id
+							where dg.ad_client_id =$P{AD_CLIENT_ID} 
+						) dg on t.ngay>=dg.startdate and t.ngay<=dg.enddate and t.M_Product_ID=dg.M_Product_ID
+						
+				--1003+1004(Thanh pham)		
+				union all
+				
+				--Thanh Pham
+				select '1006' as ct,COALESCE(sum(case when t.C_Campaign_ID=1000018 and $P{DVType}='TS' then t.slts else case when t.C_Campaign_ID=1000007 and $P{DVType}='VH'then t.slvh else (t.slts+t.slvh) end end ),0) as sltp,0 as cp
+				from(select t.hsv_stt,t.C_Campaign_ID,t.value,t.ngay,t.HSV_C_Thuoctinh_id,sum(t.slts*tt.hsv_dinhmuc) as slts,sum(t.slvh*tt.hsv_dinhmuc) as slvh
+					from(	select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+										,COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.productionqty end ),0) as slvh
+										,COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.productionqty end ),0) as slts
+								from m_productionplan pl
+								join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+										join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+										where hh.M_AttributeSet_ID=1000000 and hh.ad_client_id=$P{AD_CLIENT_ID}
+									 ) hh on pl.m_product_id=hh.m_product_id
+								join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL')
+												AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+								where pl.ad_client_id=$P{AD_CLIENT_ID} 
+								group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered,hh.HSV_C_Thuoctinh_id
+							)  as t 					
+						join (select  distinct tt.m_attributesetinstance_id,tt1.hsv_dinhmuc from m_attributeinstance tt
+								join m_attributevalue tt1 on tt1.m_attribute_id =tt.m_attribute_id  and tt1.m_attributevalue_id =tt.m_attributevalue_id  and tt1.M_Attribute_ID=1000010 
+								where tt.ad_client_id=$P{AD_CLIENT_ID}
+							  )	tt on tt.m_attributesetinstance_id=t.m_attributesetinstance_id			
+						group by t.C_Campaign_ID,t.value,t.hsv_stt ,t.ngay,t.HSV_C_Thuoctinh_id
+						
+						--Ngao du tru,loai
+						union all
+						
+						select t.hsv_stt,t.C_Campaign_ID,t.value,t.ngay,t.HSV_C_Thuoctinh_id,sum(t.slts) as slts,sum(t.slvh) as slvh
+						from(	select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+											,COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.productionqty end ),0) as slvh
+											,COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.productionqty end ),0) as slts
+									from m_productionplan pl
+									join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+											join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+											where hh.M_AttributeSet_ID in ('1000001','1000006') and hh.ad_client_id=$P{AD_CLIENT_ID}
+										 ) hh on pl.m_product_id=hh.m_product_id
+									join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') 
+													AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+									where pl.ad_client_id=$P{AD_CLIENT_ID} 
+									group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,hh.HSV_C_Thuoctinh_id,p.DateOrdered
+								)  as t 					
+							group by t.C_Campaign_ID,t.value,t.hsv_stt,t.ngay,t.HSV_C_Thuoctinh_id
+						
+						--Tru di ngao loai xuat dung
+						union all
+						
+						select t.hsv_stt,t.C_Campaign_ID,t.value,t.ngay,t.HSV_C_Thuoctinh_id,sum(t.slts) as slts,sum(t.slvh) as slvh
+						from(	select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+											,-1*COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.qtyinternaluse end ),0) as slvh
+											,-1*COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.qtyinternaluse end ),0) as slts
+									from m_inventoryline pl
+									join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+											join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+											where hh.M_AttributeSet_ID in ('1000006') and hh.ad_client_id=$P{AD_CLIENT_ID}
+										 ) hh on pl.m_product_id=hh.m_product_id
+									join m_inventory p on pl.m_inventory_id=p.m_inventory_id  and p.docstatus in ('CO','CL') and p.C_DocType_ID=1000167 
+													AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+									where pl.ad_client_id=$P{AD_CLIENT_ID} 
+									group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,hh.HSV_C_Thuoctinh_id,p.DateOrdered
+								)  as t 					
+							group by t.C_Campaign_ID,t.value,t.hsv_stt,t.ngay,t.HSV_C_Thuoctinh_id
+						
+							
+						--Ngao Manh,thit
+						union all
+				
+						select t.C_Campaign_ID,t.hsv_stt,t.value,t.ngay,t.HSV_C_Thuoctinh_id,sum(t.slts) as slts,sum(t.slvh) as slvh
+						from(	select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+										,COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.productionqty*14 end ),0) as slvh
+										,COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.productionqty*14 end ),0) as slts
+								from m_productionplan pl
+								join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+										join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+										where hh.M_AttributeSet_ID in ('1000012') and hh.ad_client_id=$P{AD_CLIENT_ID}
+									 ) hh on pl.m_product_id=hh.m_product_id
+								join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') 
+												AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+								where pl.ad_client_id=$P{AD_CLIENT_ID} 
+								group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,hh.HSV_C_Thuoctinh_id,p.DateOrdered
+								
+								--31*2
+								union all
+								
+								select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+										,COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.productionqty*2 end ),0) as slvh
+										,COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.productionqty*2 end ),0) as slts
+								from m_productionplan pl
+								join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+										join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+										where hh.M_AttributeSet_ID in ('1000031') and hh.ad_client_id=$P{AD_CLIENT_ID}
+									 ) hh on pl.m_product_id=hh.m_product_id
+								join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') 
+												AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+								where pl.ad_client_id=$P{AD_CLIENT_ID} 
+								group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,hh.HSV_C_Thuoctinh_id,p.DateOrdered
+								
+							)  as t 					
+						group by t.C_Campaign_ID,t.value,t.hsv_stt,t.ngay,t.HSV_C_Thuoctinh_id
+				
+					) as t
+		
+				
+			) as t			
+		
+		--Chi tieu 1011:BẰNG CHỈ TIÊU 1007 - CHỈ TIÊU 1009 
+		union all
+		
+		select '1011' as ct,'VNĐ' as dvt,sum(case when t.ct='1007' then t.sl end)-sum(case when t.ct='1009' then t.sl end) as sl
+		from(--Chi tieu 1007
+				select '1007' as ct,sum(case when t.ct='1005' then t.sl end )-sum(case when t.ct='1002' then t.sl end) as sl
+				from(--Thanh tien mua
+						select '1002' as ct,COALESCE(sum(od.priceactual*mil.movementqty ),0) as sl
+						from m_inoutline mil
+						join m_inout mi on mi.m_inout_id =mil.m_inout_id and mi.issotrx ='N' and docstatus in ('CO','CL') 
+						join C_OrderLine od on od.C_OrderLine_id=mil.C_OrderLine_id
+						join ( select dgl.C_OrderLine_id
+								from HSV_PhieuDanhGia dgl
+								join HSV_ThuMua dg on dg.HSV_ThuMua_ID=dgl.HSV_ThuMua_ID and dg.DateTo>=$P{StartDate} and dg.DateTo<=$P{EndDate} 
+										and (dg.dvtype=$P{DVType} or $P{DVType} is null) 
+								where dgl.ad_client_id =$P{AD_CLIENT_ID}
+							) po on po.C_OrderLine_id=mil.C_OrderLine_id
+						where mil.ad_client_id =$P{AD_CLIENT_ID} and mil.M_Product_ID=1000017
+						
+					--Thanh tien thanh pham	
+						union all
+				
+						select '1005' as ct,COALESCE(sum(case when t.C_Campaign_ID=1000018 and $P{DVType}='TS' then t.slts*l.hsv_dongialuong else case when t.C_Campaign_ID=1000007 and $P{DVType}='VH'then t.slvh*l.hsv_dongialuong else (t.slts+t.slvh)*l.hsv_dongialuong end end ),0) as sl
+						from(select t.hsv_stt,t.C_Campaign_ID,t.value,t.ngay,t.HSV_C_Thuoctinh_id,sum(t.slts*tt.hsv_dinhmuc) as slts,sum(t.slvh*tt.hsv_dinhmuc) as slvh
+							from(	select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+												,COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.productionqty end ),0) as slvh
+												,COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.productionqty end ),0) as slts
+										from m_productionplan pl
+										join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+												join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+												where hh.M_AttributeSet_ID=1000000 and hh.ad_client_id=$P{AD_CLIENT_ID}
+											 ) hh on pl.m_product_id=hh.m_product_id
+										join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL')
+														AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+										where pl.ad_client_id=$P{AD_CLIENT_ID} 
+										group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered,hh.HSV_C_Thuoctinh_id
+									)  as t 					
+								join (select  distinct tt.m_attributesetinstance_id,tt1.hsv_dinhmuc from m_attributeinstance tt
+										join m_attributevalue tt1 on tt1.m_attribute_id =tt.m_attribute_id  and tt1.m_attributevalue_id =tt.m_attributevalue_id  and tt1.M_Attribute_ID=1000010 
+										where tt.ad_client_id=$P{AD_CLIENT_ID}
+									  )	tt on tt.m_attributesetinstance_id=t.m_attributesetinstance_id			
+								group by t.C_Campaign_ID,t.value,t.hsv_stt ,t.ngay,t.HSV_C_Thuoctinh_id
+								
+								--Ngao du tru,loai
+								union all
+								
+								select t.hsv_stt,t.C_Campaign_ID,t.value,t.ngay,t.HSV_C_Thuoctinh_id,sum(t.slts) as slts,sum(t.slvh) as slvh
+								from(	select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+													,COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.productionqty end ),0) as slvh
+													,COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.productionqty end ),0) as slts
+											from m_productionplan pl
+											join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+													join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+													where hh.M_AttributeSet_ID in ('1000001','1000006') and hh.ad_client_id=$P{AD_CLIENT_ID}
+												 ) hh on pl.m_product_id=hh.m_product_id
+											join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') 
+															AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+											where pl.ad_client_id=$P{AD_CLIENT_ID} 
+											group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,hh.HSV_C_Thuoctinh_id,p.DateOrdered
+										)  as t 					
+									group by t.C_Campaign_ID,t.value,t.hsv_stt,t.ngay,t.HSV_C_Thuoctinh_id
+									
+								--Tru di ngao loai xuat dung
+								union all
+								
+								select t.hsv_stt,t.C_Campaign_ID,t.value,t.ngay,t.HSV_C_Thuoctinh_id,sum(t.slts) as slts,sum(t.slvh) as slvh
+								from(	select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+													,-1*COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.qtyinternaluse end ),0) as slvh
+													,-1*COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.qtyinternaluse end ),0) as slts
+											from m_inventoryline pl
+											join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+													join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+													where hh.M_AttributeSet_ID in ('1000006') and hh.ad_client_id=$P{AD_CLIENT_ID}
+												 ) hh on pl.m_product_id=hh.m_product_id
+											join m_inventory p on pl.m_inventory_id=p.m_inventory_id  and p.docstatus in ('CO','CL') and p.C_DocType_ID=1000167 
+															AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+											where pl.ad_client_id=$P{AD_CLIENT_ID} 
+											group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,hh.HSV_C_Thuoctinh_id,p.DateOrdered
+										)  as t 					
+									group by t.C_Campaign_ID,t.value,t.hsv_stt,t.ngay,t.HSV_C_Thuoctinh_id	
+									
+								--Ngao Manh,thit
+								union all
+						
+								select t.C_Campaign_ID,t.hsv_stt,t.value,t.ngay,t.HSV_C_Thuoctinh_id,sum(t.slts) as slts,sum(t.slvh) as slvh
+								from(	select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+												,COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.productionqty*14 end ),0) as slvh
+												,COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.productionqty*14 end ),0) as slts
+										from m_productionplan pl
+										join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+												join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+												where hh.M_AttributeSet_ID in ('1000012') and hh.ad_client_id=$P{AD_CLIENT_ID}
+											 ) hh on pl.m_product_id=hh.m_product_id
+										join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') 
+														AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+										where pl.ad_client_id=$P{AD_CLIENT_ID} 
+										group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,hh.HSV_C_Thuoctinh_id,p.DateOrdered
+										
+										--31*2
+										union all
+										
+										select p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,p.DateOrdered as ngay,hh.HSV_C_Thuoctinh_id 
+												,COALESCE(sum( case when (p.C_Campaign_ID=1000007 and $P{DVType}='VH') then pl.productionqty*2 end ),0) as slvh
+												,COALESCE(sum( case when (p.C_Campaign_ID=1000018 and $P{DVType}='TS') then pl.productionqty*2 end ),0) as slts
+										from m_productionplan pl
+										join (select tt.hsv_stt,tt.value,tt.HSV_C_Thuoctinh_id,hh.m_product_id,hh.name from m_product hh 
+												join HSV_C_Thuoctinh tt on tt.HSV_C_Thuoctinh_id=hh.HSV_C_Thuoctinh_id and tt.hsv_kiemtra ='Y'
+												where hh.M_AttributeSet_ID in ('1000031') and hh.ad_client_id=$P{AD_CLIENT_ID}
+											 ) hh on pl.m_product_id=hh.m_product_id
+										join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') 
+														AND P.DateOrdered>=$P{StartDate} and p.DateOrdered<=$P{EndDate}
+										where pl.ad_client_id=$P{AD_CLIENT_ID} 
+										group by p.C_Campaign_ID,hh.value,pl.m_attributesetinstance_id,hh.hsv_stt,hh.HSV_C_Thuoctinh_id,p.DateOrdered
+										
+									)  as t 					
+								group by t.C_Campaign_ID,t.value,t.hsv_stt,t.ngay,t.HSV_C_Thuoctinh_id
+								
+												
+							) as t
+						--Lien ket voi bang don gia luong
+						left join (select l.EndDate,l.StartDate ,ln.hsv_C_thuoctinh_ID,ln.hsv_dongialuong,ln.AD_Org_ID   
+						       from  hsv_dgluongLine ln
+						       join hsv_dgluong l on l.hsv_loaidongia_ID in('1000020') and l.hsv_dgluong_ID=ln.hsv_dgluong_ID and l.ad_client_id=$P{AD_CLIENT_ID}
+						     ) as l on t.hsv_C_thuoctinh_ID=l.hsv_C_thuoctinh_ID  and t.ngay>=l.StartDate and t.ngay<=l.EndDate    
+										
+					) as t
+			--Chi tieu 1009:
+			union all
+			
+			select  '1009' as ct
+					,COALESCE(sum(case when t.M_Product_ID in ('1008590','1017740') and t.hsv_soi='Y'  then t.sl*dg.hsv_cpsoi end ),0)
+					+COALESCE(sum(case when t.M_Product_ID in ('1008590','1017740') and t.hsv_soc='Y'  then t.sl*dg.hsv_cpsoc end ),0)
+					+COALESCE(sum(case when t.M_Product_ID in ('1008590','1017740') and t.hsv_khuay='Y'  then t.sl*dg.hsv_cpkhuay end ),0) as sl
+					
+			from(	select '1009' as ct,'VNĐ' as dvt,pdg.M_Product_ID,tm.Dateto as ngay,pdg.hsv_soluong as sl,pdg.hsv_soi,pdg.hsv_soc,pdg.hsv_khuay
+					from  HSV_PhieuDanhGia pdg
+					join  HSV_ThuMua tm on tm.hsv_thumua_id =pdg.hsv_thumua_id and tm.Dateto>=$P{StartDate} and tm.Dateto<=$P{EndDate} and (tm.DVType=$P{DVType} or $P{DVType} is null )
+					where pdg.M_Product_ID in ('1008590','1017740') and pdg.ad_client_id =$P{AD_CLIENT_ID}
+				) as t
+				join (select dg.startdate,dg.enddate ,dgl.M_Product_ID,dgl.hsv_cpsoi,dgl.hsv_cpsoc,dgl.hsv_cpkhuay
+						from hsv_dgngaomau dg
+						join hsv_dgngaomline dgl on dg.hsv_dgngaomau_id=dgl.hsv_dgngaomau_id
+						where dg.ad_client_id =$P{AD_CLIENT_ID} 
+					) dg on t.ngay>=dg.startdate and t.ngay<=dg.enddate and t.M_Product_ID=dg.M_Product_ID
+							
+			
+		) as t
+		
+		--Chi tieu 1012:chi phí Than sản xuất 
+		union all
+		
+		select '1012' as ct,'VNĐ' as dvt,0 as sl from ad_client where ad_client_id =$P{AD_CLIENT_ID}
+		
+		--Chi tieu 1013:chi phí Than sản xuất /1 kg thành phẩm
+		union all
+		
+		select '1013' as ct,'VNĐ/Kg' as dvt,0 as sl from ad_client where ad_client_id =$P{AD_CLIENT_ID}
+		
+		--Chi tieu 1014:chi phí ngao sì bỏ đi làm lại 
+		union all
+		
+		select '1014' as ct,'VNĐ/Kg' as dvt,0 as sl from ad_client where ad_client_id =$P{AD_CLIENT_ID}
+		
+) as t		
+join hsv_chiso dm on dm.value=t.ct and dm.ad_client_id =$P{AD_CLIENT_ID}]]>
+	</queryString>
+	<field name="stt" class="java.lang.Long">
+		<property name="com.jaspersoft.studio.field.name" value="stt"/>
+		<property name="com.jaspersoft.studio.field.label" value="stt"/>
+	</field>
+	<field name="dvt" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="dvt"/>
+		<property name="com.jaspersoft.studio.field.label" value="dvt"/>
+	</field>
+	<field name="name" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="name"/>
+		<property name="com.jaspersoft.studio.field.label" value="name"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="hsv_chiso"/>
+	</field>
+	<field name="sl" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="sl"/>
+		<property name="com.jaspersoft.studio.field.label" value="sl"/>
+	</field>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="136">
+			<property name="local_mesure_unitheight" value="pixel"/>
+			<property name="com.jaspersoft.studio.unit.height" value="px"/>
+			<textField>
+				<reportElement x="15" y="85" width="567" height="20" uuid="78c9e16a-13e7-4ab9-ad70-f3b3971b2459">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Kỳ báo cáo : " + new SimpleDateFormat("dd/MM/yyyy").format($P{StartDate}) + " To "  + new SimpleDateFormat("dd/MM/yyyy").format($P{EndDate})]]></textFieldExpression>
+			</textField>
+			<textField pattern="" isBlankWhenNull="false">
+				<reportElement key="textField-2" x="352" y="10" width="190" height="19" forecolor="#000000" backcolor="#FFFFFF" uuid="60934052-ee8f-49bd-9d0a-7ae83bb2a10f"/>
+				<box>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Trang " + $V{PAGE_NUMBER} + " / "]]></textFieldExpression>
+			</textField>
+			<textField evaluationTime="Report" pattern="" isBlankWhenNull="false">
+				<reportElement key="textField-3" x="546" y="10" width="36" height="19" forecolor="#000000" backcolor="#FFFFFF" uuid="289fbb8e-6542-4e0c-9ff4-c35b72356357"/>
+				<box>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA["" + $V{PAGE_NUMBER}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="15" y="63" width="567" height="20" uuid="0f051dca-ba94-4491-aa78-c32e22ab5c19">
+					<property name="local_mesure_unitheight" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="16" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["BÁO CÁO HIỆU QUẢ SẢN XUẤT"]]></textFieldExpression>
+			</textField>
+			<subreport>
+				<reportElement x="10" y="10" width="373" height="40" uuid="0ef0b471-6ea4-415d-bf69-ad27f7f1f740"/>
+				<subreportParameter name="AD_Client_ID">
+					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"CompanyHeader.jasper"]]></subreportExpression>
+			</subreport>
+			<subreport>
+				<reportElement x="15" y="105" width="567" height="29" uuid="416ca8ea-3e88-4f75-9196-6b037926d6f6">
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<subreportParameter name="AD_Client_ID">
+					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="DVType">
+					<subreportParameterExpression><![CDATA[$P{DVType}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"DonVi.jasper"]]></subreportExpression>
+			</subreport>
+		</band>
+	</title>
+	<columnHeader>
+		<band height="30" splitType="Stretch">
+			<property name="local_mesure_unitheight" value="pixel"/>
+			<property name="com.jaspersoft.studio.unit.height" value="px"/>
+			<staticText>
+				<reportElement x="10" y="0" width="30" height="30" uuid="9b25b95e-b85e-44d8-95c8-0b7b1661b48c">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[STT]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="40" y="0" width="315" height="30" uuid="edfe045e-26e4-4b3c-8d08-1bd0f99baca6">
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					<property name="local_mesure_unitwidth" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Nội dung]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="355" y="0" width="76" height="30" uuid="3db2a021-5e76-4d38-9b1a-ce0a7fe5e4a9">
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Đơn vị tính]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="431" y="0" width="146" height="30" uuid="c64c5f9b-3e5b-4d8e-bb8c-b69294a4ebb1">
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Số liệu]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="27" splitType="Stretch">
+			<property name="local_mesure_unitheight" value="pixel"/>
+			<property name="com.jaspersoft.studio.unit.height" value="px"/>
+			<textField>
+				<reportElement x="10" y="0" width="30" height="27" uuid="238320d9-52f4-4b8d-997b-4a9ee348cf20">
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					<property name="local_mesure_unitheight" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{stt}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="40" y="0" width="315" height="27" uuid="d5d34af4-7867-4347-82a4-03db48dd2fc2">
+					<property name="local_mesure_unitwidth" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{name}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="355" y="0" width="76" height="27" uuid="85eb42d7-5dcb-4958-8702-f2b8da8effaa">
+					<property name="local_mesure_unitheight" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{dvt}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.##" isBlankWhenNull="true">
+				<reportElement x="431" y="0" width="146" height="27" uuid="08afea1c-ca8d-4783-943d-3d2bb73bec92">
+					<property name="local_mesure_unitheight" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{sl}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<summary>
+		<band height="70">
+			<textField pattern="" isBlankWhenNull="false">
+				<reportElement key="textField-4" x="350" y="8" width="227" height="19" forecolor="#000000" backcolor="#FFFFFF" uuid="26c2a31c-7c51-4f79-8242-3a5bf4892e52"/>
+				<box>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Ngày in: " + new SimpleDateFormat("dd/MM/yyyy hh24:mm").format(new Date())]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement key="staticText-8" positionType="Float" stretchType="RelativeToTallestObject" x="392" y="25" width="148" height="16" uuid="7e444384-a93a-4097-84ef-e251613901c5"/>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Kiểm soát]]></text>
+			</staticText>
+			<staticText>
+				<reportElement key="staticText-8" positionType="Float" stretchType="RelativeToTallestObject" x="67" y="26" width="118" height="16" uuid="5b337119-c93f-4b0b-9db5-bd89ec2894fa"/>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Lập biểu]]></text>
+			</staticText>
+		</band>
+	</summary>
+</jasperReport>

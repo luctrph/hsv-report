@@ -1,0 +1,997 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.19.0.final using JasperReports Library version 6.19.0-646c68931cebf1a58bc65c4359d1f0ca223c5e94  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Rpt_BCQuanTriLuongQuanLy_DongDuong" pageWidth="842" pageHeight="595" orientation="Landscape" columnWidth="842" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="4023df51-1b73-46d9-adf6-650e3c9f2034">
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="adempiere_7.1"/>
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="169"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="824"/>
+	<parameter name="StartDate" class="java.util.Date">
+		<defaultValueExpression><![CDATA[new Date(100,0,1)]]></defaultValueExpression>
+	</parameter>
+	<parameter name="EndDate" class="java.util.Date">
+		<defaultValueExpression><![CDATA[new Date(100,0,1)]]></defaultValueExpression>
+	</parameter>
+	<parameter name="AD_CLIENT_ID" class="java.lang.Integer">
+		<defaultValueExpression><![CDATA[1000000]]></defaultValueExpression>
+	</parameter>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String">
+		<defaultValueExpression><![CDATA["dev/"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="EXPORT_TYPE" class="java.lang.String"/>
+	<parameter name="AD_Org_ID" class="java.lang.Integer"/>
+	<queryString language="SQL">
+		<![CDATA[select row_number() over() as stt,t.hsv_stt,t.description,t.value,t.name,case when value =2 then sl - qty1 else (sl -qty1) +qty1*0.3 end as sl ,t.hsv_dongialuong ,hsv_dongialuong*case when value =2 then    sl - qty1 else (sl -qty1) +qty1*0.3 end  as luongsx, t.lcd,t.lgv,t.lgt,hsv_dongialuong*case when value =2 then    sl - qty1 else (sl -qty1) +qty1*0.3 end +t.lgv+t.lcd-t.lgt as lcl
+from(   
+select description , hsv_stt, value,name,sum(sl) as sl,sum(qty1) as qty1,sum(hsv_dongialuong) as hsv_dongialuong,sum(lcd) as lcd,sum(lgv) as lgv,sum(lgt) as lgt
+from(
+
+		select description, hsv_stt, value,t1.name,sl ,qty1,hsv_dongialuong,lcd,lgv,lgt
+		from(
+		
+		select dm.description,dm.hsv_stt,cast(dm.value as integer) as value,dm.name,sum(t.sl0) as sl, k.qty1  ,l.hsv_dongialuong, l.hsv_luongcd as lcd,0 as lgv,0 as lgt
+		--select dm.description,dm.hsv_stt,cast(dm.value as integer) as value,dm.name, sum(t.sl0)  as sl ,k.qty1 as hsv_dongialuong, l.hsv_luongcd as lcd,0 as lgv,0 as lgt
+
+		from (
+        	select 1 as id, '1' as chitieu,AD_Org_ID,hsv_luongql_id,$P{StartDate} as ngay,0 as sl0 
+        	from hsv_luongql  where value ='1' and ad_client_id=$P{AD_CLIENT_ID} and  (AD_Org_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null) 
+              
+              union all 
+              
+      
+                 select 1 as id, '2' as chitieu,t.AD_Org_ID,l.hsv_luongql_id,t.movementdate as ngay,sum(t.sl) as sl0 
+             from(select '2' as chitieu,ci.AD_Org_ID,ci.movementdate,COALESCE(sum(civ.movementqty),0) as sl from m_inoutline civ
+                            join m_inout ci on civ.m_inout_id=ci.m_inout_id and ci.C_DocType_ID IN ('1000311','1000312') and ci.docstatus in ('CO','CL')                       
+                                 and ci.movementdate>=$P{StartDate} and ci.movementdate<=$P{EndDate} and (ci.AD_Org_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null) 
+                            join m_product hh on civ.m_product_id=hh.m_product_id  and hh.M_Product_Category_ID=1000085 and hh.M_AttributeSet_ID in ('1000064','1000136')
+                  where civ.ad_client_id=$P{AD_CLIENT_ID} 
+                  group by ci.movementdate,ci.AD_Org_ID
+                  ) as t
+             join hsv_luongql l on t.chitieu=l.value and ad_client_id=$P{AD_CLIENT_ID}	
+             group by  l.hsv_luongql_id,t.movementdate,t.AD_Org_ID	
+         
+              
+             union all 
+              
+             select 1 as id, '3' as chitieu,t.AD_Org_ID,l.hsv_luongql_id,t.movementdate as ngay,sum(t.sl) as sl0 
+             from(select '3' as chitieu,ci.AD_Org_ID,ci.movementdate,COALESCE(sum(civ.movementqty),0) as sl from m_inoutline civ
+                            join m_inout ci on civ.m_inout_id=ci.m_inout_id and ci.C_DocType_ID IN ('1000311','1000312') and ci.docstatus in ('CO','CL')                       
+                                 and ci.movementdate>=$P{StartDate} and ci.movementdate<=$P{EndDate} and (ci.AD_Org_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null) 
+                            join m_product hh on civ.m_product_id=hh.m_product_id  and hh.M_Product_Category_ID=1000085 and hh.M_AttributeSet_ID in ('1000064','1000136')
+                  where civ.ad_client_id=$P{AD_CLIENT_ID} 
+                  group by ci.movementdate,ci.AD_Org_ID
+                  ) as t
+             join hsv_luongql l on t.chitieu=l.value and ad_client_id=$P{AD_CLIENT_ID}	
+             group by  l.hsv_luongql_id,t.movementdate,t.AD_Org_ID		        
+                    
+              union all 
+              
+             select 1 as id, '4' as chitieu,t.AD_Org_ID,l.hsv_luongql_id,t.movementdate as ngay,sum(t.sl) as sl0 
+             from(select '4' as chitieu,ci.AD_Org_ID,ci.movementdate,COALESCE(sum(civ.movementqty),0) as sl from m_inoutline civ
+                            join m_inout ci on civ.m_inout_id=ci.m_inout_id and ci.C_DocType_ID IN ('1000311','1000312') and ci.docstatus in ('CO','CL')                        
+                                and ci.movementdate>=$P{StartDate} and ci.movementdate<=$P{EndDate} and (ci.AD_Org_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null) 
+                            join m_product hh on civ.m_product_id=hh.m_product_id  and hh.M_Product_Category_ID=1000085 and hh.M_AttributeSet_ID in ( '1000064','1000136')
+                  where civ.ad_client_id=$P{AD_CLIENT_ID} 
+                  group by ci.movementdate,ci.AD_Org_ID
+                 ) as t 
+             join hsv_luongql l on t.chitieu=l.value and ad_client_id=$P{AD_CLIENT_ID}	
+             group by  l.hsv_luongql_id,t.movementdate	,t.AD_Org_ID	            
+              
+              union all
+                
+             select 1 as id, '5' as chitieu,t.AD_Org_ID,l.hsv_luongql_id,t.movementdate as ngay,sum(t.sl) as sl0 
+             from(select '5' as chitieu,ci.AD_Org_ID,ci.movementdate,COALESCE(sum(civ.movementqty),0) as sl from m_inoutline civ
+                        join m_inout ci on civ.m_inout_id=ci.m_inout_id and ci.C_DocType_ID IN ('1000311','1000312') and ci.docstatus in ('CO','CL')                        
+                            and ci.movementdate>=$P{StartDate} and ci.movementdate<=$P{EndDate} and (ci.AD_Org_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null) 
+                        join m_product hh on civ.m_product_id=hh.m_product_id  and hh.M_Product_Category_ID=1000085 and hh.M_AttributeSet_ID in ( '1000064','1000136')
+                  where civ.ad_client_id=$P{AD_CLIENT_ID} 
+                  group by ci.movementdate,ci.AD_Org_ID
+                  ) as t
+             join hsv_luongql l on t.chitieu=l.value and ad_client_id=$P{AD_CLIENT_ID}	
+             group by  l.hsv_luongql_id,t.movementdate	,t.AD_Org_ID	                 
+                        
+              union all
+                
+             select 1 as id, '6' as chitieu,t.AD_Org_ID,l.hsv_luongql_id,t.movementdate as ngay,sum(t.sl) as sl0 
+             from(select '6' as chitieu,ci.AD_Org_ID,ci.movementdate,COALESCE(sum(civ.movementqty),0) as sl from m_inoutline civ
+                        join m_inout ci on civ.m_inout_id=ci.m_inout_id and ci.C_DocType_ID IN ('1000311','1000312') and ci.docstatus in ('CO','CL')                        
+                            and ci.movementdate>=$P{StartDate} and ci.movementdate<=$P{EndDate} and (ci.AD_Org_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null) 
+                        join m_product hh on civ.m_product_id=hh.m_product_id  and hh.M_Product_Category_ID=1000085 and hh.M_AttributeSet_ID in ( '1000064','1000136')
+                  where civ.ad_client_id=$P{AD_CLIENT_ID} 			
+                  group by ci.movementdate,ci.AD_Org_ID
+                  ) as t
+             join hsv_luongql l on t.chitieu=l.value and ad_client_id=$P{AD_CLIENT_ID}	
+             group by  l.hsv_luongql_id,t.movementdate	,t.AD_Org_ID	                 
+              
+             union all
+             
+             select  1 as id,'7' as chitieu,t.AD_Org_ID,l.hsv_luongql_id,t.movementdate as ngay,sum(t.sl) as sl0
+             from(select '7' as chitieu,ci.AD_Org_ID,ci.movementdate,COALESCE(sum(civ.movementqty),0) as sl from m_inoutline civ
+                        join m_inout ci on civ.m_inout_id=ci.m_inout_id and ci.C_DocType_ID IN ('1000311','1000312') and ci.docstatus in ('CO','CL')                        
+                            and ci.movementdate>=$P{StartDate} and ci.movementdate<=$P{EndDate} and (ci.AD_Org_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null) 
+                        join m_product hh on civ.m_product_id=hh.m_product_id  and hh.M_Product_Category_ID=1000085 and hh.M_AttributeSet_ID in ( '1000064','1000136')
+                  where civ.ad_client_id=$P{AD_CLIENT_ID} 
+                  group by ci.movementdate,ci.AD_Org_ID
+                  ) as t
+             join hsv_luongql l on t.chitieu=l.value and ad_client_id=$P{AD_CLIENT_ID}	
+             group by  l.hsv_luongql_id,t.movementdate	,t.AD_Org_ID	                 
+                
+            
+             union all
+             
+             select 1 as id, '8' as chitieu,t.AD_Org_ID,l.hsv_luongql_id,t.movementdate as ngay,sum(t.sl) as sl0 
+             from(select '8' as chitieu,ci.AD_Org_ID,ci.movementdate,COALESCE(sum(civ.movementqty),0) as sl from m_inoutline civ
+                        join m_inout ci on civ.m_inout_id=ci.m_inout_id and ci.C_DocType_ID IN ('1000311','1000312') and ci.docstatus in ('CO','CL')                        
+                            and ci.movementdate>=$P{StartDate} and ci.movementdate<=$P{EndDate} and (ci.AD_Org_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null) 
+                        join m_product hh on civ.m_product_id=hh.m_product_id  and hh.M_Product_Category_ID=1000085 and hh.M_AttributeSet_ID in ( '1000064','1000136')
+                  where civ.ad_client_id=$P{AD_CLIENT_ID} 
+                  group by ci.movementdate,ci.AD_Org_ID
+                 ) as t
+             join hsv_luongql l on t.chitieu=l.value and ad_client_id=$P{AD_CLIENT_ID}	
+             group by  l.hsv_luongql_id,t.movementdate	,t.AD_Org_ID	                  
+              
+             union all
+              
+             select 1 as id, '9' as chitieu,t.AD_Org_ID,l.hsv_luongql_id,t.movementdate as ngay,sum(t.sl) as sl0 
+             from(select '9' as chitieu,ci.AD_Org_ID,ci.movementdate,COALESCE(sum(civ.movementqty),0) as sl from m_inoutline civ
+                        join m_inout ci on civ.m_inout_id=ci.m_inout_id and ci.C_DocType_ID IN ('1000311','1000312') and ci.docstatus in ('CO','CL')                        
+                            and ci.movementdate>=$P{StartDate} and ci.movementdate<=$P{EndDate} and (ci.AD_Org_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null) 
+                        join m_product hh on civ.m_product_id=hh.m_product_id  and hh.M_Product_Category_ID=1000085 and hh.M_AttributeSet_ID in ( '1000064','1000136')
+                 where civ.ad_client_id=$P{AD_CLIENT_ID} 
+                 group by ci.movementdate,ci.AD_Org_ID
+                 ) as t
+             join hsv_luongql l on t.chitieu=l.value and ad_client_id=$P{AD_CLIENT_ID}	
+             group by  l.hsv_luongql_id,t.movementdate,t.AD_Org_ID		                  
+              
+             union all
+              
+             select 1 as id, '10' as chitieu,t.AD_Org_ID,l.hsv_luongql_id,t.movementdate as ngay,sum(t.sl) as sl0 
+             from(select '10' as chitieu,ci.AD_Org_ID,ci.movementdate,COALESCE(sum(civ.movementqty),0) as sl from m_inoutline civ
+                        join m_inout ci on civ.m_inout_id=ci.m_inout_id and ci.C_DocType_ID IN ('1000311','1000312') and ci.docstatus in ('CO','CL')                        
+                            and ci.movementdate>=$P{StartDate} and ci.movementdate<=$P{EndDate} and (ci.AD_Org_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null) 
+                        join m_product hh on civ.m_product_id=hh.m_product_id  and hh.M_Product_Category_ID=1000085 and hh.M_AttributeSet_ID in ( '1000064','1000136')
+                  where civ.ad_client_id=$P{AD_CLIENT_ID} 
+                  group by ci.movementdate,ci.AD_Org_ID
+                  ) as t
+             join hsv_luongql l on t.chitieu=l.value and ad_client_id=$P{AD_CLIENT_ID}	
+             group by  l.hsv_luongql_id,t.movementdate	,t.AD_Org_ID	                  
+              
+             union all
+             
+             select 1 as id, '11' as chitieu,t.AD_Org_ID,l.hsv_luongql_id,t.movementdate as ngay,sum(t.sl) as sl0 
+             from(select '11' as chitieu,ci.AD_Org_ID,ci.movementdate,COALESCE(sum(civ.movementqty),0) as sl from m_inoutline civ
+                        join m_inout ci on civ.m_inout_id=ci.m_inout_id and ci.C_DocType_ID IN ('1000311','1000312') and ci.docstatus in ('CO','CL')                        
+                            and ci.movementdate>=$P{StartDate} and ci.movementdate<=$P{EndDate} and (ci.AD_Org_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null) 
+                        join m_product hh on civ.m_product_id=hh.m_product_id  and hh.M_Product_Category_ID=1000085 and hh.M_AttributeSet_ID in ( '1000064','1000136')
+                  where civ.ad_client_id=$P{AD_CLIENT_ID} 
+                  group by ci.movementdate,ci.AD_Org_ID
+                  ) as t
+             join hsv_luongql l on t.chitieu=l.value and ad_client_id=$P{AD_CLIENT_ID}	
+             group by  l.hsv_luongql_id,t.movementdate	,t.AD_Org_ID	
+             
+             --Chi tie 12:Luong thu mua
+             union all
+              
+             select 1 as id,'12' as chitieu,t.AD_Org_ID,l.hsv_luongql_id,t.movementdate as ngay,sum(t.sl) as sl0 
+             from(select '12' as chitieu,ci.AD_Org_ID,ci.movementdate,COALESCE(sum(civ.movementqty),0) as sl from m_inoutline civ
+                        join m_inout ci on civ.m_inout_id=ci.m_inout_id and ci.C_DocType_ID IN ('1000311','1000312') and ci.docstatus in ('CO','CL')                        
+                            and ci.movementdate>=$P{StartDate} and ci.movementdate<=$P{EndDate} and (ci.AD_Org_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null) 
+                        join m_product hh on civ.m_product_id=hh.m_product_id  and hh.M_Product_Category_ID=1000085 and hh.M_AttributeSet_ID in ( '1000064','1000136')
+                  where civ.ad_client_id=$P{AD_CLIENT_ID} 
+                  group by ci.movementdate,ci.AD_Org_ID
+                  ) as t
+             join hsv_luongql l on t.chitieu=l.value and ad_client_id=$P{AD_CLIENT_ID}	
+             group by  l.hsv_luongql_id,t.movementdate	,t.AD_Org_ID	           
+             
+             --Chi tieu 13:Luong ky thuat boc
+             union all
+             
+              select 1 as id, '13' as chitieu,t.AD_Org_ID,l.hsv_luongql_id,t.movementdate as ngay,sum(t.sl) as sl0 
+              from( select P.movementdate,pl.AD_Org_ID,COALESCE(sum(pl.productionqty),0) as sl,'13' as chitieu from m_productionplan pl
+                            join m_product hh on pl.m_product_id=hh.m_product_id and hh.M_Product_Category_ID=1000085 and hh.M_AttributeSet_ID in ('1000065')
+                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL')
+                                AND P.movementdate>=$P{StartDate} and P.movementdate<=$P{EndDate}
+                            where pl.ad_client_id=$P{AD_CLIENT_ID}  and (p.AD_Org_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null) 
+                    group by P.movementdate,pl.AD_Org_ID
+                        ) as t    
+                    join hsv_luongql l on t.chitieu=l.value and ad_client_id=$P{AD_CLIENT_ID}	
+             group by  l.hsv_luongql_id,t.movementdate	,t.AD_Org_ID	   
+             
+              --Chi tieu 131: 13. Lương  kỹ thuật bóc (ván lót mặt)
+             union all
+             
+              select 1 as id, '131' as chitieu,t.AD_Org_ID,l.hsv_luongql_id,t.movementdate as ngay,sum(t.sl) as sl0 
+              from( select P.movementdate,pl.AD_Org_ID,COALESCE(sum(pl.productionqty),0) as sl,'131' as chitieu from m_productionplan pl
+                            join m_product hh on pl.m_product_id=hh.m_product_id and hh.M_Product_ID=1017248
+                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL')
+                                AND P.movementdate>=$P{StartDate} and P.movementdate<=$P{EndDate}
+                            where pl.ad_client_id=$P{AD_CLIENT_ID}  and (p.AD_Org_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null) 
+                    group by P.movementdate,pl.AD_Org_ID
+                        ) as t   
+                    join hsv_luongql l on t.chitieu=l.value and ad_client_id=$P{AD_CLIENT_ID}	
+             group by  l.hsv_luongql_id,t.movementdate	,t.AD_Org_ID	                      
+             
+             --Chi tieu 141:  14. Lương  BDH N liệu (ván lót mặt)
+             union all
+             
+              select 1 as id, '141' as chitieu,t.AD_Org_ID,l.hsv_luongql_id,t.movementdate as ngay,sum(t.sl) as sl0 
+              from( 		select P.movementdate,pl.AD_Org_ID,COALESCE(sum(pl.productionqty),0) as sl,'141' as chitieu from m_productionplan pl
+                            join m_product hh on pl.m_product_id=hh.m_product_id and hh.M_Product_ID=1017248
+                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL')
+                                AND P.movementdate>=$P{StartDate} and P.movementdate<=$P{EndDate}
+                            where pl.ad_client_id=$P{AD_CLIENT_ID}  and (p.AD_Org_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null) 
+                    		group by P.movementdate,pl.AD_Org_ID
+               	) as t    
+               	
+              	join hsv_luongql l on t.chitieu=l.value and ad_client_id=$P{AD_CLIENT_ID}	
+            	group by  l.hsv_luongql_id,t.movementdate	,t.AD_Org_ID	        
+        ) as t 
+        join (
+			select 1 as id,sum(qty) as qty1 --sl mua-ban van cot quy tam
+			from(
+				select -1*sum(civ.qtyentered)* hh.shelfdepth *hh.shelfheight *hh.shelfwidth /1000000000 as qty
+				from m_inout ci
+				join m_inoutline civ on ci.m_inout_id= civ.m_inout_id and ci.docstatus in('CL','CO') and ci.issotrx = 'Y'
+				join m_product hh on civ.m_product_id = hh.m_product_id and hh.m_product_category_id = 1000530
+				where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.c_doctype_id <> 1000304 and (ci.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and ci.dateacct >=$P{StartDate} and ci.dateacct <= $P{EndDate}
+				group by hh.shelfdepth ,hh.shelfheight ,hh.shelfwidth
+				union all 
+				select sum(civ.qtyentered)* hh.shelfdepth *hh.shelfheight *hh.shelfwidth /1000000000 as qty
+				from m_inout ci
+				join m_inoutline civ on ci.m_inout_id= civ.m_inout_id and ci.docstatus in('CL','CO') and ci.issotrx = 'N'
+				join m_product hh on civ.m_product_id = hh.m_product_id and hh.m_product_category_id = 1000530
+				where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.c_doctype_id <> 1000304 and (ci.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and ci.dateacct >=$P{StartDate} and ci.dateacct <= $P{EndDate}
+				group by hh.shelfdepth ,hh.shelfheight ,hh.shelfwidth
+			) as b   ) as k on t.id = k.id
+        join hsv_luongql dm on t.chitieu=dm.value and ad_client_id=$P{AD_CLIENT_ID} --and l.AD_Org_ID=1000119
+        join (			select l.EndDate,l.StartDate,ln.hsv_dongialuong,ln.AD_Org_ID,  ln.hsv_luongql_id, ln.hsv_luongcd
+                        from  hsv_dgluongLine ln
+                        join hsv_dgluong l on l.hsv_loaidongia_ID = 1000010  and l.hsv_dgluong_ID=ln.hsv_dgluong_ID and l.ad_client_id=$P{AD_CLIENT_ID}
+               ) as l on t.hsv_luongql_id=l.hsv_luongql_id  and t.ngay>=l.StartDate and t.ngay<=l.EndDate and t.AD_Org_ID=l.AD_Org_ID
+    		group by dm.description,dm.hsv_stt,t.chitieu,dm.value,dm.name,l.hsv_dongialuong,l.hsv_luongcd,k.qty1
+   		)  as t1
+        --Luong giao viec 
+        union all
+    
+ 		select dm.description,dm.hsv_stt,cast(dm.value as integer) as value,dm.name,0 as sl,0 as qty1,0 as hsv_dongialuong,0 as lcd,t.lgv,0 as lgt
+		from(	select gv.hsv_luongql_ID,sum(Amount) as lgv
+		        from hsv_pgvLine gvl
+		 		join hsv_giaoviec gv on gv.hsv_giaoviec_id =gvl.hsv_giaoviec_id 
+	 			where gv.dateacct>=$P{StartDate} and gv.dateacct<=$P{EndDate} and gv.ad_client_id =$P{AD_CLIENT_ID}and (gv.AD_Org_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null) 
+	 			group by gv.hsv_luongql_ID
+ 		) as t	
+        join hsv_luongql dm on t.hsv_luongql_ID=dm.hsv_luongql_ID and ad_client_id=$P{AD_CLIENT_ID} 
+        
+        --Luong giam tru
+        union all
+
+ 		select dm.description,dm.hsv_stt,cast(dm.value as integer) as value,dm.name,0 as sl,0 as qty1,0 as hsv_dongialuong, 0 as lcd,0,t.lgt as lgt
+		from(	select gv.hsv_luongql_ID,sum(Amount) as lgt
+		        from hsv_giamtruLine gvl
+		 		join hsv_giamtru gv on gv.hsv_giamtru_id  =gvl.hsv_giamtru_id 
+	 			where gv.dateacct>=$P{StartDate} and gv.dateacct<=$P{EndDate} and gv.ad_client_id =$P{AD_CLIENT_ID} and (gv.AD_Org_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null) 
+	 			group by gv.hsv_luongql_ID
+ 		) as t	
+        join hsv_luongql dm on t.hsv_luongql_ID=dm.hsv_luongql_ID and ad_client_id=$P{AD_CLIENT_ID} 
+
+        ) as t
+        group by t.hsv_stt,t.description,t.value,t.name 
+    ) as t
+
+order by t.hsv_stt asc]]>
+	</queryString>
+	<field name="stt" class="java.lang.Long">
+		<property name="com.jaspersoft.studio.field.name" value="stt"/>
+		<property name="com.jaspersoft.studio.field.label" value="stt"/>
+	</field>
+	<field name="hsv_stt" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="hsv_stt"/>
+		<property name="com.jaspersoft.studio.field.label" value="hsv_stt"/>
+	</field>
+	<field name="description" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="description"/>
+		<property name="com.jaspersoft.studio.field.label" value="description"/>
+	</field>
+	<field name="value" class="java.lang.Integer">
+		<property name="com.jaspersoft.studio.field.name" value="value"/>
+		<property name="com.jaspersoft.studio.field.label" value="value"/>
+	</field>
+	<field name="name" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="name"/>
+		<property name="com.jaspersoft.studio.field.label" value="name"/>
+	</field>
+	<field name="sl" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="sl"/>
+		<property name="com.jaspersoft.studio.field.label" value="sl"/>
+	</field>
+	<field name="hsv_dongialuong" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="hsv_dongialuong"/>
+		<property name="com.jaspersoft.studio.field.label" value="hsv_dongialuong"/>
+	</field>
+	<field name="luongsx" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="luongsx"/>
+		<property name="com.jaspersoft.studio.field.label" value="luongsx"/>
+	</field>
+	<field name="lcd" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="lcd"/>
+		<property name="com.jaspersoft.studio.field.label" value="lcd"/>
+	</field>
+	<field name="lgv" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="lgv"/>
+		<property name="com.jaspersoft.studio.field.label" value="lgv"/>
+	</field>
+	<field name="lgt" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="lgt"/>
+		<property name="com.jaspersoft.studio.field.label" value="lgt"/>
+	</field>
+	<field name="lcl" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="lcl"/>
+		<property name="com.jaspersoft.studio.field.label" value="lcl"/>
+	</field>
+	<variable name="LGV" class="java.math.BigDecimal" resetType="Group" resetGroup="Nhom" calculation="Sum">
+		<variableExpression><![CDATA[$F{lgv}]]></variableExpression>
+	</variable>
+	<variable name="TTT" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{luongsx}]]></variableExpression>
+	</variable>
+	<variable name="TT" class="java.math.BigDecimal" resetType="Group" resetGroup="Nhom" calculation="Sum">
+		<variableExpression><![CDATA[$F{luongsx}]]></variableExpression>
+	</variable>
+	<variable name="TLGV" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{lgv}]]></variableExpression>
+	</variable>
+	<variable name="LGT" class="java.math.BigDecimal" resetType="Group" resetGroup="Nhom" calculation="Sum">
+		<variableExpression><![CDATA[$F{lgt}]]></variableExpression>
+	</variable>
+	<variable name="TLCL" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{lcl}]]></variableExpression>
+	</variable>
+	<variable name="TLGT" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{lgt}]]></variableExpression>
+	</variable>
+	<variable name="LCL" class="java.math.BigDecimal" resetType="Group" resetGroup="Nhom" calculation="Sum">
+		<variableExpression><![CDATA[$F{lcl}]]></variableExpression>
+	</variable>
+	<group name="Nhom" minHeightToStartNewPage="20">
+		<groupExpression><![CDATA[$F{description}]]></groupExpression>
+		<groupHeader>
+			<band/>
+		</groupHeader>
+		<groupFooter>
+			<band height="27">
+				<textField>
+					<reportElement x="10" y="0" width="420" height="27" uuid="3abdb1c4-26db-4b96-b577-2a9e7187a9ad">
+						<property name="local_mesure_unitwidth" value="pixel"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+						<property name="local_mesure_unitx" value="pixel"/>
+						<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					</reportElement>
+					<box>
+						<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textElement verticalAlignment="Middle">
+						<font fontName="Arial" size="11" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA["Cộng nhóm :"]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0" isBlankWhenNull="true">
+					<reportElement x="430" y="0" width="95" height="27" uuid="84284d63-216a-4a4a-915f-5bdfaad175e5">
+						<property name="local_mesure_unitwidth" value="pixel"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+						<property name="local_mesure_unitx" value="pixel"/>
+						<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					</reportElement>
+					<box>
+						<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" size="11" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{TT}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0" isBlankWhenNull="true">
+					<reportElement x="590" y="0" width="65" height="27" uuid="f88bd288-5d54-434a-8c0b-8f422acfef7e">
+						<property name="local_mesure_unitwidth" value="pixel"/>
+						<property name="local_mesure_unitx" value="pixel"/>
+						<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					</reportElement>
+					<box>
+						<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" size="11" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{LGV}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0" isBlankWhenNull="true">
+					<reportElement x="655" y="0" width="65" height="27" uuid="27c70d46-1eda-4012-9b4d-e027e2cef056">
+						<property name="local_mesure_unitwidth" value="pixel"/>
+						<property name="local_mesure_unitx" value="pixel"/>
+						<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					</reportElement>
+					<box>
+						<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" size="11" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{LGT}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0" isBlankWhenNull="true">
+					<reportElement x="720" y="0" width="100" height="27" uuid="7bcd5662-674a-4f06-b5a6-3eaef7deb27b">
+						<property name="local_mesure_unitwidth" value="pixel"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+						<property name="local_mesure_unitx" value="pixel"/>
+						<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					</reportElement>
+					<box>
+						<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" size="11" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{LCL}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0" isBlankWhenNull="true">
+					<reportElement x="525" y="0" width="65" height="27" uuid="39cdcc83-5729-4e6e-87ae-a5c718a6a3ca">
+						<property name="local_mesure_unitwidth" value="pixel"/>
+						<property name="local_mesure_unitx" value="pixel"/>
+						<property name="com.jaspersoft.studio.unit.x" value="px"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+						<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					</reportElement>
+					<box>
+						<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" size="11" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{LGV}]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupFooter>
+	</group>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="135">
+			<property name="local_mesure_unitheight" value="pixel"/>
+			<property name="com.jaspersoft.studio.unit.height" value="px"/>
+			<printWhenExpression><![CDATA[$P{EXPORT_TYPE}==null || $P{EXPORT_TYPE}=="PDF"]]></printWhenExpression>
+			<textField>
+				<reportElement x="12" y="85" width="816" height="20" uuid="78c9e16a-13e7-4ab9-ad70-f3b3971b2459">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Kỳ báo cáo : " + new SimpleDateFormat("dd/MM/yyyy").format($P{StartDate}) + " To "  + new SimpleDateFormat("dd/MM/yyyy").format($P{EndDate})]]></textFieldExpression>
+			</textField>
+			<textField pattern="" isBlankWhenNull="false">
+				<reportElement key="textField-2" x="586" y="10" width="190" height="19" forecolor="#000000" backcolor="#FFFFFF" uuid="60934052-ee8f-49bd-9d0a-7ae83bb2a10f"/>
+				<box>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Trang " + $V{PAGE_NUMBER} + " / "]]></textFieldExpression>
+			</textField>
+			<textField evaluationTime="Report" pattern="" isBlankWhenNull="false">
+				<reportElement key="textField-3" x="780" y="10" width="36" height="19" forecolor="#000000" backcolor="#FFFFFF" uuid="289fbb8e-6542-4e0c-9ff4-c35b72356357"/>
+				<box>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA["" + $V{PAGE_NUMBER}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="13" y="63" width="816" height="20" uuid="0f051dca-ba94-4491-aa78-c32e22ab5c19">
+					<property name="local_mesure_unitheight" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="16" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["BÁO CÁO QUẢN TRỊ LƯƠNG QUẢN LÝ "]]></textFieldExpression>
+			</textField>
+			<subreport>
+				<reportElement x="10" y="10" width="373" height="51" uuid="0ef0b471-6ea4-415d-bf69-ad27f7f1f740"/>
+				<subreportParameter name="AD_Client_ID">
+					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"CompanyHeader.jasper"]]></subreportExpression>
+			</subreport>
+			<subreport>
+				<reportElement x="15" y="105" width="813" height="30" uuid="4c97ecdd-7d41-48aa-aab5-3df7e7fac052"/>
+				<subreportParameter name="AD_Client_ID">
+					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="AD_Org_ID">
+					<subreportParameterExpression><![CDATA[$P{AD_Org_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"BoPhan.jasper"]]></subreportExpression>
+			</subreport>
+		</band>
+	</title>
+	<columnHeader>
+		<band height="31" splitType="Stretch">
+			<property name="local_mesure_unitheight" value="pixel"/>
+			<property name="com.jaspersoft.studio.unit.height" value="px"/>
+			<staticText>
+				<reportElement x="10" y="1" width="70" height="30" uuid="9b25b95e-b85e-44d8-95c8-0b7b1661b48c"/>
+				<box>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[STT]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="80" y="1" width="220" height="30" uuid="edfe045e-26e4-4b3c-8d08-1bd0f99baca6">
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					<property name="local_mesure_unitwidth" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Nội dung]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="300" y="1" width="70" height="30" uuid="8a5bbc35-31b1-46a3-b331-486d7ccc51da">
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Số lượng]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="370" y="1" width="60" height="30" uuid="757e94b3-2509-464e-b79e-d1132de20cf5">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Đơn giá]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="430" y="1" width="95" height="30" uuid="6039adaf-72cb-44ca-acac-4169eecaac44"/>
+				<box>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Thành tiền]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="590" y="1" width="65" height="30" uuid="371d85fd-ab9d-467c-b891-9b06a9a1d0c9">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Lương giao việc]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="655" y="1" width="65" height="30" uuid="e6009f6c-7c9b-4bd8-8386-d740b9d320fd">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Lương giảm trừ]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="720" y="1" width="100" height="30" uuid="6ab80405-bef8-4f87-a10b-828f57e18898"/>
+				<box>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Tổng lương]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="525" y="1" width="65" height="30" uuid="7475798a-43bf-4ac5-bfed-5ba7c15bdacc">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Lương cố định]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="27" splitType="Stretch">
+			<property name="local_mesure_unitheight" value="pixel"/>
+			<property name="com.jaspersoft.studio.unit.height" value="px"/>
+			<textField>
+				<reportElement x="10" y="0" width="70" height="27" uuid="238320d9-52f4-4b8d-997b-4a9ee348cf20">
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					<property name="local_mesure_unitheight" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{stt}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="80" y="0" width="220" height="27" uuid="d5d34af4-7867-4347-82a4-03db48dd2fc2">
+					<property name="local_mesure_unitwidth" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{name}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="300" y="0" width="70" height="27" uuid="28dd3c2e-37c4-4b18-abe1-9bc77e3b45bb">
+					<property name="local_mesure_unitheight" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{sl}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.###" isBlankWhenNull="true">
+				<reportElement x="370" y="0" width="60" height="27" uuid="32089575-eb4f-4ece-9c4d-9aa3c8ed19d7">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{hsv_dongialuong}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="430" y="0" width="95" height="27" uuid="436ae9de-db13-4eea-9935-9d795b330a02">
+					<property name="local_mesure_unitwidth" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{luongsx}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="590" y="0" width="65" height="27" uuid="e92be669-5601-4f16-9415-c83daf188214">
+					<property name="local_mesure_unitwidth" value="pixel"/>
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{lgv}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="655" y="0" width="65" height="27" uuid="e0479327-b38b-493b-9da0-f8caf73f3837">
+					<property name="local_mesure_unitwidth" value="pixel"/>
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{lgt}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="720" y="0" width="100" height="27" uuid="2c32a234-b99d-43bc-bdd0-c3e6cc7f2356">
+					<property name="local_mesure_unitwidth" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{lcl}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="525" y="0" width="65" height="27" uuid="8b84fd31-7cbf-4f44-96d3-75477f8cbfc3">
+					<property name="local_mesure_unitwidth" value="pixel"/>
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{lcd}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<summary>
+		<band height="70">
+			<printWhenExpression><![CDATA[$P{EXPORT_TYPE}==null || $P{EXPORT_TYPE}=="PDF"]]></printWhenExpression>
+			<textField pattern="" isBlankWhenNull="false">
+				<reportElement key="textField-4" x="510" y="35" width="227" height="19" forecolor="#000000" backcolor="#FFFFFF" uuid="26c2a31c-7c51-4f79-8242-3a5bf4892e52"/>
+				<box>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Ngày in: " + new SimpleDateFormat("dd/MM/yyyy hh24:mm").format(new Date())]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement key="staticText-8" positionType="Float" stretchType="RelativeToTallestObject" x="552" y="52" width="148" height="16" uuid="7e444384-a93a-4097-84ef-e251613901c5"/>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Kiểm soát]]></text>
+			</staticText>
+			<staticText>
+				<reportElement key="staticText-8" positionType="Float" stretchType="RelativeToTallestObject" x="67" y="53" width="118" height="16" uuid="5b337119-c93f-4b0b-9db5-bd89ec2894fa"/>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Lập biểu]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="10" y="0" width="420" height="27" uuid="9794f009-0dfc-4e8c-a3cf-3a57b3245645">
+					<property name="local_mesure_unitwidth" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Tổng cộng :"]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="430" y="0" width="95" height="27" uuid="777823af-4d0b-4f88-a79a-00df90b6e888">
+					<property name="local_mesure_unitwidth" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{TTT}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="590" y="0" width="65" height="27" uuid="e1da403f-b3b8-4559-84a4-c2d0ec7f9c92">
+					<property name="local_mesure_unitwidth" value="pixel"/>
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{TLGV}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="655" y="0" width="65" height="27" uuid="6a8a3e34-4180-4c9d-b71e-70d305159024">
+					<property name="local_mesure_unitwidth" value="pixel"/>
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{TLGT}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="720" y="0" width="100" height="27" uuid="af29393c-2f00-405d-a8ae-3c207d504132">
+					<property name="local_mesure_unitwidth" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{TLCL}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="525" y="0" width="65" height="27" uuid="749a3e60-831e-4602-8642-0c7ba769c5ea">
+					<property name="local_mesure_unitwidth" value="pixel"/>
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{TLGV}]]></textFieldExpression>
+			</textField>
+		</band>
+	</summary>
+</jasperReport>

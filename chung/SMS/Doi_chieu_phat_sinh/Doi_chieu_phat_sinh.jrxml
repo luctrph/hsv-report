@@ -1,0 +1,330 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.17.0.final using JasperReports Library version 6.17.0-6d93193241dd8cc42629e188b94f9e0bc5722efd  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Doi_chieu_phat_sinh" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="4d6e5d5e-5f24-4e4b-9788-7ff63ee62726">
+	<property name="net.sf.jasperreports.export.xls.detect.cell.type" value="true"/>
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="adempiere_7.1"/>
+	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
+	<parameter name="C_BankAccount_ID" class="java.lang.Integer"/>
+	<parameter name="StartDate" class="java.util.Date"/>
+	<parameter name="EndDate" class="java.util.Date"/>
+	<parameter name="AD_Org_ID" class="java.lang.Integer"/>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String">
+		<defaultValueExpression><![CDATA["dev/"]]></defaultValueExpression>
+	</parameter>
+	<queryString language="SQL">
+		<![CDATA[select to_char(k.DateTrx,'DD-MM-YYYY') as DateTrx , description,ps,ps1
+from 
+(
+
+select  nktt.dateacct as DateTrx, ttl.description,
+ ttl.amount as PS, 0 as ps1
+from hsv_nkthanhtoan nktt
+join hsv_thanhtoanline ttl on nktt.hsv_nkthanhtoan_id = ttl.hsv_nkthanhtoan_id 
+join C_BankAccount ba on ba.c_bankaccount_id = ttl.c_bankaccount_id
+where nktt.ad_client_id = $P{AD_CLIENT_ID} and nktt.dateacct>=$P{StartDate} and nktt.dateacct<=$P{EndDate}
+and ttl.c_bankaccount_id = $P{C_BankAccount_ID}
+union all 
+select DateTrx, DESCRIPTION as description,0 as ps,case when "PSNO" >0 then "PSNO" else -1 * "PSCO" end as ps1
+from(
+select  pa.DATETRX as DateTrx,
+CASE WHEN pa.DESCRIPTION is not null THEN pa.DESCRIPTION
+     WHEN pa.C_INVOICE_ID is not null THEN (SELECT inv.DOCUMENTNO FROM C_INVOICE inv
+                                       WHERE inv.C_INVOICE_ID=inv.C_INVOICE_ID LIMIT 1)
+ELSE '' END AS DESCRIPTION,
+0 as "PSNO",pa.PAYAMT as "PSCO"
+from C_PAYMENT pa ,C_DOCTYPE doc,C_BPARTNER kh
+WHERE pa.C_DOCTYPE_ID=doc.C_DOCTYPE_ID AND pa.DOCSTATUS IN ('CO','CL')
+AND doc.docbasetype IN ('APP') and pa.posted='Y'
+and pa.C_BankAccount_ID=$P{C_BankAccount_ID}
+AND (pa.DATETRX >= $P{StartDate} and pa.DATETRX <= $P{EndDate})
+and (pa.AD_Orgtrx_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
+and pa.ad_client_id = $P{AD_CLIENT_ID}
+
+UNION all
+
+select pa.DATETRX as DateTrx,
+CASE WHEN pa.DESCRIPTION is not null THEN pa.DESCRIPTION
+     WHEN pa.C_INVOICE_ID is not null THEN (SELECT inv.DOCUMENTNO FROM C_INVOICE inv
+                                       WHERE inv.C_INVOICE_ID=pa.C_INVOICE_ID LIMIT 1)
+ELSE '' END AS DESCRIPTION,
+pa.PAYAMT as "PSNO",0 as "PSCO"
+from C_PAYMENT pa ,C_DOCTYPE doc,C_BPartner kh
+WHERE pa.C_DOCTYPE_ID=doc.C_DOCTYPE_ID AND pa.DOCSTATUS IN ('CO','CL')
+AND doc.docbasetype IN ('ARR')  and pa.posted='Y'
+and pa.C_BankAccount_ID=$P{C_BankAccount_ID}
+AND (pa.DATETRX >= $P{StartDate} and pa.DATETRX <= $P{EndDate} )
+and (pa.AD_Orgtrx_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
+and pa.ad_client_id = $P{AD_CLIENT_ID}
+
+UNION all
+
+select t.datetrx as "DateTrx",
+t.DESCRIPTION,t.PSCO as "PSNO",t.PSNO as "PSCO"
+
+from (select pa.DATETRX ,pa.DOCUMENTNO,kh.name as NAME,
+		 pa.DESCRIPTION	,pa.PAYAMT as GRANDTOTAL,pa.PAYAMT as PSCO,0 as PSNO,pa.DOCSTATUS,pa.c_charge_id,c_charge_acct.ch_expense_acct
+
+		from C_PAYMENT pa 
+                inner join c_charge_acct on  pa.c_charge_id=c_charge_acct.c_charge_id 
+		inner join C_DOCTYPE doc on pa.C_DOCTYPE_ID=doc.C_DOCTYPE_ID AND doc.docbasetype IN ('APP')
+		left join C_BPARTNER kh on pa.C_BPARTNER_ID=kh.C_BPARTNER_ID
+		where pa.c_charge_id is not null and pa.docstatus in ('CO','CL')
+		      AND (pa.DATETRX >= $P{StartDate} and pa.DATETRX <= $P{EndDate} )
+		                    and pa.posted='Y'
+              and (pa.AD_Orgtrx_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
+              and pa.ad_client_id = $P{AD_CLIENT_ID}
+      ) as t
+inner join c_bankaccount_acct acct on acct.b_asset_acct=t.ch_expense_acct and acct.C_BankAccount_ID=$P{C_BankAccount_ID}
+
+
+UNION
+
+select t.datetrx as "DateTrx",
+t.DESCRIPTION,t.PSCO as "PSNO",t.PSNO as "PSCO"
+
+from (select pa.DATETRX ,pa.DOCUMENTNO,kh.Name as NAME,
+		 pa.DESCRIPTION	,-1*pa.PAYAMT as GRANDTOTAL,0 as PSCO,pa.PAYAMT as PSNO,pa.DOCSTATUS,pa.c_charge_id,c_charge_acct.ch_expense_acct
+
+		from C_PAYMENT pa 
+                inner join c_charge_acct on  pa.c_charge_id=c_charge_acct.c_charge_id 
+                		left join C_BPARTNER kh on pa.C_BPARTNER_ID=kh.C_BPARTNER_ID
+		inner join C_DOCTYPE doc on pa.C_DOCTYPE_ID=doc.C_DOCTYPE_ID AND doc.docbasetype IN ('ARR')
+		where pa.c_charge_id is not null and pa.docstatus in ('CO','CL')
+		      AND (pa.DATETRX >= $P{StartDate} and pa.DATETRX <= $P{EndDate} )
+		                    and pa.posted='Y'
+              and (pa.AD_Orgtrx_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
+              and pa.ad_client_id = $P{AD_CLIENT_ID}
+      ) as t
+inner join c_bankaccount_acct acct on acct.b_asset_acct=t.ch_expense_acct and acct.C_BankAccount_ID=$P{C_BankAccount_ID}
+) as t  
+) as k
+order by DateTrx, ps]]>
+	</queryString>
+	<field name="datetrx" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="datetrx"/>
+		<property name="com.jaspersoft.studio.field.label" value="datetrx"/>
+	</field>
+	<field name="description" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="description"/>
+		<property name="com.jaspersoft.studio.field.label" value="description"/>
+	</field>
+	<field name="ps" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="ps"/>
+		<property name="com.jaspersoft.studio.field.label" value="ps"/>
+	</field>
+	<field name="ps1" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="ps1"/>
+		<property name="com.jaspersoft.studio.field.label" value="ps1"/>
+	</field>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="88" splitType="Stretch">
+			<textField pattern="dd/MM/yyyy" isBlankWhenNull="true">
+				<reportElement key="textField-6" x="4" y="23" width="552" height="20" uuid="05e005af-12a0-4d91-b03e-01927e74e651"/>
+				<box>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="16" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<textFieldExpression><![CDATA["BÁO CÁO ĐỐI CHIẾU PHÁT SINH"]]></textFieldExpression>
+			</textField>
+			<textField pattern="dd/MM/yyyy" isBlankWhenNull="true">
+				<reportElement key="textField-5" x="3" y="42" width="552" height="20" uuid="969abacc-5653-4df3-9bdd-b5d4bba4c429"/>
+				<box>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Từ  ngày: " + new SimpleDateFormat("dd/MM/yyyy").format($P{StartDate}) + "      Đến:  "  + new SimpleDateFormat("dd/MM/yyyy").format($P{EndDate})]]></textFieldExpression>
+			</textField>
+			<subreport isUsingCache="true">
+				<reportElement key="subreport-12" positionType="Float" x="0" y="71" width="555" height="14" uuid="6db5910e-20fc-4ad6-9587-3130f37f34db"/>
+				<subreportParameter name="AD_CLIENT_ID">
+					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="StartDate">
+					<subreportParameterExpression><![CDATA[$P{StartDate}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="EndDate">
+					<subreportParameterExpression><![CDATA[$P{EndDate}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="C_BankAccount_ID">
+					<subreportParameterExpression><![CDATA[$P{C_BankAccount_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="SUBREPORT_DIR">
+					<subreportParameterExpression><![CDATA[$P{SUBREPORT_DIR}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"tai_khoan_nh.jasper"]]></subreportExpression>
+			</subreport>
+			<subreport isUsingCache="true">
+				<reportElement key="subreport-12" positionType="Float" x="0" y="0" width="556" height="14" uuid="4c91f36e-71e1-423d-b413-0aa4b16fdcc1"/>
+				<subreportParameter name="AD_CLIENT_ID">
+					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="EndDate">
+					<subreportParameterExpression><![CDATA[$P{EndDate}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="C_BankAccount_ID">
+					<subreportParameterExpression><![CDATA[$P{C_BankAccount_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="SUBREPORT_DIR">
+					<subreportParameterExpression><![CDATA[$P{SUBREPORT_DIR}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"CompanyHeader.jasper"]]></subreportExpression>
+			</subreport>
+		</band>
+	</title>
+	<columnHeader>
+		<band height="30" splitType="Stretch">
+			<staticText>
+				<reportElement x="0" y="0" width="141" height="30" uuid="8bc65389-9fac-486b-b7b7-8acbbd1cd2a8">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="a5027d71-edf0-419b-82e2-8bde96ca2c44"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Ngày]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="141" y="0" width="138" height="30" uuid="fb8f5c4f-9a87-4a08-8ff6-c2c03a00ac75">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="03aad9a2-fa72-4a11-90ea-0350dd851159"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Nội dung]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="279" y="0" width="138" height="30" uuid="9fe460f2-d76b-434b-9566-a37ebc6ab339">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="1dde64e2-9d6a-45cd-9fa7-7891ea43da8a"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Tin nhắn]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="417" y="0" width="138" height="30" uuid="c808bebd-43a1-4d24-a5da-00cd38e63a85">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="72bee581-6336-49c1-bfeb-06aa9858088b"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Phần mềm]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="25" splitType="Stretch">
+			<textField>
+				<reportElement x="0" y="0" width="141" height="25" uuid="cbe51710-1658-4ac8-95a9-1975283b4f2b">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="a5027d71-edf0-419b-82e2-8bde96ca2c44"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{datetrx}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="141" y="0" width="138" height="25" uuid="91336048-87bb-44f9-8c56-e0cfb0049fd9">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="03aad9a2-fa72-4a11-90ea-0350dd851159"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{description}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.###;#,##0.###">
+				<reportElement x="279" y="0" width="138" height="25" uuid="28135db8-82b7-45c9-ad25-c2e94e84a784">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="1dde64e2-9d6a-45cd-9fa7-7891ea43da8a"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{ps}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.###;#,##0.###">
+				<reportElement x="417" y="0" width="138" height="25" uuid="c59ae95d-8ca4-4bf6-8660-b5200e690a64">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="72bee581-6336-49c1-bfeb-06aa9858088b"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{ps1}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+</jasperReport>

@@ -1,0 +1,307 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.17.0.final using JasperReports Library version 6.17.0-6d93193241dd8cc42629e188b94f9e0bc5722efd  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="sub_dongtong" pageWidth="800" pageHeight="595" orientation="Landscape" columnWidth="800" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="4e86bd4c-09b3-44e6-a3ad-c8dff53ab7dc">
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="HSV"/>
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="0"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="1000"/>
+	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
+	<parameter name="C_Period_ID" class="java.lang.Integer"/>
+	<queryString>
+		<![CDATA[select '1' as nhom, '1' as "stt", 'Lãi gộp sx bột cá (SL bán * lãi gộp/ kg)' as"danh muc",
+sum(case when dg1>0 then sl1*(dg1-(tt.hsv_dinhmuc +tt.hsv_dinhmuc1)) else 0 end) as laigop1,
+sum(case when dg2>0 then sl2* (dg2-(tt.hsv_dinhmuc +tt.hsv_dinhmuc1)) else 0 end) as laigop2
+from(
+select hsv_c_thuoctinh_id,name, sum(sl1) as sl1, case when sum(sl1)<>0 then sum(tt1)/sum(sl1) else 0 end as dg1,sum(sl2) as sl2, case when sum(sl2)<>0 then sum(tt2)/sum(sl2) else 0 end as dg2
+from(
+select ctt.hsv_c_thuoctinh_id ,lm.name,-1*sum(fc.amtacctdr-fc.amtacctcr) as tt1,-1* sum(fc.qty) as sl1,0 as tt2, 0 as sl2
+from c_invoice ci  
+join c_invoiceline civ on ci.c_invoice_id = civ.c_invoice_id  and ci.docstatus in ('CL','CO') and ci.issotrx = 'Y'
+join m_product hh on civ.m_product_id = hh.m_product_id 
+join hsv_loaimat lm on hh.hsv_loaimat_id =lm.hsv_loaimat_id 
+JOIN m_attributeinstance tt ON tt.m_attributesetinstance_id = civ.m_attributesetinstance_id   
+JOIN m_attributevalue attv ON tt.m_attribute_id = attv.m_attribute_id AND tt.m_attributevalue_id = attv.m_attributevalue_id
+join hsv_c_thuoctinh ctt on ctt.hsv_c_thuoctinh_id  = attv.hsv_c_thuoctinh_id  
+join fact_acct fc on fc.record_id = ci.c_invoice_id and fc.line_id = civ.c_invoiceline_id and fc.ad_table_id =318
+where ci.ad_client_id = $P{AD_CLIENT_ID} and ( 
+(lm.hsv_loaimat_id = 1000034 and tt.m_attribute_id =1000052)) 
+and ci.dateacct >= (select startdate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})
+and ci.dateacct <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})
+group by ctt.hsv_c_thuoctinh_id,lm.name 
+union all
+select ctt.hsv_c_thuoctinh_id,lm.name ,0 as tt1, 0 as sl1, -1*sum(fc.amtacctdr-fc.amtacctcr) as tt2, -1*sum(fc.qty) as sl2
+from c_invoice ci  
+join c_invoiceline civ on ci.c_invoice_id = civ.c_invoice_id  and ci.docstatus in ('CL','CO') and ci.issotrx = 'Y'
+join m_product hh on civ.m_product_id = hh.m_product_id 
+join hsv_loaimat lm on hh.hsv_loaimat_id =lm.hsv_loaimat_id 
+JOIN m_attributeinstance tt ON tt.m_attributesetinstance_id = civ.m_attributesetinstance_id   
+JOIN m_attributevalue attv ON tt.m_attribute_id = attv.m_attribute_id AND tt.m_attributevalue_id = attv.m_attributevalue_id
+join hsv_c_thuoctinh ctt on ctt.hsv_c_thuoctinh_id  = attv.hsv_c_thuoctinh_id  
+join fact_acct fc on fc.record_id = ci.c_invoice_id and fc.line_id = civ.c_invoiceline_id and fc.ad_table_id =318
+where ci.ad_client_id = $P{AD_CLIENT_ID} and ((lm.hsv_loaimat_id = 1000034 and tt.m_attribute_id =1000052)) 
+and fc.dateacct >= (SELECT date_trunc('YEAR',(select p.enddate from C_Period p where p.c_period_id = $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}))::DATE) 
+and fc.dateacct <= (select p.enddate from C_Period p where p.c_period_id = $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID} )
+group by ctt.hsv_c_thuoctinh_id,lm.name 
+)as k 
+group by hsv_c_thuoctinh_id,name
+) as k join hsv_c_thuoctinh tt on tt.hsv_c_thuoctinh_id = k.hsv_c_thuoctinh_id
+union all 
+select '1' as nhom, '2' as "stt", 'Lãi gộp sx surimi (SL bán * lãi gộp/ kg)' as"danh muc",
+sum(case when dg1>0 then sl1*(dg1-(tt.hsv_dinhmuc +tt.hsv_dinhmuc1)) else 0 end) as laigop1,
+sum(case when dg2>0 then sl2* (dg2-(tt.hsv_dinhmuc +tt.hsv_dinhmuc1))else 0 end) as laigop2
+from(
+select hsv_c_thuoctinh_id,name, sum(sl1) as sl1, case when sum(sl1)<>0 then sum(tt1)/sum(sl1) else 0 end as dg1,sum(sl2) as sl2, case when sum(sl2)<>0 then sum(tt2)/sum(sl2) else 0 end as dg2
+from(
+select ctt.hsv_c_thuoctinh_id ,lm.name,-1*sum(fc.amtacctdr-fc.amtacctcr) as tt1,-1* sum(fc.qty) as sl1,0 as tt2, 0 as sl2
+from c_invoice ci  
+join c_invoiceline civ on ci.c_invoice_id = civ.c_invoice_id  and ci.docstatus in ('CL','CO') and ci.issotrx = 'Y'
+join m_product hh on civ.m_product_id = hh.m_product_id 
+join hsv_loaimat lm on hh.hsv_loaimat_id =lm.hsv_loaimat_id 
+JOIN m_attributeinstance tt ON tt.m_attributesetinstance_id = civ.m_attributesetinstance_id   
+JOIN m_attributevalue attv ON tt.m_attribute_id = attv.m_attribute_id AND tt.m_attributevalue_id = attv.m_attributevalue_id
+join hsv_c_thuoctinh ctt on ctt.hsv_c_thuoctinh_id  = attv.hsv_c_thuoctinh_id  
+join fact_acct fc on fc.record_id = ci.c_invoice_id and fc.line_id = civ.c_invoiceline_id and fc.ad_table_id =318
+where ci.ad_client_id = $P{AD_CLIENT_ID} and ( 
+(lm.hsv_loaimat_id = 1000033 and tt.m_attribute_id =1000053)) 
+and ci.dateacct >= (select startdate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})
+and ci.dateacct <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})
+group by ctt.hsv_c_thuoctinh_id,lm.name 
+union all
+select ctt.hsv_c_thuoctinh_id,lm.name ,0 as tt1, 0 as sl1, -1*sum(fc.amtacctdr-fc.amtacctcr) as tt2, -1*sum(fc.qty) as sl2
+from c_invoice ci  
+join c_invoiceline civ on ci.c_invoice_id = civ.c_invoice_id  and ci.docstatus in ('CL','CO') and ci.issotrx = 'Y'
+join m_product hh on civ.m_product_id = hh.m_product_id 
+join hsv_loaimat lm on hh.hsv_loaimat_id =lm.hsv_loaimat_id 
+JOIN m_attributeinstance tt ON tt.m_attributesetinstance_id = civ.m_attributesetinstance_id   
+JOIN m_attributevalue attv ON tt.m_attribute_id = attv.m_attribute_id AND tt.m_attributevalue_id = attv.m_attributevalue_id
+join hsv_c_thuoctinh ctt on ctt.hsv_c_thuoctinh_id  = attv.hsv_c_thuoctinh_id  
+join fact_acct fc on fc.record_id = ci.c_invoice_id and fc.line_id = civ.c_invoiceline_id and fc.ad_table_id =318
+where ci.ad_client_id = $P{AD_CLIENT_ID} and ((lm.hsv_loaimat_id = 1000033 and tt.m_attribute_id =1000053)) 
+and fc.dateacct >= (SELECT date_trunc('YEAR',(select p.enddate from C_Period p where p.c_period_id = $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}))::DATE) 
+and fc.dateacct <= (select p.enddate from C_Period p where p.c_period_id = $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID} )
+group by ctt.hsv_c_thuoctinh_id,lm.name 
+)as k 
+group by hsv_c_thuoctinh_id,name
+) as k join hsv_c_thuoctinh tt on tt.hsv_c_thuoctinh_id = k.hsv_c_thuoctinh_id]]>
+	</queryString>
+	<field name="nhom" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="nhom"/>
+	</field>
+	<field name="stt" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="stt"/>
+	</field>
+	<field name="danh muc" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="danh muc"/>
+	</field>
+	<field name="laigop1" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.label" value="laigop1"/>
+	</field>
+	<field name="laigop2" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.label" value="laigop2"/>
+	</field>
+	<variable name="sum_laigop1" class="java.math.BigDecimal" resetType="Group" resetGroup="Group1" calculation="Sum">
+		<variableExpression><![CDATA[$F{laigop1}]]></variableExpression>
+	</variable>
+	<variable name="sum_laigop2" class="java.math.BigDecimal" resetType="Group" resetGroup="Group1" calculation="Sum">
+		<variableExpression><![CDATA[$F{laigop2}]]></variableExpression>
+	</variable>
+	<group name="Group1">
+		<groupExpression><![CDATA[$F{nhom}]]></groupExpression>
+		<groupFooter>
+			<band height="23">
+				<textField>
+					<reportElement x="0" y="0" width="23" height="23" uuid="1ca8eae7-6131-44c6-a279-20ea29f3de01">
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+						<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					</reportElement>
+					<box leftPadding="2" rightPadding="2">
+						<pen lineWidth="0.5"/>
+					</box>
+					<textElement textAlignment="Center" verticalAlignment="Middle">
+						<font fontName="Arial" size="10"/>
+					</textElement>
+					<textFieldExpression><![CDATA['3']]></textFieldExpression>
+				</textField>
+				<textField isBlankWhenNull="true">
+					<reportElement x="23" y="0" width="370" height="23" uuid="6ac68bd6-adc3-48fe-89e8-4ee5a3543944">
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+						<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					</reportElement>
+					<box leftPadding="2" rightPadding="2">
+						<pen lineWidth="0.5"/>
+					</box>
+					<textElement textAlignment="Left" verticalAlignment="Middle">
+						<font fontName="Arial" size="10"/>
+					</textElement>
+					<textFieldExpression><![CDATA["Tổng cộng lãi gộp bột cá , Surimi"]]></textFieldExpression>
+				</textField>
+				<textField isBlankWhenNull="true">
+					<reportElement x="393" y="0" width="100" height="23" uuid="e32560c6-3bc9-49ae-ae0f-c10d86e01112">
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+						<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					</reportElement>
+					<box leftPadding="2" rightPadding="2">
+						<pen lineWidth="0.5"/>
+					</box>
+					<textElement verticalAlignment="Middle">
+						<font fontName="Arial" size="10"/>
+					</textElement>
+					<textFieldExpression><![CDATA[""]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0" isBlankWhenNull="true">
+					<reportElement x="493" y="0" width="100" height="23" uuid="dbfdae3e-1450-4bd0-91cf-d67a986c35a6">
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+						<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					</reportElement>
+					<box leftPadding="2" rightPadding="2">
+						<pen lineWidth="0.5"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" size="10"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{sum_laigop1}]]></textFieldExpression>
+				</textField>
+				<textField isBlankWhenNull="true">
+					<reportElement x="593" y="0" width="100" height="23" uuid="cbd50c84-30f5-4a77-86c3-d8a53b09b002">
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+						<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					</reportElement>
+					<box leftPadding="2" rightPadding="2">
+						<pen lineWidth="0.5"/>
+					</box>
+					<textElement verticalAlignment="Middle">
+						<font fontName="Arial" size="10"/>
+					</textElement>
+					<textFieldExpression><![CDATA[""]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0" isBlankWhenNull="true">
+					<reportElement x="693" y="0" width="107" height="23" uuid="14877c8a-2e9f-4ca6-afb1-e8e1bf305735">
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+						<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					</reportElement>
+					<box leftPadding="2" rightPadding="2">
+						<pen lineWidth="0.5"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" size="10"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{sum_laigop2}]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupFooter>
+	</group>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<columnHeader>
+		<band height="23">
+			<staticText>
+				<reportElement x="0" y="0" width="800" height="23" uuid="ef18e33c-d5df-45dc-8823-0f0c401c99d8">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Tổng lãi gộp (theo giá thành kế hoạch)]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="23" splitType="Stretch">
+			<textField>
+				<reportElement x="0" y="0" width="23" height="23" uuid="a79308d8-07a5-4fe7-9d0c-715f45be4b49">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{stt}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="23" y="0" width="370" height="23" uuid="eac39c21-1c18-4190-957e-c34b664bde54">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{danh muc}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="493" y="0" width="100" height="23" uuid="8e14f218-1f2d-403d-a6a8-02796fd19099">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{laigop1}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="593" y="0" width="100" height="23" uuid="3b5e9cfe-8b2b-484f-9010-2e90819a2c9e">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA[""]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="393" y="0" width="100" height="23" uuid="9d29148e-b215-465d-984f-ec2919fefe26">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA[""]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="693" y="0" width="107" height="23" uuid="e9a7134d-f401-4d57-8b1a-5be4cdb25f03">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{laigop2}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+</jasperReport>

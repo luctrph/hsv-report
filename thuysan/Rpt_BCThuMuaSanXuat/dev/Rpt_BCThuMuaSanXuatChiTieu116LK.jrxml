@@ -1,0 +1,932 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.5.1.final using JasperReports Library version 6.5.1  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Rpt_BCThuMuaSanXuatChiTieu116LK" pageWidth="595" pageHeight="842" columnWidth="595" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="4023df51-1b73-46d9-adf6-650e3c9f2034">
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="One Empty Record"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="0"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="1000"/>
+	<parameter name="StartDate" class="java.util.Date">
+		<defaultValueExpression><![CDATA[new Date(100,0,1)]]></defaultValueExpression>
+	</parameter>
+	<parameter name="EndDate" class="java.util.Date">
+		<defaultValueExpression><![CDATA[new Date(100,0,1)]]></defaultValueExpression>
+	</parameter>
+	<parameter name="AD_CLIENT_ID" class="java.lang.Integer">
+		<defaultValueExpression><![CDATA[1000000]]></defaultValueExpression>
+	</parameter>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String">
+		<defaultValueExpression><![CDATA["dev/"]]></defaultValueExpression>
+	</parameter>
+	<queryString language="SQL">
+		<![CDATA[select dm.value,dm.name, 'Đồng' as dvt,0 as sl,sum(t.tdm) as lk
+    from( select 'B' as nhom,'116' as ct,l.description,cast(l.value as integer) as value,l.name,sum(t.cp) as cp,sum(t.cp1) as cp1
+                   
+                    ,sum(case when t.nhom='I' then 0 else case when t.nhom='II' and t.chitieu<>'17' and t.chitieu<>'18' then l.hsv_dinhmuc*sx.slb+l.hsv_dinhmuc1*sx.slb1+l.hsv_dinhmuc05*sx.slb5 else l.hsv_dinhmuc*xb.slb+l.hsv_dinhmuc1*xb.slb1+l.hsv_dinhmuc05*xb.slb5 end end ) as tdm
+
+        from (  select 'I' as nhom,'1' as chitieu,0 as cp,0 as slb,0 as slb1,0 as slb5,0 as cp1  from ad_client where ad_client_id=1000003
+
+                union all
+        --Chi tieu so 2 so luong san xuat		
+                select 'I' as nhom,'2' as chitieu,0 as cp,COALESCE(sum(t.slb),0) as slb,COALESCE(sum(t.slb1),0) as slb1,COALESCE(sum(t.slb5),0) as slb5,0 as cp1
+                from(select distinct pl.m_productionplan_id as m_productionline_id,pl.m_product_id,pl.productionqty as slb,0 as slb1,0 as slb5,pl.m_attributesetinstance_id 
+                            from m_productionplan pl
+                            join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000000 
+                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') 
+                                                        AND p.movementdate>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE and p.movementdate<=$P{EndDate}
+                            join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                          join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id=1000013 and gtt.m_attribute_id=1000001 
+                          WHERE tt.ad_client_id=1000003 
+                                 ) tt on pl.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                            where  pl.ad_client_id=1000003 
+                        
+                        union all
+                        
+                        select distinct pl.m_productionplan_id as m_productionline_id,pl.m_product_id,0 as slb,pl.productionqty as slb1,0 as slb5,pl.m_attributesetinstance_id 
+                        from m_productionplan pl
+                        join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000000 
+                        join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') 
+                                                    AND p.movementdate>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE and p.movementdate<=$P{EndDate}
+                        join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id=1000005 and gtt.m_attribute_id=1000001 
+                      WHERE tt.ad_client_id=1000003 
+                             ) tt on pl.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                        where  pl.ad_client_id=1000003 
+                        
+                        union all
+                        
+                        select distinct pl.m_productionplan_id as m_productionline_id,pl.m_product_id,0 as slb,0 as slb1,pl.productionqty as slb5,pl.m_attributesetinstance_id 
+                        from m_productionplan pl
+                        join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000000 
+                        join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') 
+                                    AND p.movementdate>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE and p.movementdate<=$P{EndDate}
+                        join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                      join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in('1000006','1000007','1000019') and gtt.m_attribute_id=1000001 
+                      WHERE tt.ad_client_id=1000003 
+                             ) tt on pl.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                        where  pl.ad_client_id=1000003 
+
+                    ) as t
+
+                union all
+        --Chi tieu so 3 so luong xuat ban
+                select 'I' as nhom,'3' as chitieu,0 as cp,COALESCE(sum(t.slb),0) as slb,COALESCE(sum(t.slb1),0) as slb1,COALESCE(sum(t.slb5),0) as slb5,0 as cp1
+                from(select COALESCE(sum(io.movementqty),0) as slb,0 as slb1,0 as slb5,'3' as chitieu	from m_inoutline io 
+                    join m_inout iol on io.m_inout_id=iol.m_inout_id and iol.docstatus in ('CO','CL') and iol.C_DocType_ID=1000152
+                            AND iol.movementdate>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE and iol.movementdate<=$P{EndDate}
+                    join m_product hh on io.m_product_id=hh.m_product_id and hh. M_AttributeSet_ID=1000000
+                  join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                        join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id=1000013 and gtt.m_attribute_id=1000001 
+                        WHERE tt.ad_client_id=1000003 
+                                ) tt on IO.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                           where io.ad_client_id=1000003 
+                           
+                  union all
+                   
+                  select 0 as slb,COALESCE(sum(io.movementqty),0) as slb1,0 as slb5,'3' as chitieu	from m_inoutline io 
+                    join m_inout iol on io.m_inout_id=iol.m_inout_id and iol.docstatus in ('CO','CL') and iol.C_DocType_ID=1000152
+                            AND iol.movementdate>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE and iol.movementdate<=$P{EndDate} 
+                    join m_product hh on io.m_product_id=hh.m_product_id and hh. M_AttributeSet_ID=1000000
+                  join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                        join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id=1000005 and gtt.m_attribute_id=1000001 
+                        WHERE tt.ad_client_id=1000003 
+                                ) tt on IO.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                           where io.ad_client_id=1000003  
+
+                  union all
+                   
+                  select 0 as slb,0 as slb1,COALESCE(sum(io.movementqty),0) as slb5,'3' as chitieu	from m_inoutline io 
+                    join m_inout iol on io.m_inout_id=iol.m_inout_id and iol.docstatus in ('CO','CL') and iol.C_DocType_ID=1000152
+                            AND iol.movementdate>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE and iol.movementdate<=$P{EndDate} 
+                    join m_product hh on io.m_product_id=hh.m_product_id and hh. M_AttributeSet_ID=1000000
+                  join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                        join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in('1000006','1000007','1000019') and gtt.m_attribute_id=1000001 
+                        WHERE tt.ad_client_id=1000003 
+                                ) tt on IO.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                           where io.ad_client_id=1000003  
+
+                ) as t
+                
+                union all
+        --Chi tieu so 4 
+                select 'I' as nhom,'4' as chitieu,0 as cp,0 as slb,0 as slb1,0 as slb5,0 as cp1  from ad_client where ad_client_id=1000003
+                
+                union all
+        --Chi tieu so 5: chi phi san xuat
+                select 'I' as nhom,'5' as chitieu,0 as cp,0 as slb,0 as slb1,0 as slb5,0 as cp1  from ad_client where ad_client_id=1000003
+                
+        --Chi tieu so 6: chi phi thu mua tai khoan 6276
+                union all
+                
+                select 'II' as nhom,	'6' as chitieu,COALESCE( sum( t.amtacctdr-t.amtacctcr ),0) as cp,0 as slb,0 as slb1,0 as slb5,COALESCE( sum( t.amtacctdr-t.amtacctcr ),0) as cp1
+                      from
+                                ( SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                            FROM Fact_Acct 
+                                      WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id<>224						
+                            
+                                    union all
+                                 
+                                     SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id ,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                       FROM Fact_Acct 
+                                        join gl_journalline gl on  Fact_Acct.record_id=gl.gl_journal_id
+                                              and Fact_Acct.line_id=gl.gl_journalline_id and Fact_Acct.Account_ID=gl.Account_ID  and gl.IsGenerated='N'
+                                        join gl_journal a on a.gl_journal_id =Fact_Acct.record_id and a.docstatus in ('CO','CL')	
+                                        WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id=224
+                                                                                                 
+                                     union all
+                                 
+                                     SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id ,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                         FROM Fact_Acct 
+                                          join gl_journal a on a.gl_journal_id =Fact_Acct.record_id and a.docstatus in ('CO','CL')	
+                                     WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.line_id is null
+                                 ) as t
+                      inner join c_elementvalue tk 	on t.account_id=tk.c_elementvalue_id and tk.AD_Client_ID in ('1000003') and left(tk.value,4) in ('6276')
+
+        --Chi tieu so 7: Chi phi tien dien tai khoan 6275
+
+                union all
+                
+                select 	'II' as nhom,'7' as chitieu, COALESCE(sum( t.amtacctdr-t.amtacctcr ),0) as cp,0 as slb,0 as slb1,0 as slb5,COALESCE( sum( t.amtacctdr-t.amtacctcr ),0) as cp1
+                      from
+                                ( SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                            FROM Fact_Acct 
+                                      WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003')
+                                                    and Fact_Acct.ad_table_id=318 and Fact_Acct.C_BPartner_ID in ('1000147','1000741')
+                            
+                                 ) as t
+                      inner join c_elementvalue tk 	on t.account_id=tk.c_elementvalue_id and tk.AD_Client_ID in ('1000003') and left(tk.value,4) in ('6275')
+
+        --Chi tieu so 8: chi phi tien nuoc tai khoan 6275 voi khach hang la C_BPartner_ID=1000247
+                
+                union all
+                
+                select 	'II' as nhom,'8' as chitieu, COALESCE(sum( t.amtacctdr-t.amtacctcr ),0) as cp,0 as slb,0 as slb1,0 as slb5,COALESCE( sum( t.amtacctdr-t.amtacctcr ),0) as cp1
+                      from
+                                ( SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                            FROM Fact_Acct 
+                                      WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id=318 and Fact_Acct.C_BPartner_ID in ('1000247')
+                            
+                                 ) as t
+                      inner join c_elementvalue tk 	on t.account_id=tk.c_elementvalue_id and tk.AD_Client_ID in ('1000003') and left(tk.value,4) in ('6275')
+
+        --chi tieu so 9:Chi phi than dot lo bang phat sinh tai khoan 6275-chi phi dien, nuoc
+                union all
+                
+                select 	'II' as nhom,'9' as chitieu, COALESCE(sum( t.amtacctdr-t.amtacctcr ),0) as cp,0 as slb,0 as slb1,0 as slb5,COALESCE( sum( t.amtacctdr-t.amtacctcr ),0) as cp1
+                      from
+                                ( SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                            FROM Fact_Acct 
+                                      WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id<>224 
+                            
+                                    union all
+                                    -- tru di chi phi dien
+                                    SELECT Fact_Acct.dateacct,-1*Fact_Acct.amtacctdr,-1*Fact_Acct.amtacctcr,Fact_Acct.account_id,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                            FROM Fact_Acct 
+                                      WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id=318 and Fact_Acct.C_BPartner_ID in ('1000147','1000741')
+                                      
+                          union all
+                          -- tru di chi phi tien nuoc				
+
+                                    SELECT Fact_Acct.dateacct,-1*Fact_Acct.amtacctdr,-1*Fact_Acct.amtacctcr,Fact_Acct.account_id,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                            FROM Fact_Acct 
+                                      WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id=318 and Fact_Acct.C_BPartner_ID in ('1000247','1000')
+                                                    
+                          union all						 
+                                     SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id ,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                       FROM Fact_Acct 
+                                        join gl_journalline gl on  Fact_Acct.record_id=gl.gl_journal_id
+                                              and Fact_Acct.line_id=gl.gl_journalline_id and Fact_Acct.Account_ID=gl.Account_ID  and gl.IsGenerated='N'
+                                        join gl_journal a on a.gl_journal_id =Fact_Acct.record_id and a.docstatus in ('CO','CL')	
+                                        WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id=224
+                                                                                                 
+                                     union all
+                                 
+                                     SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id ,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                         FROM Fact_Acct 
+                                          join gl_journal a on a.gl_journal_id =Fact_Acct.record_id and a.docstatus in ('CO','CL')	
+                                     WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.line_id is null
+                                 ) as t
+                      inner join c_elementvalue tk 	on t.account_id=tk.c_elementvalue_id and tk.AD_Client_ID in ('1000003') and left(tk.value,4) in ('6275')
+
+        --Chi tieu so 10: bao bi PA(gom ca truc in) xuat kho su dung voi M_PartType_ID=1000076
+
+              union all
+              
+              select 	'II' as nhom,'10' as chitieu, COALESCE(sum( t.amtacctcr ),0) as cp,0 as slb,0 as slb1,0 as slb5,COALESCE( sum( t.amtacctcr ),0) as cp1
+                  from
+                                ( SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.m_product_id,Fact_Acct.account_id,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                        FROM Fact_Acct 
+                                join  M_Inventory m on Fact_Acct.record_id=m.M_Inventory_id and m.docstatus in ('CO','CL') and m.C_DocType_ID=1000167
+                                join m_product hh on Fact_Acct.m_product_id=hh.m_product_id and hh.M_PartType_ID=1000076
+                      WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id=321 and Fact_Acct.amtacctcr<>0
+                            
+                                 ) as t
+        --Chi tieu so 11: Bao bi PE voi xuat kho su dung voi M_PartType_ID=1000077
+              union all
+              
+              select 	'II' as nhom,'11' as chitieu, COALESCE(sum( t.amtacctcr ),0) as cp,0 as slb,0 as slb1,0 as slb5,COALESCE( sum( t.amtacctcr ),0) as cp1
+                  from
+                                ( SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.m_product_id,Fact_Acct.account_id,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                        FROM Fact_Acct 
+                                join  M_Inventory m on Fact_Acct.record_id=m.M_Inventory_id and m.docstatus in ('CO','CL') and m.C_DocType_ID=1000167
+                                join m_product hh on Fact_Acct.m_product_id=hh.m_product_id and hh.M_PartType_ID=1000077
+                      WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id=321 and Fact_Acct.amtacctcr<>0
+                            
+                                 ) as t
+                
+        --Chi tieu so 12: Bao bi tem nhan voi xuat kho su dung voi M_PartType_ID=1000078
+              union all
+              
+              select 	'II' as nhom,'12' as chitieu, COALESCE(sum( t.amtacctcr ),0) as cp,0 as slb,0 as slb1,0 as slb5,COALESCE( sum( t.amtacctcr ),0) as cp1
+                  from
+                                ( SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.m_product_id,Fact_Acct.account_id,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                        FROM Fact_Acct 
+                                join  M_Inventory m on Fact_Acct.record_id=m.M_Inventory_id and m.docstatus in ('CO','CL') and m.C_DocType_ID=1000167
+                                join m_product hh on Fact_Acct.m_product_id=hh.m_product_id and hh.M_PartType_ID=1000078
+                      WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id=321 and Fact_Acct.amtacctcr<>0
+                            
+                                 ) as t
+                                 
+
+        --Chi tieu so 13: Bao bi carton voi xuat kho su dung voi M_PartType_ID=1000079
+              union all
+              
+              select 	'II' as nhom,'13' as chitieu, COALESCE(sum( t.amtacctcr ),0) as cp,0 as slb,0 as slb1,0 as slb5,COALESCE( sum( t.amtacctcr ),0) as cp1
+                  from
+                                ( SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.m_product_id,Fact_Acct.account_id,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                        FROM Fact_Acct 
+                                join  M_Inventory m on Fact_Acct.record_id=m.M_Inventory_id and m.docstatus in ('CO','CL') and m.C_DocType_ID=1000167
+                                join m_product hh on Fact_Acct.m_product_id=hh.m_product_id and hh.M_PartType_ID=1000079
+                      WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id=321 and Fact_Acct.amtacctcr<>0
+                            
+                                 ) as t
+
+        --Chi tieu so 14: Bao bi xop dem voi xuat kho su dung voi M_PartType_ID=1000080
+              union all
+              
+              select 	'II' as nhom,'14' as chitieu, COALESCE(sum( t.amtacctcr ),0) as cp,0 as slb,0 as slb1,0 as slb5,COALESCE( sum( t.amtacctcr ),0) as cp1
+                  from
+                                ( SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.m_product_id,Fact_Acct.account_id,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                        FROM Fact_Acct 
+                                join  M_Inventory m on Fact_Acct.record_id=m.M_Inventory_id and m.docstatus in ('CO','CL') and m.C_DocType_ID=1000167
+                                join m_product hh on Fact_Acct.m_product_id=hh.m_product_id and hh.M_PartType_ID=1000080
+                      WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id=321 and Fact_Acct.amtacctcr<>0
+                            
+                                 ) as t
+
+        --Chi tieu so 15: Bao bi PE voi xuat kho su dung voi M_PartType_ID=1000081
+              union all
+              
+              select 	'II' as nhom,'15' as chitieu, COALESCE(sum( t.amtacctcr ),0) as cp,0 as slb,0 as slb1,0 as slb5,COALESCE( sum( t.amtacctcr ),0) as cp1
+                  from
+                                ( SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.m_product_id,Fact_Acct.account_id,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                        FROM Fact_Acct 
+                                join  M_Inventory m on Fact_Acct.record_id=m.M_Inventory_id and m.docstatus in ('CO','CL') and m.C_DocType_ID=1000167
+                                join m_product hh on Fact_Acct.m_product_id=hh.m_product_id and hh.M_PartType_ID=1000081
+                      WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id=321 and Fact_Acct.amtacctcr<>0
+                            
+                                 ) as t
+        --Chi tieu so 16: Vat tu khac bang phat sinh tai khoan 6272,6278 tru chi chi tieu 10,11,12,13,14,15
+                  
+                union all
+              
+                select 	'II' as nhom,'16' as chitieu, COALESCE(sum( t.amtacctdr-t.amtacctcr ),0) as cp,0 as slb,0 as slb1,0 as slb5,COALESCE( sum( t.amtacctdr-t.amtacctcr ),0) as cp1
+                      from
+                                ( SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.m_product_id,Fact_Acct.account_id,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                            FROM Fact_Acct 
+                                      WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id<>224 
+                            
+                                    union all
+                                    -- tru di chi phi chi tieu 10
+                          SELECT Fact_Acct.dateacct,-1*Fact_Acct.amtacctdr,-1*Fact_Acct.amtacctcr,Fact_Acct.m_product_id,Fact_Acct.account_id,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                            FROM Fact_Acct 
+                                    join  M_Inventory m on Fact_Acct.record_id=m.M_Inventory_id and m.docstatus in ('CO','CL') and m.C_DocType_ID=1000167
+                                    join m_product hh on Fact_Acct.m_product_id=hh.m_product_id and hh.M_PartType_ID=1000076
+                          WHERE  
+                                                  Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                        and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                        and Fact_Acct.ad_table_id=321 
+                          union all
+                          -- tru di chi phi chi tieu 11				
+
+                          SELECT Fact_Acct.dateacct,-1*Fact_Acct.amtacctdr,-1*Fact_Acct.amtacctcr,Fact_Acct.m_product_id,Fact_Acct.account_id,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                            FROM Fact_Acct 
+                                    join  M_Inventory m on Fact_Acct.record_id=m.M_Inventory_id and m.docstatus in ('CO','CL') and m.C_DocType_ID=1000167
+                                    join m_product hh on Fact_Acct.m_product_id=hh.m_product_id and hh.M_PartType_ID=1000077
+                          WHERE  
+                                                  Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                        and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                        and Fact_Acct.ad_table_id=321 
+                                                        
+                          union all						 
+                          --Tru di chi phi chi tieu 12
+                          SELECT Fact_Acct.dateacct,-1*Fact_Acct.amtacctdr,-1*Fact_Acct.amtacctcr,Fact_Acct.m_product_id,Fact_Acct.account_id,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                            FROM Fact_Acct 
+                                    join  M_Inventory m on Fact_Acct.record_id=m.M_Inventory_id and m.docstatus in ('CO','CL') and m.C_DocType_ID=1000167
+                                    join m_product hh on Fact_Acct.m_product_id=hh.m_product_id and hh.M_PartType_ID=1000078
+                          WHERE  
+                                                  Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                        and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                        and Fact_Acct.ad_table_id=321 
+                                                        
+                          union all
+                          --Tru di chi phi chi tieu 13
+                          SELECT Fact_Acct.dateacct,-1*Fact_Acct.amtacctdr,-1*Fact_Acct.amtacctcr,Fact_Acct.m_product_id,Fact_Acct.account_id,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                            FROM Fact_Acct 
+                                    join  M_Inventory m on Fact_Acct.record_id=m.M_Inventory_id and m.docstatus in ('CO','CL') and m.C_DocType_ID=1000167
+                                    join m_product hh on Fact_Acct.m_product_id=hh.m_product_id and hh.M_PartType_ID=1000079
+                          WHERE  
+                                                  Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                        and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                        and Fact_Acct.ad_table_id=321 
+                                                        
+                          union all
+                          --tru di chi phi chi tieu 14
+                          SELECT Fact_Acct.dateacct,-1*Fact_Acct.amtacctdr,-1*Fact_Acct.amtacctcr,Fact_Acct.m_product_id,Fact_Acct.account_id,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                            FROM Fact_Acct 
+                                    join  M_Inventory m on Fact_Acct.record_id=m.M_Inventory_id and m.docstatus in ('CO','CL') and m.C_DocType_ID=1000167
+                                    join m_product hh on Fact_Acct.m_product_id=hh.m_product_id and hh.M_PartType_ID=1000080
+                          WHERE  
+                                                  Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                        and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                        and Fact_Acct.ad_table_id=321 
+                                                        
+                          union all
+                          --tru di chi phi chi tieu 15
+                          SELECT Fact_Acct.dateacct,-1*Fact_Acct.amtacctdr,-1*Fact_Acct.amtacctcr,Fact_Acct.m_product_id,Fact_Acct.account_id,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                            FROM Fact_Acct 
+                                    join  M_Inventory m on Fact_Acct.record_id=m.M_Inventory_id and m.docstatus in ('CO','CL') and m.C_DocType_ID=1000167
+                                    join m_product hh on Fact_Acct.m_product_id=hh.m_product_id and hh.M_PartType_ID=1000081
+                          WHERE  
+                                                  Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                        and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                        and Fact_Acct.ad_table_id=321 
+
+                          union all
+
+                                    SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.m_product_id,Fact_Acct.account_id ,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                    FROM Fact_Acct 
+                                        join gl_journalline gl on  Fact_Acct.record_id=gl.gl_journal_id
+                                              and Fact_Acct.line_id=gl.gl_journalline_id and Fact_Acct.Account_ID=gl.Account_ID  and gl.IsGenerated='N'
+                                        join gl_journal a on a.gl_journal_id =Fact_Acct.record_id and a.docstatus in ('CO','CL')	
+                                    WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id=224
+                                                                                                 
+                                     union all
+                                 
+                                     SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.m_product_id,Fact_Acct.account_id ,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                         FROM Fact_Acct 
+                                          join gl_journal a on a.gl_journal_id =Fact_Acct.record_id and a.docstatus in ('CO','CL')	
+                                     WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.line_id is null
+                                 ) as t
+                      inner join c_elementvalue tk 	on t.account_id=tk.c_elementvalue_id and tk.AD_Client_ID in ('1000003') and (left(tk.value,4) in ('6278','6272'))--or left(tk.value,5) in ('62720'))
+         
+
+                --Chi tieu 17: day dai
+                union all
+                
+              select 	'II' as nhom,'17' as chitieu, COALESCE(sum( t.amtacctcr ),0) as cp,0 as slb,0 as slb1,0 as slb5,0 as cp1
+             from
+                                ( SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.m_product_id,Fact_Acct.account_id,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                        FROM Fact_Acct 
+                                join  M_Inventory m on Fact_Acct.record_id=m.M_Inventory_id and m.docstatus in ('CO','CL') and m.C_DocType_ID=1000167
+                                join m_product hh on Fact_Acct.m_product_id=hh.m_product_id and hh.M_PartType_ID=1000083
+                      WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id=321 and Fact_Acct.amtacctcr<>0
+                            
+                                 ) as t
+                
+                union all
+                --Chi tieu 18:Bang dinh
+                
+              select 	'II' as nhom,'18' as chitieu, COALESCE(sum( t.amtacctcr ),0) as cp,0 as slb,0 as slb1,0 as slb5,0 as cp1
+             from
+                                ( SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.m_product_id,Fact_Acct.account_id,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                        FROM Fact_Acct 
+                                join  M_Inventory m on Fact_Acct.record_id=m.M_Inventory_id and m.docstatus in ('CO','CL') and m.C_DocType_ID=1000167
+                                join m_product hh on Fact_Acct.m_product_id=hh.m_product_id and hh.M_PartType_ID=1000084
+                      WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id=321 and Fact_Acct.amtacctcr<>0
+                            
+                                 ) as t
+
+                --Chi tieu 19:Kiem ho giao dich tai khoan 6277
+                Union all
+                
+                select 	'II' as nhom,'19' as chitieu, COALESCE(sum( t.amtacctdr-t.amtacctcr ),0) as cp,0 as slb,0 as slb1,0 as slb5,COALESCE( sum( t.amtacctdr-t.amtacctcr ),0) as cp1
+                      from
+                                ( SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                            FROM Fact_Acct 
+                                      WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id<>224 
+                            
+                                    union all						 
+
+                                     SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id ,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                       FROM Fact_Acct 
+                                        join gl_journalline gl on  Fact_Acct.record_id=gl.gl_journal_id
+                                              and Fact_Acct.line_id=gl.gl_journalline_id and Fact_Acct.Account_ID=gl.Account_ID  and gl.IsGenerated='N'
+                                        join gl_journal a on a.gl_journal_id =Fact_Acct.record_id and a.docstatus in ('CO','CL')	
+                                        WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id=224
+                                                                                                 
+                                     union all
+                                 
+                                     SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id ,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                         FROM Fact_Acct 
+                                          join gl_journal a on a.gl_journal_id =Fact_Acct.record_id and a.docstatus in ('CO','CL')	
+                                     WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.line_id is null
+                                 ) as t
+                      inner join c_elementvalue tk 	on t.account_id=tk.c_elementvalue_id and tk.AD_Client_ID in ('1000003') and left(tk.value,4) in ('6277')        
+          
+                union all
+             --Chi tieu 20: Chi phi van chuyen tai khoan 6412
+                select 	'III' as nhom,'20' as chitieu, COALESCE(sum( t.amtacctdr-t.amtacctcr ),0) as cp,0 as slb,0 as slb1,0 as slb5,COALESCE( sum( t.amtacctdr-t.amtacctcr ),0) as cp1
+                      from
+                                ( SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                            FROM Fact_Acct 
+                                      WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id<>224 
+                            
+                                  union all						 
+
+                                     SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id ,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                       FROM Fact_Acct 
+                                        join gl_journalline gl on  Fact_Acct.record_id=gl.gl_journal_id
+                                              and Fact_Acct.line_id=gl.gl_journalline_id and Fact_Acct.Account_ID=gl.Account_ID  and gl.IsGenerated='N'
+                                        join gl_journal a on a.gl_journal_id =Fact_Acct.record_id and a.docstatus in ('CO','CL')	
+                                        WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id=224
+                                                                                                 
+                                     union all
+                                 
+                                     SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id ,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                         FROM Fact_Acct 
+                                          join gl_journal a on a.gl_journal_id =Fact_Acct.record_id and a.docstatus in ('CO','CL')	
+                                     WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.line_id is null
+                                 ) as t
+                      inner join c_elementvalue tk 	on t.account_id=tk.c_elementvalue_id and tk.AD_Client_ID in ('1000003') and left(tk.value,4) in ('6412') 
+                      
+                --Chi tieu 21:Duong bo
+                union all
+                
+                select 'I' as nhom,'21' as chitieu,0 as cp,0 as slb,0 as slb1,0 as slb5,0 as cp1  from ad_client where ad_client_id=1000003        
+                
+                --Chi tieu 22: chi phi cang
+                union all
+                
+                select 'I' as nhom,'22' as chitieu,0 as cp,0 as slb,0 as slb1,0 as slb5,0 as cp1  from ad_client where ad_client_id=1000003
+
+                --Chi tieu 23: Chi phi duong bien
+                union all
+                
+                select 'I' as nhom,'23' as chitieu,0 as cp,0 as slb,0 as slb1,0 as slb5,0 as cp1  from ad_client where ad_client_id=1000003
+                
+                union all
+                --Chi tieu 24:phi thanh toan LC tai khoan 6352
+                
+                select 'II' as nhom,	'24' as chitieu, COALESCE(sum( t.amtacctdr-t.amtacctcr ),0) as cp,0 as slb,0 as slb1,0 as slb5,COALESCE( sum( t.amtacctdr-t.amtacctcr ),0) as cp1
+                      from
+                                ( SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                            FROM Fact_Acct 
+                                      WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id<>224 
+                            
+                                  union all						 
+
+                                     SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id ,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                       FROM Fact_Acct 
+                                        join gl_journalline gl on  Fact_Acct.record_id=gl.gl_journal_id
+                                              and Fact_Acct.line_id=gl.gl_journalline_id and Fact_Acct.Account_ID=gl.Account_ID  and gl.IsGenerated='N'
+                                        join gl_journal a on a.gl_journal_id =Fact_Acct.record_id and a.docstatus in ('CO','CL')	
+                                        WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id=224
+                                                                                                 
+                                     union all
+                                 
+                                     SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id ,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                         FROM Fact_Acct 
+                                          join gl_journal a on a.gl_journal_id =Fact_Acct.record_id and a.docstatus in ('CO','CL')	
+                                     WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.line_id is null
+                                 ) as t
+                      inner join c_elementvalue tk 	on t.account_id=tk.c_elementvalue_id and tk.AD_Client_ID in ('1000003') and left(tk.value,4) in ('6352') 
+
+                --Chi tieu 25:Chi phi sua chua thuong xuyen tai khoan 6273
+                union all
+                
+                select 	'II' as nhom,'25' as chitieu, COALESCE(sum( t.amtacctdr-t.amtacctcr ),0) as cp,0 as slb,0 as slb1,0 as slb5,COALESCE( sum( t.amtacctdr-t.amtacctcr ),0) as cp1
+                      from
+                                ( SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                            FROM Fact_Acct 
+                                      WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id<>224 
+                            
+                                  union all						 
+
+                                     SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id ,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                       FROM Fact_Acct 
+                                        join gl_journalline gl on  Fact_Acct.record_id=gl.gl_journal_id
+                                              and Fact_Acct.line_id=gl.gl_journalline_id and Fact_Acct.Account_ID=gl.Account_ID  and gl.IsGenerated='N'
+                                        join gl_journal a on a.gl_journal_id =Fact_Acct.record_id and a.docstatus in ('CO','CL')	
+                                        WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id=224
+                                                                                                 
+                                     union all
+                                 
+                                     SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id ,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                         FROM Fact_Acct 
+                                          join gl_journal a on a.gl_journal_id =Fact_Acct.record_id and a.docstatus in ('CO','CL')	
+                                     WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.line_id is null
+                                 ) as t
+                      inner join c_elementvalue tk 	on t.account_id=tk.c_elementvalue_id and tk.AD_Client_ID in ('1000003') and left(tk.value,4) in ('6273') 
+                      
+                --Chi tieu 26:Chi phi nhan cong truc tiep voi tai khoan 6221
+                union all
+                
+                select 	'II' as nhom,'26' as chitieu, COALESCE(sum( t.amtacctdr-t.amtacctcr ),0) as cp,0 as slb,0 as slb1,0 as slb5,COALESCE( sum( t.amtacctdr-t.amtacctcr ),0) as cp1
+                      from
+                                ( SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                            FROM Fact_Acct 
+                                      WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id<>224 
+                            
+                                  union all						 
+
+                                     SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id ,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                       FROM Fact_Acct 
+                                        join gl_journalline gl on  Fact_Acct.record_id=gl.gl_journal_id
+                                              and Fact_Acct.line_id=gl.gl_journalline_id and Fact_Acct.Account_ID=gl.Account_ID  and gl.IsGenerated='N'
+                                        join gl_journal a on a.gl_journal_id =Fact_Acct.record_id and a.docstatus in ('CO','CL')	
+                                        WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id=224
+                                                                                                 
+                                     union all
+                                 
+                                     SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id ,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                         FROM Fact_Acct 
+                                          join gl_journal a on a.gl_journal_id =Fact_Acct.record_id and a.docstatus in ('CO','CL')	
+                                     WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.line_id is null
+                                 ) as t
+                      inner join c_elementvalue tk 	on t.account_id=tk.c_elementvalue_id and tk.AD_Client_ID in ('1000003') and left(tk.value,4) in ('6221') 
+                      
+                --Chi tieu 27:Chi phi nhan cong quan ly tai khoan 6411,6421,6271
+                union all
+
+                select 	'II' as nhom,'27' as chitieu, COALESCE(sum( t.amtacctdr-t.amtacctcr ),0) as cp,0 as slb,0 as slb1,0 as slb5  ,COALESCE( sum( t.amtacctdr-t.amtacctcr ),0) as cp1
+                      from
+                                ( SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                            FROM Fact_Acct 
+                                      WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id<>224 
+                            
+                                  union all						 
+
+                                     SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id ,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                       FROM Fact_Acct 
+                                        join gl_journalline gl on  Fact_Acct.record_id=gl.gl_journal_id
+                                              and Fact_Acct.line_id=gl.gl_journalline_id and Fact_Acct.Account_ID=gl.Account_ID  and gl.IsGenerated='N'
+                                        join gl_journal a on a.gl_journal_id =Fact_Acct.record_id and a.docstatus in ('CO','CL')	
+                                        WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id=224
+                                                                                                 
+                                     union all
+                                 
+                                     SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id ,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                         FROM Fact_Acct 
+                                          join gl_journal a on a.gl_journal_id =Fact_Acct.record_id and a.docstatus in ('CO','CL')	
+                                     WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.line_id is null
+                                 ) as t
+                      inner join c_elementvalue tk 	on t.account_id=tk.c_elementvalue_id and tk.AD_Client_ID in ('1000003') and left(tk.value,4) in ('6421','6411','6271') 
+
+                --Chi tieu 28:chi phi an ca,bao hiem
+                union all
+                
+                select 	'II' as nhom,'28' as chitieu, COALESCE(sum( t.amtacctdr-t.amtacctcr ),0) as cp,0 as slb,0 as slb1,0 as slb5        ,COALESCE( sum( t.amtacctdr-t.amtacctcr ),0) as cp1
+                      from
+                                ( SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                            FROM Fact_Acct 
+                                      WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id<>224 
+                            
+                                  union all						 
+
+                                     SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id ,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                       FROM Fact_Acct 
+                                        join gl_journalline gl on  Fact_Acct.record_id=gl.gl_journal_id
+                                              and Fact_Acct.line_id=gl.gl_journalline_id and Fact_Acct.Account_ID=gl.Account_ID  and gl.IsGenerated='N'
+                                        join gl_journal a on a.gl_journal_id =Fact_Acct.record_id and a.docstatus in ('CO','CL')	
+                                        WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id=224
+                                                                                                 
+                                     union all
+                                 
+                                     SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id ,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                         FROM Fact_Acct 
+                                          join gl_journal a on a.gl_journal_id =Fact_Acct.record_id and a.docstatus in ('CO','CL')	
+                                     WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.line_id is null
+                                 ) as t
+                      inner join c_elementvalue tk 	on t.account_id=tk.c_elementvalue_id and tk.AD_Client_ID in ('1000003') and left(tk.value,4) in ('6423','6424')   
+                      
+                --Chi tieu 29:Chi phi phat trien thi truong tai khoan 6418
+                union all
+                
+                select 	'II' as nhom,'29' as chitieu, COALESCE(sum( t.amtacctdr-t.amtacctcr ),0) as cp,0 as slb,0 as slb1,0 as slb5        ,COALESCE( sum( t.amtacctdr-t.amtacctcr ),0) as cp1
+                      from
+                                ( SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                            FROM Fact_Acct 
+                                      WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id<>224 
+                            
+                                  union all						 
+
+                                     SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id ,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                       FROM Fact_Acct 
+                                        join gl_journalline gl on  Fact_Acct.record_id=gl.gl_journal_id
+                                              and Fact_Acct.line_id=gl.gl_journalline_id and Fact_Acct.Account_ID=gl.Account_ID  and gl.IsGenerated='N'
+                                        join gl_journal a on a.gl_journal_id =Fact_Acct.record_id and a.docstatus in ('CO','CL')	
+                                        WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id=224
+                                                                                                 
+                                     union all
+                                 
+                                     SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id ,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                         FROM Fact_Acct 
+                                          join gl_journal a on a.gl_journal_id =Fact_Acct.record_id and a.docstatus in ('CO','CL')	
+                                     WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.line_id is null
+                                 ) as t
+                      inner join c_elementvalue tk 	on t.account_id=tk.c_elementvalue_id and tk.AD_Client_ID in ('1000003') and left(tk.value,4) in ('6418') 
+                      
+                --Chi tieu 30: Chi phi khac phuc vu san xuat
+                union all
+                
+                select 	'II' as nhom,'30' as chitieu, COALESCE(sum( t.amtacctdr-t.amtacctcr ),0) as cp,0 as slb,0 as slb1,0 as slb5        ,COALESCE( sum( t.amtacctdr-t.amtacctcr ),0) as cp1
+                      from
+                                ( SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                            FROM Fact_Acct 
+                                      WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id<>224 
+                            
+                                  union all						 
+
+                                     SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id ,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                       FROM Fact_Acct 
+                                        join gl_journalline gl on  Fact_Acct.record_id=gl.gl_journal_id
+                                              and Fact_Acct.line_id=gl.gl_journalline_id and Fact_Acct.Account_ID=gl.Account_ID  and gl.IsGenerated='N'
+                                        join gl_journal a on a.gl_journal_id =Fact_Acct.record_id and a.docstatus in ('CO','CL')	
+                                        WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.ad_table_id=224
+                                                                                                 
+                                     union all
+                                 
+                                     SELECT Fact_Acct.dateacct,Fact_Acct.amtacctdr,Fact_Acct.amtacctcr,Fact_Acct.account_id ,Fact_Acct.description ,Fact_Acct.AD_Client_ID
+                                         FROM Fact_Acct 
+                                          join gl_journal a on a.gl_journal_id =Fact_Acct.record_id and a.docstatus in ('CO','CL')	
+                                     WHERE  
+                                              Fact_Acct.dateacct<=$P{EndDate} and Fact_Acct.dateacct>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE
+                                                    and  Fact_Acct.AD_Client_ID in ('1000003') 
+                                                    and Fact_Acct.line_id is null
+                                 ) as t
+                      inner join c_elementvalue tk 	on t.account_id=tk.c_elementvalue_id and tk.AD_Client_ID in ('1000003') and left(tk.value,4) in ('6422','6426') 
+              
+            ) as t
+        join hsv_giathanh l on t.chitieu=l.value and ad_client_id=1000003
+
+        --Lien ket de lay so luong san xuat
+        left	join(select 'II' as nhom,'2' as chitieu,0 as cp,COALESCE(sum(t.slb),0) as slb,COALESCE(sum(t.slb1),0) as slb1,COALESCE(sum(t.slb5),0) as slb5       
+                    from(select distinct pl.m_productionplan_id as m_productionline_id,pl.m_product_id,pl.productionqty as slb,0 as slb1,0 as slb5,pl.m_attributesetinstance_id 
+                                from m_productionplan pl
+                                join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000000 
+                                join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') 
+                                                            AND p.movementdate>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE and p.movementdate<=$P{EndDate}
+                                join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                              join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id=1000013 and gtt.m_attribute_id=1000001 
+                              WHERE tt.ad_client_id=1000003 
+                                     ) tt on pl.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                                where  pl.ad_client_id=1000003 
+                            
+                            union all
+                            
+                            select distinct pl.m_productionplan_id as m_productionline_id,pl.m_product_id,0 as slb,pl.productionqty as slb1,0 as slb5,pl.m_attributesetinstance_id 
+                            from m_productionplan pl
+                            join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000000 
+                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') 
+                                                        AND p.movementdate>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE and p.movementdate<=$P{EndDate}
+                            join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                          join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id=1000005 and gtt.m_attribute_id=1000001 
+                          WHERE tt.ad_client_id=1000003 
+                                 ) tt on pl.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                            where  pl.ad_client_id=1000003 
+                            
+                            union all
+                            
+                            select distinct pl.m_productionplan_id as m_productionline_id,pl.m_product_id,0 as slb,0 as slb1,pl.productionqty as slb5,pl.m_attributesetinstance_id 
+                            from m_productionplan pl
+                            join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000000 
+                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') 
+                                        AND p.movementdate>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE and p.movementdate<=$P{EndDate}
+                            join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                          join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in('1000006','1000007','1000019') and gtt.m_attribute_id=1000001 
+                          WHERE tt.ad_client_id=1000003 
+                                 ) tt on pl.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                            where  pl.ad_client_id=1000003 
+            
+                        ) as t
+                    ) as sx on t.nhom=sx.nhom
+                    
+        --Lien ket de lay so luong xuat ban
+            left join (		select 'III' as nhom,'3' as chitieu,0 as cp,COALESCE(sum(t.slb),0) as slb,COALESCE(sum(t.slb1),0) as slb1,COALESCE(sum(t.slb5),0) as slb5     
+                                from(select COALESCE(sum(io.movementqty),0) as slb,0 as slb1,0 as slb5,'3' as chitieu	from m_inoutline io 
+                                    join m_inout iol on io.m_inout_id=iol.m_inout_id and iol.docstatus in ('CO','CL') and iol.C_DocType_ID=1000152
+                                            AND iol.movementdate>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE and iol.movementdate<=$P{EndDate}
+                                    join m_product hh on io.m_product_id=hh.m_product_id and hh. M_AttributeSet_ID=1000000
+                                  join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                                        join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id=1000013 and gtt.m_attribute_id=1000001 
+                                        WHERE tt.ad_client_id=1000003 
+                                                ) tt on IO.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                                           where io.ad_client_id=1000003 
+                                           
+                                  union all
+                                   
+                                  select 0 as slb,COALESCE(sum(io.movementqty),0) as slb1,0 as slb5,'3' as chitieu	from m_inoutline io 
+                                    join m_inout iol on io.m_inout_id=iol.m_inout_id and iol.docstatus in ('CO','CL') and iol.C_DocType_ID=1000152
+                                            AND iol.movementdate>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE and iol.movementdate<=$P{EndDate}
+                                    join m_product hh on io.m_product_id=hh.m_product_id and hh. M_AttributeSet_ID=1000000
+                                  join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                                        join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id=1000005 and gtt.m_attribute_id=1000001 
+                                        WHERE tt.ad_client_id=1000003 
+                                                ) tt on IO.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                                           where io.ad_client_id=1000003  
+                        
+                                  union all
+                                   
+                                  select 0 as slb,0 as slb1,COALESCE(sum(io.movementqty),0) as slb5,'3' as chitieu	from m_inoutline io 
+                                    join m_inout iol on io.m_inout_id=iol.m_inout_id and iol.docstatus in ('CO','CL') and iol.C_DocType_ID=1000152
+                                            AND iol.movementdate>=date_trunc('YEAR',  $P{StartDate}::DATE)::DATE and iol.movementdate<=$P{EndDate}
+                                    join m_product hh on io.m_product_id=hh.m_product_id and hh. M_AttributeSet_ID=1000000
+                                  join (select tt.m_attributesetinstance_id from m_attributeinstance tt
+                                        join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in('1000006','1000007','1000019') and gtt.m_attribute_id=1000001 
+                                        WHERE tt.ad_client_id=1000003 
+                                                ) tt on IO.m_attributesetinstance_id=tt.m_attributesetinstance_id
+                                           where io.ad_client_id=1000003  
+                        
+                    ) as t
+                )	xb on t.nhom=xb.nhom		
+        group by t.nhom,l.description,cast(l.value as integer),l.name
+        order by cast(value as integer) asc
+        
+    ) as t    
+    join hsv_chiso dm on cast(t.ct as INTEGER)=cast(dm.value as INTEGER) and dm.ad_client_id=1000003
+    group by dm.value,dm.name]]>
+	</queryString>
+	<field name="name" class="java.lang.String"/>
+	<field name="dvt" class="java.lang.String"/>
+	<field name="sl" class="java.math.BigDecimal"/>
+	<field name="lk" class="java.math.BigDecimal"/>
+	<field name="value" class="java.lang.String"/>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<detail>
+		<band height="26" splitType="Stretch">
+			<property name="local_mesure_unitheight" value="pixel"/>
+			<property name="com.jaspersoft.studio.unit.height" value="px"/>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="449" y="-1" width="132" height="27" uuid="acb41961-56fe-4973-830c-d38c5d6b0fae">
+					<property name="local_mesure_unitheight" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="local_mesure_unitwidth" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{lk}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+</jasperReport>

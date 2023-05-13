@@ -1,0 +1,520 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.4.3.final using JasperReports Library version 6.4.3  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="tyle_thuhoivanef" pageWidth="754" pageHeight="70" orientation="Landscape" columnWidth="754" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="065b1d87-137b-43b5-b1e2-5aa23a87fc7d">
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="HSV"/>
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="0"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="1000"/>
+	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
+	<parameter name="AD_Org_ID" class="java.lang.Integer"/>
+	<parameter name="StartDate" class="java.util.Date"/>
+	<parameter name="EndDate" class="java.util.Date"/>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String">
+		<defaultValueExpression><![CDATA["dev/"]]></defaultValueExpression>
+	</parameter>
+	<queryString>
+		<![CDATA[SELECT id,'Tỷ lệ thu hồi ván ép (ván sấy / ván ép)' as a2, case when sum(a10)<>0 then round(sum(a9) / sum(a10),2) else 0 end as a10 FROM(
+SELECT '1' AS id,a7+a8 - a5 AS a9, 0 as a10 FROM
+( 
+SELECT '1' AS stt,id,'Ván sấy  loại A +' AS a2,  sum(a3) AS a3,sum(a4) AS a4,sum(a5) AS a5,sum(a6) AS a6,sum(a7) AS a7,sum(a8) AS a8
+FROM (
+
+SELECT '2' AS "id", sum(inv.productionqty) AS a3, 0 AS a4, 0 AS a5, 0 AS a6, 0 AS a7, 0 AS a8 FROM m_production iv
+INNER JOIN m_productionplan inv ON iv.m_production_id = inv.m_production_id 
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND inv.M_Product_ID=1004073 AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+UNION ALL
+
+SELECT '2' AS "id",0 AS a3, sum(inv.movementqty) AS a4,0 AS a5, 0 AS a6, 0 AS a7, 0 AS a8 FROM m_inout iv
+INNER JOIN m_inoutline inv ON iv.m_inout_id = inv.m_inout_id  AND issotrx = 'N'
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND  inv.M_Product_ID=1004073 AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+UNION ALL
+
+SELECT '2' AS "id",0 AS a3, 0 AS a4, sum(CASE WHEN inv.qtybook < inv.qtycount THEN inv.qtycount-inv.qtybook ELSE 0 END) AS a5, 0 AS a6, 0 AS a7, 0 AS a8 FROM M_Inventory iv 
+INNER JOIN m_inventoryline inv ON iv.M_Inventory_id = inv.M_Inventory_id AND iv.c_doctype_id = 1000323 
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND inv.M_Product_ID=1004073 AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+UNION ALL
+
+SELECT '2' AS "id",0 AS a3, 0 AS a4, 0 AS a5,sum(inv.movementqty) AS a6, 0 AS a7, 0 AS a8 FROM m_inout iv
+INNER JOIN m_inoutline inv ON iv.m_inout_id = inv.m_inout_id  AND issotrx = 'Y'
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND  inv.M_Product_ID=1004073 AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+UNION ALL
+SELECT '2' AS "id",0 AS a3, 0 AS a4, 0 AS a5, 0 AS a6, sum(inv.qtyinternaluse) AS a7, 0 AS a8 FROM m_inventory iv 
+INNER JOIN m_inventoryline inv ON iv.m_inventory_id = inv.m_inventory_id AND  iv.c_doctype_id =1000326 
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND inv.M_Product_ID=1004073 AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+UNION ALL
+
+SELECT '2' AS "id",0 AS a3, 0 AS a4, 0 AS a5, 0 AS a6,0 AS a7, sum(CASE WHEN inv.qtybook > inv.qtycount THEN inv.qtybook-inv.qtycount ELSE 0 END) AS a8
+FROM M_Inventory iv 
+INNER JOIN m_inventoryline inv ON iv.M_Inventory_id = inv.M_Inventory_id AND iv.c_doctype_id = 1000323 
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND inv.M_Product_ID=1004073 AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+) AS k GROUP BY id
+
+UNION ALL
+
+SELECT '2' AS stt,id,'Ván sấy Loại A' AS a2, sum(a3) AS a3,sum(a4) AS a4,sum(a5) AS a5,sum(a6) AS a6,sum(a7) AS a7,sum(a8) AS a8
+FROM (
+SELECT '3' AS "id", sum(inv.productionqty) AS a3, 0 AS a4, 0 AS a5, 0 AS a6, 0 AS a7, 0 AS a8 FROM m_production iv
+INNER JOIN m_productionplan inv ON iv.m_production_id = inv.m_production_id 
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND inv.M_Product_ID=1004071 AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+UNION ALL
+
+SELECT '3' AS "id",0 AS a3, sum(inv.movementqty) AS a4,0 AS a5, 0 AS a6, 0 AS a7, 0 AS a8 FROM m_inout iv
+INNER JOIN m_inoutline inv ON iv.m_inout_id = inv.m_inout_id  AND issotrx = 'N'
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND  inv.M_Product_ID=1004071 AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+UNION ALL
+
+SELECT '3' AS "id",0 AS a3, 0 AS a4, sum(CASE WHEN inv.qtybook < inv.qtycount THEN inv.qtycount-inv.qtybook ELSE 0 END) AS a5, 0 AS a6, 0 AS a7, 0 AS a8 FROM M_Inventory iv 
+INNER JOIN m_inventoryline inv ON iv.M_Inventory_id = inv.M_Inventory_id AND iv.c_doctype_id = 1000323 
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND inv.M_Product_ID=1004071 AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+UNION ALL
+
+SELECT '3' AS "id",0 AS a3, 0 AS a4, 0 AS a5,sum(inv.movementqty) AS a6, 0 AS a7, 0 AS a8 FROM m_inout iv
+INNER JOIN m_inoutline inv ON iv.m_inout_id = inv.m_inout_id  AND issotrx = 'Y'
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND  inv.M_Product_ID=1004071 AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+UNION ALL
+SELECT '3' AS "id",0 AS a3, 0 AS a4, 0 AS a5, 0 AS a6, sum(inv.qtyinternaluse) AS a7, 0 AS a8 FROM m_inventory iv 
+INNER JOIN m_inventoryline inv ON iv.m_inventory_id = inv.m_inventory_id AND  iv.c_doctype_id =1000326 
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND inv.M_Product_ID=1004071 AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+UNION ALL
+
+SELECT '3' AS "id",0 AS a3, 0 AS a4, 0 AS a5, 0 AS a6,0 AS a7, sum(CASE WHEN inv.qtybook > inv.qtycount THEN inv.qtybook-inv.qtycount ELSE 0 END) AS a8
+FROM M_Inventory iv 
+INNER JOIN m_inventoryline inv ON iv.M_Inventory_id = inv.M_Inventory_id AND iv.c_doctype_id = 1000323 
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND inv.M_Product_ID=1004071 AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+) AS k GROUP BY id
+
+UNION ALL
+
+SELECT '3' AS stt,id,'Ván sấy Loai B' AS a2, sum(a3) AS a3,sum(a4) AS a4,sum(a5) AS a5,sum(a6) AS a6,sum(a7) AS a7,sum(a8) AS a8
+FROM (
+SELECT '4' AS "id", sum(inv.productionqty) AS a3, 0 AS a4, 0 AS a5, 0 AS a6, 0 AS a7, 0 AS a8 FROM m_production iv
+INNER JOIN m_productionplan inv ON iv.m_production_id = inv.m_production_id 
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND inv.M_Product_ID=1004072 AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+UNION ALL
+
+SELECT '4' AS "id",0 AS a3, sum(inv.movementqty) AS a4,0 AS a5, 0 AS a6, 0 AS a7, 0 AS a8 FROM m_inout iv
+INNER JOIN m_inoutline inv ON iv.m_inout_id = inv.m_inout_id  AND issotrx = 'N'
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND  inv.M_Product_ID=1004072 AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+UNION ALL
+
+SELECT '4' AS "id",0 AS a3, 0 AS a4, sum(CASE WHEN inv.qtybook < inv.qtycount THEN inv.qtycount-inv.qtybook ELSE 0 END) AS a5, 0 AS a6, 0 AS a7, 0 AS a8 FROM M_Inventory iv 
+INNER JOIN m_inventoryline inv ON iv.M_Inventory_id = inv.M_Inventory_id AND iv.c_doctype_id = 1000323 
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND inv.M_Product_ID=1004072 AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+UNION ALL
+
+SELECT '4' AS "id",0 AS a3, 0 AS a4, 0 AS a5,sum(inv.movementqty) AS a6, 0 AS a7, 0 AS a8 FROM m_inout iv
+INNER JOIN m_inoutline inv ON iv.m_inout_id = inv.m_inout_id  AND issotrx = 'Y'
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND  inv.M_Product_ID=1004072 AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+UNION ALL
+SELECT '4' AS "id",0 AS a3, 0 AS a4, 0 AS a5, 0 AS a6, sum(inv.qtyinternaluse) AS a7, 0 AS a8 FROM m_inventory iv 
+INNER JOIN m_inventoryline inv ON iv.m_inventory_id = inv.m_inventory_id AND  iv.c_doctype_id =1000326 
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND inv.M_Product_ID=1004072 AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+UNION ALL
+
+SELECT '4' AS "id",0 AS a3, 0 AS a4, 0 AS a5, 0 AS a6,0 AS a7, sum(CASE WHEN inv.qtybook > inv.qtycount THEN inv.qtybook-inv.qtycount ELSE 0 END) AS a8
+FROM M_Inventory iv 
+INNER JOIN m_inventoryline inv ON iv.M_Inventory_id = inv.M_Inventory_id AND iv.c_doctype_id = 1000323 
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND inv.M_Product_ID=1004072 AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+) AS k GROUP BY id
+
+UNION ALL
+
+SELECT '4' AS stt,id,'Ván sấy  Loại C' AS a2, sum(a3) AS a3,sum(a4) AS a4,sum(a5) AS a5,sum(a6) AS a6,sum(a7) AS a7,sum(a8) AS a8
+FROM (
+SELECT '5' AS "id", sum(inv.productionqty) AS a3, 0 AS a4, 0 AS a5, 0 AS a6, 0 AS a7, 0 AS a8 FROM m_production iv
+INNER JOIN m_productionplan inv ON iv.m_production_id = inv.m_production_id 
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND inv.M_Product_ID=1004070 AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+UNION ALL
+
+SELECT '5' AS "id",0 AS a3, sum(inv.movementqty) AS a4,0 AS a5, 0 AS a6, 0 AS a7, 0 AS a8 FROM m_inout iv
+INNER JOIN m_inoutline inv ON iv.m_inout_id = inv.m_inout_id  AND issotrx = 'N'
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND  inv.M_Product_ID=1004070 AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+UNION ALL
+
+SELECT '5' AS "id",0 AS a3, 0 AS a4, sum(CASE WHEN inv.qtybook < inv.qtycount THEN inv.qtycount-inv.qtybook ELSE 0 END) AS a5, 0 AS a6, 0 AS a7, 0 AS a8 FROM M_Inventory iv 
+INNER JOIN m_inventoryline inv ON iv.M_Inventory_id = inv.M_Inventory_id AND iv.c_doctype_id = 1000323 
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND inv.M_Product_ID=1004070 AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+UNION ALL
+
+SELECT '5' AS "id",0 AS a3, 0 AS a4, 0 AS a5,sum(inv.movementqty) AS a6, 0 AS a7, 0 AS a8 FROM m_inout iv
+INNER JOIN m_inoutline inv ON iv.m_inout_id = inv.m_inout_id  AND issotrx = 'Y'
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND  inv.M_Product_ID=1004070 AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+UNION ALL
+SELECT '5' AS "id",0 AS a3, 0 AS a4, 0 AS a5, 0 AS a6, sum(inv.qtyinternaluse) AS a7, 0 AS a8 FROM m_inventory iv 
+INNER JOIN m_inventoryline inv ON iv.m_inventory_id = inv.m_inventory_id AND  iv.c_doctype_id =1000326 
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND inv.M_Product_ID=1004070 AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+UNION ALL
+
+SELECT '5' AS "id",0 AS a3, 0 AS a4, 0 AS a5, 0 AS a6,0 AS a7, sum(CASE WHEN inv.qtybook > inv.qtycount THEN inv.qtybook-inv.qtycount ELSE 0 END) AS a8
+FROM M_Inventory iv 
+INNER JOIN m_inventoryline inv ON iv.M_Inventory_id = inv.M_Inventory_id AND iv.c_doctype_id = 1000323 
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND inv.M_Product_ID=1004070 AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+) AS k GROUP BY id
+) AS t 
+UNION ALL
+SELECT '1' AS id,(a7+a8) -(a5+a3) AS a9, 0 as a10
+ FROM (
+ 
+SELECT '5' AS stt,id,'Ván may, p loại dở dang cuối kỳ' AS a2, sum(a3) AS a3,sum(a4) AS a4,sum(a5) AS a5,sum(a6) AS a6,sum(a7) AS a7,sum(a8) AS a8
+FROM (
+SELECT '6' AS "id", sum(inv.productionqty) AS a3, 0 AS a4, 0 AS a5, 0 AS a6, 0 AS a7, 0 AS a8 FROM m_production iv
+INNER JOIN m_productionplan inv ON iv.m_production_id = inv.m_production_id 
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND inv.M_Product_ID=1013052 AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+UNION ALL
+
+SELECT '6' AS "id",0 AS a3, sum(inv.movementqty) AS a4,0 AS a5, 0 AS a6, 0 AS a7, 0 AS a8 FROM m_inout iv
+INNER JOIN m_inoutline inv ON iv.m_inout_id = inv.m_inout_id  AND issotrx = 'N'
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND  inv.M_Product_ID=1013052 AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+UNION ALL
+
+SELECT '6' AS "id",0 AS a3, 0 AS a4, sum(CASE WHEN inv.qtybook < inv.qtycount THEN inv.qtycount-inv.qtybook ELSE 0 END) AS a5, 0 AS a6, 0 AS a7, 0 AS a8 FROM M_Inventory iv 
+INNER JOIN m_inventoryline inv ON iv.M_Inventory_id = inv.M_Inventory_id AND iv.c_doctype_id = 1000323 
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND inv.M_Product_ID=1013052 AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+UNION ALL
+
+SELECT '6' AS "id",0 AS a3, 0 AS a4, 0 AS a5,sum(inv.movementqty) AS a6, 0 AS a7, 0 AS a8 FROM m_inout iv
+INNER JOIN m_inoutline inv ON iv.m_inout_id = inv.m_inout_id  AND issotrx = 'Y'
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND  inv.M_Product_ID=1013052 AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+UNION ALL
+SELECT '6' AS "id",0 AS a3, 0 AS a4, 0 AS a5, 0 AS a6, sum(inv.qtyinternaluse) AS a7, 0 AS a8 FROM m_inventory iv 
+INNER JOIN m_inventoryline inv ON iv.m_inventory_id = inv.m_inventory_id AND  iv.c_doctype_id =1000326 
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND inv.M_Product_ID=1013052 AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+UNION ALL
+
+SELECT '6' AS "id",0 AS a3, 0 AS a4, 0 AS a5, 0 AS a6,0 AS a7, sum(CASE WHEN inv.qtybook > inv.qtycount THEN inv.qtybook-inv.qtycount ELSE 0 END) AS a8
+FROM M_Inventory iv 
+JOIN m_inventoryline inv ON iv.M_Inventory_id = inv.M_Inventory_id AND iv.c_doctype_id = 1000323 
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL) AND inv.M_Product_ID=1013052 AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+) AS k  GROUP BY id 
+) AS t 
+
+UNION ALL
+
+SELECT '1' as id, 0 as a9,(a3+a5) -(a7+a8) AS a10 FROM
+( 
+SELECT '1' AS stt, id, 'Ván cốt thiếu' AS a2, sum(a3) AS a3,sum(a4) AS a4,sum(a5) AS a5,sum(a6) AS a6,sum(a7) AS a7,sum(a8) AS a8 
+FROM(
+SELECT '8' AS "id", sum(inv.productionqty) AS a3, 0 AS a4, 0 AS a5, 0 AS a6, 0 AS a7, 0 AS a8 FROM m_production iv
+INNER JOIN m_productionplan inv ON iv.m_production_id = inv.m_production_id 
+INNER JOIN m_product hh ON inv.m_product_id = hh.m_product_id AND  M_AttributeSet_ID=1000080
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)  AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+
+UNION ALL
+
+SELECT '8' AS "id",0 AS a3, sum(inv.movementqty) AS a4,0 AS a5, 0 AS a6, 0 AS a7, 0 AS a8 FROM m_inout iv
+INNER JOIN m_inoutline inv ON iv.m_inout_id = inv.m_inout_id  AND issotrx = 'N'
+INNER JOIN m_product hh ON inv.m_product_id = hh.m_product_id AND  M_AttributeSet_ID=1000080
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)  AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+UNION ALL
+
+SELECT '8' AS "id",0 AS a3, 0 AS a4, sum(CASE WHEN inv.qtybook < inv.qtycount THEN inv.qtycount-inv.qtybook ELSE 0 END) AS a5, 0 AS a6, 0 AS a7, 0 AS a8 FROM M_Inventory iv 
+INNER JOIN m_inventoryline inv ON iv.M_Inventory_id = inv.M_Inventory_id AND iv.c_doctype_id = 1000323 
+INNER JOIN m_product hh ON inv.m_product_id = hh.m_product_id AND  M_AttributeSet_ID=1000080
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)  AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+UNION ALL
+
+SELECT '8' AS "id",0 AS a3, 0 AS a4, 0 AS a5,sum(inv.movementqty) AS a6, 0 AS a7, 0 AS a8 FROM m_inout iv
+INNER JOIN m_inoutline inv ON iv.m_inout_id = inv.m_inout_id  AND issotrx = 'Y'
+INNER JOIN m_product hh ON inv.m_product_id = hh.m_product_id AND  M_AttributeSet_ID=1000080
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)  AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+UNION ALL
+SELECT '8' AS "id",0 AS a3, 0 AS a4, 0 AS a5, 0 AS a6, sum(inv.qtyinternaluse) AS a7, 0 AS a8 FROM m_inventory iv 
+INNER JOIN m_inventoryline inv ON iv.m_inventory_id = inv.m_inventory_id AND  iv.c_doctype_id =1000326 
+INNER JOIN m_product hh ON inv.m_product_id = hh.m_product_id AND  M_AttributeSet_ID=1000080
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)  AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+UNION ALL
+
+SELECT '8' AS "id",0 AS a3, 0 AS a4, 0 AS a5, 0 AS a6,0 AS a7, sum(CASE WHEN inv.qtybook > inv.qtycount THEN inv.qtybook-inv.qtycount ELSE 0 END) AS a8
+FROM M_Inventory iv 
+INNER JOIN m_inventoryline inv ON iv.M_Inventory_id = inv.M_Inventory_id AND iv.c_doctype_id = 1000323 
+INNER JOIN m_product hh ON inv.m_product_id = hh.m_product_id AND  M_AttributeSet_ID=1000080
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)  AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+) AS k GROUP BY id
+
+UNION ALL
+
+SELECT '2' AS stt, id, 'Ván cốt đủ' AS a2,sum(a3) AS a3,sum(a4) AS a4,sum(a5) AS a5,sum(a6) AS a6,sum(a7) AS a7,sum(a8) AS a8 
+FROM(
+SELECT '9' AS "id", sum(inv.productionqty) AS a3, 0 AS a4, 0 AS a5, 0 AS a6, 0 AS a7, 0 AS a8 FROM m_production iv
+INNER JOIN m_productionplan inv ON iv.m_production_id = inv.m_production_id 
+INNER JOIN m_product hh ON inv.m_product_id = hh.m_product_id AND  M_AttributeSet_ID=1000070
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)  AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+
+UNION ALL
+
+SELECT '9' AS "id",0 AS a3, sum(inv.movementqty) AS a4,0 AS a5, 0 AS a6, 0 AS a7, 0 AS a8 FROM m_inout iv
+INNER JOIN m_inoutline inv ON iv.m_inout_id = inv.m_inout_id  AND issotrx = 'N'
+INNER JOIN m_product hh ON inv.m_product_id = hh.m_product_id AND  M_AttributeSet_ID=1000070
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)  AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+UNION ALL
+
+SELECT '9' AS "id",0 AS a3, 0 AS a4, sum(CASE WHEN inv.qtybook < inv.qtycount THEN inv.qtycount-inv.qtybook ELSE 0 END) AS a5, 0 AS a6, 0 AS a7, 0 AS a8 FROM M_Inventory iv 
+INNER JOIN m_inventoryline inv ON iv.M_Inventory_id = inv.M_Inventory_id AND iv.c_doctype_id = 1000323 
+INNER JOIN m_product hh ON inv.m_product_id = hh.m_product_id AND  M_AttributeSet_ID=1000070
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)  AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+UNION ALL
+
+SELECT '9' AS "id",0 AS a3, 0 AS a4, 0 AS a5,sum(inv.movementqty) AS a6, 0 AS a7, 0 AS a8 FROM m_inout iv
+INNER JOIN m_inoutline inv ON iv.m_inout_id = inv.m_inout_id  AND issotrx = 'Y'
+INNER JOIN m_product hh ON inv.m_product_id = hh.m_product_id AND  M_AttributeSet_ID=1000070
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)  AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+UNION ALL
+SELECT '9' AS "id",0 AS a3, 0 AS a4, 0 AS a5, 0 AS a6, sum(inv.qtyinternaluse) AS a7, 0 AS a8 FROM m_inventory iv 
+INNER JOIN m_inventoryline inv ON iv.m_inventory_id = inv.m_inventory_id AND  iv.c_doctype_id =1000326 
+INNER JOIN m_product hh ON inv.m_product_id = hh.m_product_id AND  M_AttributeSet_ID=1000070
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)  AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+UNION ALL
+
+SELECT '9' AS "id",0 AS a3, 0 AS a4, 0 AS a5, 0 AS a6,0 AS a7, sum(CASE WHEN inv.qtybook > inv.qtycount THEN inv.qtybook-inv.qtycount ELSE 0 END) AS a8
+FROM M_Inventory iv 
+INNER JOIN m_inventoryline inv ON iv.M_Inventory_id = inv.M_Inventory_id AND iv.c_doctype_id = 1000323 
+INNER JOIN m_product hh ON inv.m_product_id = hh.m_product_id AND  M_AttributeSet_ID=1000070
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)  AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+) AS k GROUP BY id
+UNION ALL
+SELECT '3' AS stt,id, 'Ván thành phẩm DH' AS a2,sum(a3) AS a3,sum(a4) AS a4,sum(a5) AS a5,sum(a6) AS a6,sum(a7) AS a7,sum(a8) AS a8 
+FROM(
+SELECT '10' AS "id", sum(inv.productionqty) AS a3, 0 AS a4, 0 AS a5, 0 AS a6, 0 AS a7, 0 AS a8 FROM m_production iv
+INNER JOIN m_productionplan inv ON iv.m_production_id = inv.m_production_id 
+INNER JOIN m_product hh ON inv.m_product_id = hh.m_product_id AND  M_AttributeSet_ID=1000064
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)  AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+
+UNION ALL
+
+SELECT '10' AS "id",0 AS a3, sum(inv.movementqty) AS a4,0 AS a5, 0 AS a6, 0 AS a7, 0 AS a8 FROM m_inout iv
+INNER JOIN m_inoutline inv ON iv.m_inout_id = inv.m_inout_id  AND issotrx = 'N'
+INNER JOIN m_product hh ON inv.m_product_id = hh.m_product_id AND  M_AttributeSet_ID=1000064
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)  AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+UNION ALL
+
+SELECT '10' AS "id",0 AS a3, 0 AS a4, sum(CASE WHEN inv.qtybook < inv.qtycount THEN inv.qtycount-inv.qtybook ELSE 0 END) AS a5, 0 AS a6, 0 AS a7, 0 AS a8 FROM M_Inventory iv 
+INNER JOIN m_inventoryline inv ON iv.M_Inventory_id = inv.M_Inventory_id AND iv.c_doctype_id = 1000323 
+INNER JOIN m_product hh ON inv.m_product_id = hh.m_product_id AND  M_AttributeSet_ID=1000064
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)  AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+UNION ALL
+
+SELECT '10' AS "id",0 AS a3, 0 AS a4, 0 AS a5,sum(inv.movementqty) AS a6, 0 AS a7, 0 AS a8 FROM m_inout iv
+INNER JOIN m_inoutline inv ON iv.m_inout_id = inv.m_inout_id  AND issotrx = 'Y'
+INNER JOIN m_product hh ON inv.m_product_id = hh.m_product_id AND  M_AttributeSet_ID=1000064
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)  AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+UNION ALL
+SELECT '10' AS "id",0 AS a3, 0 AS a4, 0 AS a5, 0 AS a6, sum(inv.qtyinternaluse) AS a7, 0 AS a8 FROM m_inventory iv 
+INNER JOIN m_inventoryline inv ON iv.m_inventory_id = inv.m_inventory_id AND  iv.c_doctype_id =1000326 
+INNER JOIN m_product hh ON inv.m_product_id = hh.m_product_id AND  M_AttributeSet_ID=1000064
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)  AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+UNION ALL
+
+SELECT '10' AS "id",0 AS a3, 0 AS a4, 0 AS a5, 0 AS a6,0 AS a7, sum(CASE WHEN inv.qtybook > inv.qtycount THEN inv.qtybook-inv.qtycount ELSE 0 END) AS a8
+FROM M_Inventory iv 
+INNER JOIN m_inventoryline inv ON iv.M_Inventory_id = inv.M_Inventory_id AND iv.c_doctype_id = 1000323 
+INNER JOIN m_product hh ON inv.m_product_id = hh.m_product_id AND  M_AttributeSet_ID=1000064
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)  AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+) AS k GROUP BY id
+UNION ALL
+SELECT '4' AS stt,id,'Ván bị lỗi thanh lý' AS a2, sum(a3) AS a3,sum(a4) AS a4,sum(a5) AS a5,sum(a6) AS a6,sum(a7) AS a7,sum(a8) AS a8 
+FROM(
+SELECT '11' AS "id", sum(inv.productionqty) AS a3, 0 AS a4, 0 AS a5, 0 AS a6, 0 AS a7, 0 AS a8 FROM m_production iv
+INNER JOIN m_productionplan inv ON iv.m_production_id = inv.m_production_id 
+INNER JOIN m_product hh ON inv.m_product_id = hh.m_product_id AND  M_AttributeSet_ID=1000081
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)  AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+
+UNION ALL
+
+SELECT '11' AS "id",0 AS a3, sum(inv.movementqty) AS a4,0 AS a5, 0 AS a6, 0 AS a7, 0 AS a8 FROM m_inout iv
+INNER JOIN m_inoutline inv ON iv.m_inout_id = inv.m_inout_id  AND issotrx = 'N'
+INNER JOIN m_product hh ON inv.m_product_id = hh.m_product_id AND  M_AttributeSet_ID=1000081
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)  AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+UNION ALL
+
+SELECT '11' AS "id",0 AS a3, 0 AS a4, sum(CASE WHEN inv.qtybook < inv.qtycount THEN inv.qtycount-inv.qtybook ELSE 0 END) AS a5, 0 AS a6, 0 AS a7, 0 AS a8 FROM M_Inventory iv 
+INNER JOIN m_inventoryline inv ON iv.M_Inventory_id = inv.M_Inventory_id AND iv.c_doctype_id = 1000323 
+INNER JOIN m_product hh ON inv.m_product_id = hh.m_product_id AND  M_AttributeSet_ID=1000081
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)  AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+UNION ALL
+
+SELECT '11' AS "id",0 AS a3, 0 AS a4, 0 AS a5,sum(inv.movementqty) AS a6, 0 AS a7, 0 AS a8 FROM m_inout iv
+INNER JOIN m_inoutline inv ON iv.m_inout_id = inv.m_inout_id  AND issotrx = 'Y'
+INNER JOIN m_product hh ON inv.m_product_id = hh.m_product_id AND  M_AttributeSet_ID=1000081
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)  AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+UNION ALL
+SELECT '11' AS "id",0 AS a3, 0 AS a4, 0 AS a5, 0 AS a6, sum(inv.qtyinternaluse) AS a7, 0 AS a8 FROM m_inventory iv 
+INNER JOIN m_inventoryline inv ON iv.m_inventory_id = inv.m_inventory_id AND  iv.c_doctype_id =1000326 
+INNER JOIN m_product hh ON inv.m_product_id = hh.m_product_id AND  M_AttributeSet_ID=1000081
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)  AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+UNION ALL
+
+SELECT '11' AS "id",0 AS a3, 0 AS a4, 0 AS a5, 0 AS a6,0 AS a7, sum(CASE WHEN inv.qtybook > inv.qtycount THEN inv.qtybook-inv.qtycount ELSE 0 END) AS a8
+FROM M_Inventory iv 
+INNER JOIN m_inventoryline inv ON iv.M_Inventory_id = inv.M_Inventory_id AND iv.c_doctype_id = 1000323 
+INNER JOIN m_product hh ON inv.m_product_id = hh.m_product_id AND  M_AttributeSet_ID=1000081
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)  AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+) AS k GROUP BY id
+UNION ALL
+SELECT '5' AS stt,id, 'Ván dở dang tồn kho' AS a2,sum(a3) AS a3,sum(a4) AS a4,sum(a5) AS a5,sum(a6) AS a6,sum(a7) AS a7,sum(a8) AS a8 
+FROM(
+SELECT '12' AS "id", sum(inv.productionqty) AS a3, 0 AS a4, 0 AS a5, 0 AS a6, 0 AS a7, 0 AS a8 FROM m_production iv
+INNER JOIN m_productionplan inv ON iv.m_production_id = inv.m_production_id 
+INNER JOIN m_product hh ON inv.m_product_id = hh.m_product_id AND  M_AttributeSet_ID=1000083
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)  AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+
+UNION ALL
+
+SELECT '12' AS "id",0 AS a3, sum(inv.movementqty) AS a4,0 AS a5, 0 AS a6, 0 AS a7, 0 AS a8 FROM m_inout iv
+INNER JOIN m_inoutline inv ON iv.m_inout_id = inv.m_inout_id  AND issotrx = 'N'
+INNER JOIN m_product hh ON inv.m_product_id = hh.m_product_id AND  M_AttributeSet_ID=1000083
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)  AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+UNION ALL
+
+SELECT '12' AS "id",0 AS a3, 0 AS a4, sum(CASE WHEN inv.qtybook < inv.qtycount THEN inv.qtycount-inv.qtybook ELSE 0 END) AS a5, 0 AS a6, 0 AS a7, 0 AS a8 FROM M_Inventory iv 
+INNER JOIN m_inventoryline inv ON iv.M_Inventory_id = inv.M_Inventory_id AND iv.c_doctype_id = 1000323 
+INNER JOIN m_product hh ON inv.m_product_id = hh.m_product_id AND  M_AttributeSet_ID=1000083
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)  AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+UNION ALL
+
+SELECT '12' AS "id",0 AS a3, 0 AS a4, 0 AS a5,sum(inv.movementqty) AS a6, 0 AS a7, 0 AS a8 FROM m_inout iv
+INNER JOIN m_inoutline inv ON iv.m_inout_id = inv.m_inout_id  AND issotrx = 'Y'
+INNER JOIN m_product hh ON inv.m_product_id = hh.m_product_id AND  M_AttributeSet_ID=1000083
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)  AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+
+UNION ALL
+SELECT '12' AS "id",0 AS a3, 0 AS a4, 0 AS a5, 0 AS a6, sum(inv.qtyinternaluse) AS a7, 0 AS a8 FROM m_inventory iv 
+INNER JOIN m_inventoryline inv ON iv.m_inventory_id = inv.m_inventory_id AND  iv.c_doctype_id =1000326 
+INNER JOIN m_product hh ON inv.m_product_id = hh.m_product_id AND  M_AttributeSet_ID=1000083
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)  AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+UNION ALL
+
+SELECT '12' AS "id",0 AS a3, 0 AS a4, 0 AS a5, 0 AS a6,0 AS a7, sum(CASE WHEN inv.qtybook > inv.qtycount THEN inv.qtybook-inv.qtycount ELSE 0 END) AS a8
+FROM M_Inventory iv 
+INNER JOIN m_inventoryline inv ON iv.M_Inventory_id = inv.M_Inventory_id AND iv.c_doctype_id = 1000323 
+INNER JOIN m_product hh ON inv.m_product_id = hh.m_product_id AND  M_AttributeSet_ID=1000083
+WHERE iv.ad_client_id=$P{AD_CLIENT_ID} AND iv.docstatus IN ('CO','CL') AND (iv.AD_Org_ID=$P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)  AND iv.movementdate >=$P{StartDate} AND iv.movementdate<=$P{EndDate}
+) AS k GROUP BY id
+) AS t ) AS t group by id]]>
+	</queryString>
+	<field name="id" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="id"/>
+	</field>
+	<field name="a2" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="a2"/>
+	</field>
+	<field name="a10" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.label" value="a10"/>
+	</field>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<columnHeader>
+		<band height="23">
+			<staticText>
+				<reportElement x="0" y="0" width="23" height="23" uuid="b8370e62-3eeb-43a6-a8e3-7c2feee33431">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="b53c6b67-8cb3-4952-96b7-1e542dbecd5e"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<text><![CDATA[III]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="23" y="0" width="731" height="23" uuid="ffcea742-2d4b-4e1c-aa8c-e75512052d9b">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="0816f7e6-e7d4-49a1-9239-92209b7758b4"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<text><![CDATA[TỶ LỆ NGUYÊN LIỆU/ THÀNH PHẨM]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="23" splitType="Stretch">
+			<textField>
+				<reportElement x="0" y="0" width="23" height="23" uuid="86ada2a0-ffd4-48ae-85f0-7029fb02cb58">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="b53c6b67-8cb3-4952-96b7-1e542dbecd5e"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{id}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="23" y="0" width="649" height="23" uuid="26692271-0f42-4f5d-897d-b18eedc671d4">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="0816f7e6-e7d4-49a1-9239-92209b7758b4"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{a2}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="672" y="0" width="82" height="23" uuid="24a29deb-c489-4250-9911-ef4f9bae2adf">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="4135212b-a20a-4dc3-9895-c2fdef4865e4"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{a10}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+</jasperReport>

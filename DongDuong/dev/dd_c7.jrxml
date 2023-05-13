@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.4.3.final using JasperReports Library version 6.4.3  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="ts_c7" pageWidth="525" pageHeight="23" orientation="Landscape" columnWidth="525" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="b2caad1d-f888-4bcc-aebf-58be02d55e29">
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="HSV"/>
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<parameter name="EndDate" class="java.util.Date">
+		<defaultValueExpression><![CDATA[new Date(100,0,1)]]></defaultValueExpression>
+	</parameter>
+	<parameter name="StartDate" class="java.util.Date">
+		<defaultValueExpression><![CDATA[new Date(100,0,1)]]></defaultValueExpression>
+	</parameter>
+	<parameter name="C_Activity_ID" class="java.lang.Integer"/>
+	<parameter name="M_Lot_ID" class="java.lang.Integer"/>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String">
+		<defaultValueExpression><![CDATA["dev/"]]></defaultValueExpression>
+	</parameter>
+	<queryString>
+		<![CDATA[select case when (sum(f.tong))<>0 then round((sum(f.sum_a)/sum(f.tong))*100,0)  else 0 end as kq 
+from(
+-- tong C5--
+    select  sum(k.c5) as tong, 0 as sum_a 
+    from ( 
+        SELECT lo.m_lot_id,k.C_Activity_ID,k.lot AS c1, 0 c2, 0 AS c3, 0 AS c4, k.sl AS c5, 0 AS c6, 0 AS c7, 0 AS c8, 0 AS c9, 0 AS c10
+        FROM (
+            SELECT att.m_attributesetinstance_id, att.lot, ci.C_Activity_ID,civ.productionqty AS sl
+            FROM m_productionplan civ
+            JOIN m_production ci ON civ.m_production_id = ci.m_production_id AND ci.docstatus IN ('CO', 'CL') and (ci.C_Activity_ID = $P{C_Activity_ID}  OR $P{C_Activity_ID}  IS NULL)
+            JOIN m_product hh ON hh.m_product_id = civ.m_product_id AND hh.M_Product_Category_ID = 1000449 and  hh.M_Product_ID not in (1013024)
+            JOIN m_attributesetinstance att ON civ.m_attributesetinstance_id = att.m_attributesetinstance_id AND att.lot IS NOT NULL AND att.M_AttributeSet_ID = 1000067
+            WHERE civ.ad_client_id = 1000017
+            ) AS k
+        JOIN m_lot lo ON lo.name = k.lot  AND lo.dateto >= $P{StartDate} AND lo.dateto <= $P{EndDate} AND (lo.M_Lot_ID = $P{M_Lot_ID} OR $P{M_Lot_ID} IS NULL)
+	) as k
+	
+--Van B---
+
+UNION ALL
+
+    select 0 as tong, sum(k.c6) as sum_a 
+    FROM (
+        SELECT t.lot AS c1, 0 c2, 0 AS c3, 0 AS c4, 0 AS c5, sum(t.sl) AS c6, 0 AS c7, 0 AS c8, 0 AS c9, 0 AS c10
+        FROM (
+            SELECT tt.lot, civ.productionqty AS sl
+            FROM m_productionplan civ
+            JOIN m_production ci ON civ.m_production_id = ci.m_production_id AND ci.docstatus IN ('CO', 'CL') and (ci.C_Activity_ID = $P{C_Activity_ID}  OR $P{C_Activity_ID}  IS NULL)
+            JOIN m_product hh ON civ.m_product_id = hh.m_product_id AND hh.m_product_id = 1008756
+            JOIN m_attributesetinstance tt ON civ.m_attributesetinstance_id = tt.m_attributesetinstance_id
+            WHERE civ.ad_client_id = 1000017
+            ) AS t
+        JOIN m_lot lo ON lo.name = t.lot AND (lo.M_Lot_ID = $P{M_Lot_ID} OR $P{M_Lot_ID} IS NULL)
+        WHERE lo.m_lot_id IS NOT NULL AND lo.dateto >= $P{StartDate} AND lo.dateto <= $P{EndDate}
+        GROUP BY t.lot
+	) as k 
+) as f]]>
+	</queryString>
+	<field name="kq" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.label" value="kq"/>
+	</field>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<detail>
+		<band height="23" splitType="Stretch">
+			<textField pattern="#,##0.###" isBlankWhenNull="true">
+				<reportElement x="0" y="0" width="525" height="23" uuid="6cae6d63-5203-465e-b168-756b4d718172"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="10" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{kq}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+</jasperReport>

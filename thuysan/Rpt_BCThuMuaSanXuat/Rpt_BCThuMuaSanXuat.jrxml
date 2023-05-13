@@ -1,0 +1,1392 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.19.0.final using JasperReports Library version 6.19.0-646c68931cebf1a58bc65c4359d1f0ca223c5e94  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Rpt_BCThuMuaSanXuat" pageWidth="595" pageHeight="842" columnWidth="595" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="4023df51-1b73-46d9-adf6-650e3c9f2034">
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="0"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="1000"/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="adempiere_7.1"/>
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<parameter name="StartDate" class="java.util.Date">
+		<defaultValueExpression><![CDATA[new Date(100,0,1)]]></defaultValueExpression>
+	</parameter>
+	<parameter name="EndDate" class="java.util.Date">
+		<defaultValueExpression><![CDATA[new Date(100,0,1)]]></defaultValueExpression>
+	</parameter>
+	<parameter name="AD_CLIENT_ID" class="java.lang.Integer">
+		<defaultValueExpression><![CDATA[1000000]]></defaultValueExpression>
+	</parameter>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String">
+		<defaultValueExpression><![CDATA["dev/"]]></defaultValueExpression>
+	</parameter>
+	<queryString language="SQL">
+		<![CDATA[select dm.hsv_stt as stt,dm.value,dm.name,sum(t.sl) as sl,sum(t.lk) as lk
+		,case when dvt.c_uom_id<>0 then dvt.name else 
+		case when dm.value in ('101','108','113') then '' else 
+		case when dm.value in ('105') then 'Kg' else 'Đồng' end end  end as dvt
+from(   --Chi tieu 101:công tác thu mua 
+        select 'A' as nhom ,'101' as ct,0 as dvt,0 as sl,0 as lk from ad_client WHERE ad_client_id=1000003
+
+        --Chi tieu 102:số lượng ngao thu mua
+        union all
+        --So lieu trong thang
+        select 'A' as nhom,'102' as ct,hh.c_uom_id as dvt,COALESCE(sum(pl.movementqty ),0) as sl  ,0 as lk
+        from m_inoutline pl
+            join m_product hh on pl.m_product_id=hh.m_product_id and hh.M_Product_ID=1000017
+            join m_inout p on pl.m_inout_id=p.m_inout_id  and p.docstatus in ('CO','CL') and p.C_DocType_ID=1000155  
+                AND  p.movementdate<=$P{EndDate} and p.movementdate>=$P{StartDate}
+        where pl.ad_client_id=1000003
+        group by hh.c_uom_id
+        
+       
+        --Chi tieu 104:Tổng  giá trị ngao mua 
+        union all
+        --So lieu trong ky
+        select 'A' as nhom,'104' as ct,0 as dvt,round(COALESCE(sum(pl.linetotalamt),0),0) as sl,0 as lk  
+        from c_invoiceline pl
+            join m_product hh on pl.m_product_id=hh.m_product_id and hh.M_Product_ID=1000017
+            join c_invoice p on pl.c_invoice_id=p.c_invoice_id  and p.docstatus in ('CO','CL') and p.C_DocType_ID=1000146 
+                AND  p.dateacct<=$P{EndDate}and p.dateacct>=$P{StartDate}
+            
+        where pl.ad_client_id=1000003
+        
+        --Ch tieu 108:công tác sản xuất 
+        union all
+        
+        select 'B' as nhom ,'108' as ct,0 as dvt,0 as sl,0 as lk from ad_client WHERE ad_client_id=1000003
+
+        --Chi tieu 109:số lượng ngao xuất dùng 
+        union all
+
+        --So lieu trong ky
+        SELECT 'B' as nhom,'109' as ct,hh.c_uom_id as dvt,COALESCE(sum( pl.qtyinternaluse ),0) as sl,0 as lk
+        from M_Inventoryline pl
+                join m_product hh on pl.m_product_id=hh.m_product_id and hh.M_Product_ID=1000017
+                join M_Inventory p on pl.M_Inventory_id=p.M_Inventory_id  and p.docstatus in ('CO','CL') and p.C_DocType_ID=1000167
+                    AND P.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate} and p.C_Campaign_ID in ('1000018','1000007')
+        where pl.ad_client_id=1000003 
+        group by hh.c_uom_id
+        
+       --Chi tieu 110:giá trị ngao xuất sử dụng       
+        union all
+        
+        select 'B' as nhom,'110' as ct,0 as dvt,round(COALESCE(sum(t.sl),0)*COALESCE(sum(t.dg),0),0) as sl,round(COALESCE(sum(t.lk),0)*COALESCE(sum(t.dg1),0),0) as lk
+        from(   --So luong ngao xuat dung
+                --So lieu trong ky
+                SELECT 0 as dg,0 as dg1,COALESCE(sum( pl.qtyinternaluse ),0) as sl,0 as lk
+                from M_Inventoryline pl
+                       join m_product hh on pl.m_product_id=hh.m_product_id and hh.M_Product_ID=1000017
+                       join M_Inventory p on pl.M_Inventory_id=p.M_Inventory_id  and p.docstatus in ('CO','CL') and p.C_DocType_ID=1000167
+                               AND P.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate} and p.C_Campaign_ID in ('1000018','1000007')
+                where pl.ad_client_id=1000003 
+                               
+                --Don gia binh quan mua trong ky
+                union all
+
+                select case when COALESCE(sum(f.qty),0)<>0 then COALESCE(sum(f.amtacctdr),0)/COALESCE(sum(f.qty),0) end  as dg,0 as dg1,0 as sl,0 as lk  
+                from c_invoiceline pl
+                    join m_product hh on pl.m_product_id=hh.m_product_id and hh.M_Product_ID=1000017
+                    join c_invoice p on pl.c_invoice_id=p.c_invoice_id  and p.docstatus in ('CO','CL') and p.C_DocType_ID=1000146 
+                        AND  p.dateacct<=$P{EndDate}and p.dateacct>=$P{StartDate}
+                    join fact_acct f on f.record_id=pl.c_invoice_id and f.line_id=pl.c_invoiceline_id and f.amtacctdr>0 and f.ad_table_id=318
+                where pl.ad_client_id=1000003
+                
+                    
+            ) as t    
+                
+        --Chi tieu 111:số lương TP ngao nhập kho từ NL
+        union all
+        
+        --So lieu trong ky
+        select 'B' as nhom,'111' as ct,hh.c_uom_id as dvt,COALESCE(sum(  pl.productionqty  ),0) as sl,0 as lk
+        from m_productionplan pl
+                    join m_product hh on pl.m_product_id=hh.m_product_id and hh.M_Product_Category_ID=1000017 and hh.M_AttributeSet_ID in('1000000','1000001','1000006')
+                    join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL')
+                            AND  p.movementdate<=$P{EndDate} and p.movementdate>=$P{StartDate} and p.C_Campaign_ID in ('1000018','1000007')
+        where pl.ad_client_id=1000003 
+        group by hh.c_uom_id    
+              
+        union ALL
+        --Chi tieu 112:giá trị Ngao nhập kho (D.mức)
+        --So lieu trong ky
+        select 'B' as nhom,'112' as ct,0 as dvt,round(COALESCE(sum(t.sl),0),0) as sl,round(COALESCE(sum(t.lk),0),0) as lk
+        from(
+              --Gia tri So luong nhap kho thanh pham ngao nau 11/16
+              --Trong ky
+            select '112' as ct,t.sl*dm.hsv_dinhmuc as sl,0 as lk
+            from(select '5' as ct, COALESCE(sum(pl.productionqty),0) as sl
+            		 from m_productionplan pl
+            			join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000000 and hsv_c_thuoctinh_id=1000036 
+            			join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+            								AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+            			where  pl.ad_client_id=1000003 
+
+                ) as t
+                join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003
+            
+             -- Thanh pham ngao nau 17/22 nhap kho 
+            union all
+            --So lieu trong ky
+            select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+            from(select '6' as ct,COALESCE(sum(pl.productionqty),0) as sl
+                         from m_productionplan pl
+                               join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000000 and hsv_c_thuoctinh_id=1000039 
+                               join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+                                                                AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+                      where  pl.ad_client_id=1000003 
+
+                ) as t
+                join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003
+            
+                            
+            -- Thanh pham ngao nau 40/60 nhap kho 
+            union all
+            
+            --So lieu tron gky    
+            select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 lk
+            from(select '7' as ct,COALESCE(sum(pl.productionqty),0) as sl
+            		 from m_productionplan pl
+            					join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000000 and hsv_c_thuoctinh_id=1000028 
+            					join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+            									AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+            					where  pl.ad_client_id=1000003 
+
+                ) as t
+                join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003    
+            
+            --Chi tieu so 8: Thanh pham ngao nau 60/80 nhap kho 
+            union all
+            --trong ky
+            select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+            from(select '8' as ct,COALESCE(sum(pl.productionqty),0) as sl
+            		 from m_productionplan pl
+            					join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000000 and hsv_c_thuoctinh_id=1000031 
+            					join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+            												AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+            					where  pl.ad_client_id=1000003 
+                ) as t
+                join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003    
+                
+            --Chi tieu so 9: Thanh pham ngao nau 80/100 nhap kho 
+            union all
+            --trong ky
+            select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+            from(select '9' as ct,COALESCE(sum(pl.productionqty),0) as sl
+            		 from m_productionplan pl
+            					join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000000 and hsv_c_thuoctinh_id=1000032 
+            					join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+            												AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+            					where  pl.ad_client_id=1000003 
+                ) as t
+                join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003  
+            
+             
+            --Chi tieu so 10: Thanh pham ngao nau 60/80 nhap kho 
+            union all
+            --trong ky
+            select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+            from(select '10' as ct,COALESCE(sum(pl.productionqty),0) as sl
+            		 from m_productionplan pl
+            					join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000000 and hsv_c_thuoctinh_id=1000035 
+            					join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+            												AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+            					where  pl.ad_client_id=1000003 
+                ) as t
+                join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003  
+                
+                
+           --Chi tieu so 11: Thanh pham ngao nau 120/150 nhap kho 
+            union all
+            --trong ky
+            select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+            from(select '11' as ct,COALESCE(sum(pl.productionqty),0) as sl
+            		 from m_productionplan pl
+            					join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000000 and hsv_c_thuoctinh_id=1000040 
+            					join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+            												AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+            					where  pl.ad_client_id=1000003 
+                ) as t
+                join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003
+                
+                
+            --Chi tieu so 12: Thanh pham ngao trang 11/17 nhap kho 
+            union all
+            --trong ky
+            select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+            from(select '12' as ct,COALESCE(sum(pl.productionqty),0) as sl
+            		 from m_productionplan pl
+            					join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000000 and hsv_c_thuoctinh_id=1000037 
+            					join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+            												AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+            					where  pl.ad_client_id=1000003 
+                ) as t
+                join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003    
+                
+                
+            --Chi tieu so 13: Thanh pham ngao trang 17/22 nhap kho 
+            union all
+            --Trong ky
+            select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+            from(select '13' as ct,COALESCE(sum(pl.productionqty),0) as sl
+            		 from m_productionplan pl
+            					join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000000 and hsv_c_thuoctinh_id=1000038 
+            					join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+            												AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+            					where  pl.ad_client_id=1000003 
+                ) as t
+                join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003       
+                 
+            --Chi tieu so 14: Thanh pham ngao nau 40/60 nhap kho 
+            union all
+            --trong ky
+            select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+            from(select '14' as ct,COALESCE(sum(pl.productionqty),0) as sl
+            		 from m_productionplan pl
+            					join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000000 and hsv_c_thuoctinh_id=1000029 
+            					join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+            												AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+            					where  pl.ad_client_id=1000003 
+                ) as t
+                join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003           
+                
+            --Chi tieu so 15: Thanh pham ngao nau 60/80 nhap kho 
+            union all
+            --trong ky
+            select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+            from(select '15' as ct,COALESCE(sum(pl.productionqty),0) as sl
+            		 from m_productionplan pl
+            					join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000000 and hsv_c_thuoctinh_id=1000030 
+            					join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+            												AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+            					where  pl.ad_client_id=1000003 
+                ) as t
+                join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003   
+                
+            --Chi tieu so 16: Thanh pham ngao nau 80/100 nhap kho 
+            union all
+            --trong ky
+            select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+            from(select '16' as ct,COALESCE(sum(pl.productionqty),0) as sl
+            		 from m_productionplan pl
+            					join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000000 and hsv_c_thuoctinh_id=1000033 
+            					join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+            												AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+            					where  pl.ad_client_id=1000003 
+                ) as t
+                join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003       
+    
+                
+            --Chi tieu so 17: Thanh pham ngao nau 100/120 nhap kho 
+            union all
+            --trong ky    
+            select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+            from(select '17' as ct,COALESCE(sum(pl.productionqty),0) as sl
+            		 from m_productionplan pl
+            					join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000000 and hsv_c_thuoctinh_id=1000034 
+            					join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+            												AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+            					where  pl.ad_client_id=1000003 
+                ) as t
+                join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003   
+    
+                
+            --Chi tieu so 18: Thanh pham ngao nau 120/150 nhap kho 
+            union all
+            --trong ky    
+            select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+            from(select '18' as ct,COALESCE(sum(pl.productionqty),0) as sl
+            		 from m_productionplan pl
+            					join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000000 and hsv_c_thuoctinh_id=1000041 
+            					join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+            												AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+            					where  pl.ad_client_id=1000003 
+                ) as t
+                join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003   
+                
+            
+            
+            --Chi tieu so 20: Thanh pham ngao nau du tru 11/16 nhap kho 
+            union all
+            --tron gky
+            select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+            from(select '20' as ct,COALESCE(sum(pl.productionqty),0) as sl
+            		 from m_productionplan pl
+            					join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000001 and hsv_c_thuoctinh_id=1000036 
+            					join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+            												AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+            					where  pl.ad_client_id=1000003 
+                ) as t
+               join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003       
+    
+          
+            --Chi tieu so 21: Thanh pham ngao nau du tru 17/22 nhap kho 
+            union all
+            --trong ky
+            select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+            from(select '21' as ct,COALESCE(sum(pl.productionqty),0) as sl
+            		 from m_productionplan pl
+            					join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000001 and hsv_c_thuoctinh_id=1000039 
+            					join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+            												AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+            					where  pl.ad_client_id=1000003 
+                ) as t
+                join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003           
+                
+                
+            --Chi tieu so 22: Thanh pham ngao nau du tru 40/60 nhap kho 
+            union all
+            --trong ky
+            select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+            from(select '22' as ct,COALESCE(sum(pl.productionqty),0) as sl
+            		 from m_productionplan pl
+            					join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000001 and hh.hsv_c_thuoctinh_id=1000028 
+            					join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+            												AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+            					where  pl.ad_client_id=1000003 
+                ) as t
+                join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003               
+    
+                
+            --Chi tieu so 23: Thanh pham ngao nau du tru 60/80 nhap kho 
+            union all
+            --trong ky
+            select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+            from(select '23' as ct,COALESCE(sum(pl.productionqty),0) as sl
+            		 from m_productionplan pl
+            					join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000001 and hsv_c_thuoctinh_id=1000031 
+            					join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+            												AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+            					where  pl.ad_client_id=1000003 
+                ) as t
+                join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003                   
+            
+                
+            --Chi tieu so 24: Thanh pham ngao nau du tru 80/100 nhap kho 
+            union all
+            --trong ky
+            select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+            from(select '24' as ct,COALESCE(sum(pl.productionqty),0) as sl
+            		 from m_productionplan pl
+            					join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000001 and hsv_c_thuoctinh_id=1000032 
+            					join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+            												AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+            					where  pl.ad_client_id=1000003 
+                ) as t
+                join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003       
+            
+                
+            --Chi tieu so 25: Thanh pham ngao nau du tru 100/120 nhap kho 
+            union all
+            --tron gky    
+            select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+            from(select '25' as ct,COALESCE(sum(pl.productionqty),0) as sl
+            		 from m_productionplan pl
+            					join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000001 and hsv_c_thuoctinh_id=1000035 
+            					join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+            												AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+            					where  pl.ad_client_id=1000003 
+                ) as t
+                join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003       
+            
+                
+            --Chi tieu so 26: Thanh pham ngao nau du tru 120/150 nhap kho 
+            union all
+            --trong ky
+            select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+            from(select '26' as ct,COALESCE(sum(pl.productionqty),0) as sl
+            		 from m_productionplan pl
+            					join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000001 and hsv_c_thuoctinh_id=1000040 
+            					join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+            												AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+            					where  pl.ad_client_id=1000003 
+                ) as t
+                join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003           
+            
+                
+            --Chi tieu so 27: Thanh pham ngao nau du tru 11/16 nhap kho 
+            union all
+            --trong ky
+            select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+            from(select '27' as ct,COALESCE(sum(pl.productionqty),0) as sl
+            		 from m_productionplan pl
+            					join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000001 and hsv_c_thuoctinh_id=1000037 
+            					join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+            												AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+            					where  pl.ad_client_id=1000003 
+                ) as t
+                join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003               
+    
+                
+            --Chi tieu so 28: Thanh pham ngao trang du tru 17/22 nhap kho 
+            union all
+            --trong ky
+            select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+            from(select '28' as ct,COALESCE(sum(pl.productionqty),0) as sl
+            		 from m_productionplan pl
+            					join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000001 and hsv_c_thuoctinh_id=1000038 
+            					join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+            												AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+            					where  pl.ad_client_id=1000003 
+                ) as t
+                join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003               
+    
+                
+            --Chi tieu so 29: Thanh pham ngao trang du tru 40/60 nhap kho 
+            union all
+            --trong ky
+            select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+            from(select '29' as ct,COALESCE(sum(pl.productionqty),0) as sl
+            		 from m_productionplan pl
+            					join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000001 and hsv_c_thuoctinh_id=1000029
+            					join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+            												AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+            					where  pl.ad_client_id=1000003 
+                ) as t
+                join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003          
+    
+            
+            --Chi tieu so 30: Thanh pham ngao trang du tru 60/80 nhap kho 
+            union all
+            --trong ky
+            select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+            from(select '30' as ct,COALESCE(sum(pl.productionqty),0) as sl
+            		 from m_productionplan pl
+            					join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000001 and hsv_c_thuoctinh_id=1000030 
+            					join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+            												AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+            					where  pl.ad_client_id=1000003 
+                ) as t
+                join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003              
+                
+                
+            --Chi tieu so 31: Thanh pham ngao trang du tru 80/100 nhap kho 
+            union all
+            --trong ky
+            select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+            from(select '31' as ct,COALESCE(sum(pl.productionqty),0) as sl
+            		 from m_productionplan pl
+            					join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000001 and hsv_c_thuoctinh_id=1000033
+            					join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+            												AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+            					where  pl.ad_client_id=1000003 
+                ) as t
+                join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003              
+                
+                
+            --Chi tieu so 32: Thanh pham ngao trang du tru 17/22 nhap kho 
+            union all
+            --Trong ky
+            select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+            from(select '32' as ct,COALESCE(sum(pl.productionqty),0) as sl
+            		 from m_productionplan pl
+            					join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000001 and hsv_c_thuoctinh_id=1000034 
+            					join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+            												AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+            					where  pl.ad_client_id=1000003 
+                ) as t
+                join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003                      
+            
+                
+            union all
+            --33: trong ky
+            select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+            from(select '33' as ct,COALESCE(sum(pl.productionqty),0) as sl		 from m_productionplan pl
+            					join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000001 and hsv_c_thuoctinh_id=1000041 
+            					join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+            												AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+            					where  pl.ad_client_id=1000003 
+                ) as t
+                join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003                              
+                
+                
+            --Chi tieu so 35: Ngao nau (teo,cat,mui)
+            union all
+            --Trong ky
+            select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+            from(select '35' as ct,COALESCE(sum(pl.productionqty),0) as sl		
+            		 from m_productionplan pl
+            					join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000006 and hsv_c_thuoctinh_id=1000042 
+            					join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+            												AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+            					where  pl.ad_client_id=1000003 
+                ) as t    
+                join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003                                      
+            
+                
+            --Chi tieu so 36: Ngao trang (teo,cat,mui)
+            union all
+            --trong ky
+            select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+            from(select '36' as ct,COALESCE(sum(pl.productionqty),0) as sl		
+            		 from m_productionplan pl
+            					join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000006 and hsv_c_thuoctinh_id=1000043 
+            					join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+            												AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+            					where  pl.ad_client_id=1000003 
+                ) as t    
+                join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003  
+    
+          
+            --Chi tieu so 37: Ngao loai noi dia
+            union all
+            --trong ky
+            select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+            from(select '37' as ct,COALESCE(sum(pl.productionqty),0) as sl		
+            		 from m_productionplan pl
+            					join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000006 and hsv_c_thuoctinh_id=1000044
+            					join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+            												AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+            					where  pl.ad_client_id=1000003 
+                ) as t    
+                join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003  
+
+                
+            ) as t
+        
+        --Chi tieu 113:Ty lệ thu hồi nguyên liệu ngao
+        union all
+        
+        SELECT 'B' as nhom,'113' as ct,0 as dvt,case when COALESCE(sum(t.sl1),0)<>0 then COALESCE(sum(t.sl),0)/COALESCE(sum(t.sl1),0) else 0 end as sl
+                                               ,case when COALESCE(sum(t.lk1),0)<>0 then COALESCE(sum(t.lk),0)/COALESCE(sum(t.lk1),0) else 0 end as lk
+        from(   --Chi tieu 109
+                SELECT 'B' as nhom,'109' as ct,hh.c_uom_id as dvt,COALESCE(sum( pl.qtyinternaluse ),0) as sl,0 as lk,0 as sl1,0 as lk1
+                from M_Inventoryline pl
+                        join m_product hh on pl.m_product_id=hh.m_product_id and hh.M_Product_ID=1000017
+                        join M_Inventory p on pl.M_Inventory_id=p.M_Inventory_id  and p.docstatus in ('CO','CL') and p.C_DocType_ID=1000167
+                            AND P.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate} and p.C_Campaign_ID in ('1000018','1000007')
+                where pl.ad_client_id=1000003 
+                group by hh.c_uom_id
+                
+                
+                --Chi tieu 111
+                union all
+                
+                select 'B' as nhom,'111' as ct,hh.c_uom_id as dvt,0 as sl,0 as lk,COALESCE(sum(  pl.productionqty  ),0) as sl1,0 as lk1
+                from m_productionplan pl
+                            join m_product hh on pl.m_product_id=hh.m_product_id and hh.M_Product_Category_ID=1000017 and hh.M_AttributeSet_ID in ('1000000','1000001','1000006')
+                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL')
+                                    AND  p.movementdate<=$P{EndDate} and p.movementdate>=$P{StartDate} and p.C_Campaign_ID in ('1000018','1000007')
+                where pl.ad_client_id=1000003 
+                group by hh.c_uom_id    
+                
+                
+            ) as t
+
+            --Chi tieu 114:C.lệch Gá trị N liệu (T tế - D múc
+            UNION all
+            
+            select 'B' as nhom,'114' as ct,0 as dvt,-1*round(sum(t.sl-t.sl1),0) as sl,-1*round(sum(t.lk-t.lk1),0) as lk
+            from(
+                --Chi tieu 110
+                select 'B' as nhom,'110' as ct,0 as dvt,COALESCE(sum(t.sl),0)*COALESCE(sum(t.dg),0) as sl,COALESCE(sum(t.lk),0)*COALESCE(sum(t.dg),0) as lk,0 as sl1,0 as lk1
+                from(   --So luong ngao xuat dung
+                        --So lieu trong ky
+                        SELECT 0 as dg,COALESCE(sum( pl.qtyinternaluse ),0) as sl,0 as lk
+                        from M_Inventoryline pl
+                               join m_product hh on pl.m_product_id=hh.m_product_id and hh.M_Product_ID=1000017
+                               join M_Inventory p on pl.M_Inventory_id=p.M_Inventory_id  and p.docstatus in ('CO','CL') and p.C_DocType_ID=1000167
+                                       AND P.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate} and p.C_Campaign_ID in ('1000018','1000007')
+                        where pl.ad_client_id=1000003 
+                        
+                        
+                            --Don gia binh quan mua
+                        union all
+
+                        select case when COALESCE(sum(f.qty),0)<>0 then COALESCE(sum(f.amtacctdr),0)/COALESCE(sum(f.qty),0) end  as dg,0 as sl,0 as lk  
+                        from m_inoutline pl
+                                join m_product hh on pl.m_product_id=hh.m_product_id and hh.M_Product_ID=1000017
+                                join m_inout p on pl.m_inout_id=p.m_inout_id  and p.docstatus in ('CO','CL') and p.C_DocType_ID=1000155  
+                                    AND  p.movementdate<=$P{EndDate} and p.movementdate>=$P{StartDate}
+                                join fact_acct f on f.record_id=p.m_inout_id and f.line_id=pl.m_inoutline_id and f.amtacctdr>0 and f.ad_table_id=319
+                        where pl.ad_client_id=1000003
+                            
+                    ) as t    
+                    
+                    --Chi tieu 112
+                    union all
+                    
+                    select 'B' as nhom,'112' as ct,0 as dvt,0 as sl,0 as lk,COALESCE(sum(t.sl),0) as sl1,COALESCE(sum(t.lk),0) as lk1
+                    from(
+                          --Gia tri So luong nhap kho thanh pham ngao nau 11/16
+                          --Trong ky
+                        select '112' as ct,t.sl*dm.hsv_dinhmuc as sl,0 as lk
+                        from(select '5' as ct, COALESCE(sum(pl.productionqty),0) as sl
+                                 from m_productionplan pl
+                                    join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000000 and hsv_c_thuoctinh_id=1000036 
+                                    join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+                                                        AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+                                    where  pl.ad_client_id=1000003 
+
+                            ) as t
+                            join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003
+                        
+                        -- Thanh pham ngao nau 17/22 nhap kho 
+                        union all
+                        --So lieu trong ky
+                        select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+                        from(select '6' as ct,COALESCE(sum(pl.productionqty),0) as sl
+                                     from m_productionplan pl
+                                           join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000000 and hsv_c_thuoctinh_id=1000039 
+                                           join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+                                                                            AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+                                  where  pl.ad_client_id=1000003 
+
+                            ) as t
+                            join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003
+                        
+                                      
+                        -- Thanh pham ngao nau 40/60 nhap kho 
+                        union all
+                        
+                        --So lieu tron gky    
+                        select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 lk
+                        from(select '7' as ct,COALESCE(sum(pl.productionqty),0) as sl
+                                 from m_productionplan pl
+                                            join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000000 and hsv_c_thuoctinh_id=1000028 
+                                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+                                                            AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+                                            where  pl.ad_client_id=1000003 
+
+                            ) as t
+                            join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003    
+                        
+                        --Chi tieu so 8: Thanh pham ngao nau 60/80 nhap kho 
+                        union all
+                        --trong ky
+                        select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+                        from(select '8' as ct,COALESCE(sum(pl.productionqty),0) as sl
+                                 from m_productionplan pl
+                                            join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000000 and hsv_c_thuoctinh_id=1000031 
+                                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+                                                                        AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+                                            where  pl.ad_client_id=1000003 
+                            ) as t
+                            join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003    
+                            
+                            
+                        --Chi tieu so 9: Thanh pham ngao nau 80/100 nhap kho 
+                        union all
+                        --trong ky
+                        select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+                        from(select '9' as ct,COALESCE(sum(pl.productionqty),0) as sl
+                                 from m_productionplan pl
+                                            join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000000 and hsv_c_thuoctinh_id=1000032 
+                                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+                                                                        AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+                                            where  pl.ad_client_id=1000003 
+                            ) as t
+                            join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003  
+                        
+                            
+                        --Chi tieu so 10: Thanh pham ngao nau 60/80 nhap kho 
+                        union all
+                        --trong ky
+                        select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+                        from(select '10' as ct,COALESCE(sum(pl.productionqty),0) as sl
+                                 from m_productionplan pl
+                                            join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000000 and hsv_c_thuoctinh_id=1000035 
+                                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+                                                                        AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+                                            where  pl.ad_client_id=1000003 
+                            ) as t
+                            join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003  
+                            
+                            
+                       --Chi tieu so 11: Thanh pham ngao nau 120/150 nhap kho 
+                        union all
+                        --trong ky
+                        select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+                        from(select '11' as ct,COALESCE(sum(pl.productionqty),0) as sl
+                                 from m_productionplan pl
+                                            join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000000 and hsv_c_thuoctinh_id=1000040 
+                                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+                                                                        AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+                                            where  pl.ad_client_id=1000003 
+                            ) as t
+                            join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003
+                            
+                            
+                        --Chi tieu so 12: Thanh pham ngao trang 11/17 nhap kho 
+                        union all
+                        --trong ky
+                        select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+                        from(select '12' as ct,COALESCE(sum(pl.productionqty),0) as sl
+                                 from m_productionplan pl
+                                            join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000000 and hsv_c_thuoctinh_id=1000037 
+                                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+                                                                        AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+                                            where  pl.ad_client_id=1000003 
+                            ) as t
+                            join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003    
+                            
+                            
+                        --Chi tieu so 13: Thanh pham ngao trang 17/22 nhap kho 
+                        union all
+                        --Trong ky
+                        select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+                        from(select '13' as ct,COALESCE(sum(pl.productionqty),0) as sl
+                                 from m_productionplan pl
+                                            join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000000 and hsv_c_thuoctinh_id=1000038 
+                                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+                                                                        AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+                                            where  pl.ad_client_id=1000003 
+                            ) as t
+                            join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003       
+                             
+                            
+                        --Chi tieu so 14: Thanh pham ngao nau 40/60 nhap kho 
+                        union all
+                        --trong ky
+                        select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+                        from(select '14' as ct,COALESCE(sum(pl.productionqty),0) as sl
+                                 from m_productionplan pl
+                                            join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000000 and hsv_c_thuoctinh_id=1000029 
+                                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+                                                                        AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+                                            where  pl.ad_client_id=1000003 
+                            ) as t
+                            join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003           
+                            
+                            
+                        --Chi tieu so 15: Thanh pham ngao nau 60/80 nhap kho 
+                        union all
+                        --trong ky
+                        select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+                        from(select '15' as ct,COALESCE(sum(pl.productionqty),0) as sl
+                                 from m_productionplan pl
+                                            join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000000 and hsv_c_thuoctinh_id=1000030 
+                                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+                                                                        AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+                                            where  pl.ad_client_id=1000003 
+                            ) as t
+                            join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003   
+                            
+                            
+                        --Chi tieu so 16: Thanh pham ngao nau 80/100 nhap kho 
+                        union all
+                        --trong ky
+                        select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+                        from(select '16' as ct,COALESCE(sum(pl.productionqty),0) as sl
+                                 from m_productionplan pl
+                                            join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000000 and hsv_c_thuoctinh_id=1000033 
+                                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+                                                                        AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+                                            where  pl.ad_client_id=1000003 
+                            ) as t
+                            join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003       
+                
+                            
+                        --Chi tieu so 17: Thanh pham ngao nau 100/120 nhap kho 
+                        union all
+                        --trong ky    
+                        select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+                        from(select '17' as ct,COALESCE(sum(pl.productionqty),0) as sl
+                                 from m_productionplan pl
+                                            join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000000 and hsv_c_thuoctinh_id=1000034 
+                                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+                                                                        AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+                                            where  pl.ad_client_id=1000003 
+                            ) as t
+                            join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003   
+                
+                            
+                        --Chi tieu so 18: Thanh pham ngao nau 120/150 nhap kho 
+                        union all
+                        --trong ky    
+                        select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+                        from(select '18' as ct,COALESCE(sum(pl.productionqty),0) as sl
+                                 from m_productionplan pl
+                                            join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000000 and hsv_c_thuoctinh_id=1000041 
+                                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+                                                                        AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+                                            where  pl.ad_client_id=1000003 
+                            ) as t
+                            join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003   
+                            
+                        
+                        
+                        --Chi tieu so 20: Thanh pham ngao nau du tru 11/16 nhap kho 
+                        union all
+                        --tron gky
+                        select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+                        from(select '20' as ct,COALESCE(sum(pl.productionqty),0) as sl
+                                 from m_productionplan pl
+                                            join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000001 and hsv_c_thuoctinh_id=1000036 
+                                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+                                                                        AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+                                            where  pl.ad_client_id=1000003 
+                            ) as t
+                           join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003       
+                
+                     
+                        --Chi tieu so 21: Thanh pham ngao nau du tru 17/22 nhap kho 
+                        union all
+                        --trong ky
+                        select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+                        from(select '21' as ct,COALESCE(sum(pl.productionqty),0) as sl
+                                 from m_productionplan pl
+                                            join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000001 and hsv_c_thuoctinh_id=1000039 
+                                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+                                                                        AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+                                            where  pl.ad_client_id=1000003 
+                            ) as t
+                            join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003           
+                            
+                            
+                        --Chi tieu so 22: Thanh pham ngao nau du tru 40/60 nhap kho 
+                        union all
+                        --trong ky
+                        select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+                        from(select '22' as ct,COALESCE(sum(pl.productionqty),0) as sl
+                                 from m_productionplan pl
+                                            join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000001 and hh.hsv_c_thuoctinh_id=1000028 
+                                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+                                                                        AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+                                            where  pl.ad_client_id=1000003 
+                            ) as t
+                            join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003               
+                
+                            
+                        --Chi tieu so 23: Thanh pham ngao nau du tru 60/80 nhap kho 
+                        union all
+                        --trong ky
+                        select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+                        from(select '23' as ct,COALESCE(sum(pl.productionqty),0) as sl
+                                 from m_productionplan pl
+                                            join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000001 and hsv_c_thuoctinh_id=1000031 
+                                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+                                                                        AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+                                            where  pl.ad_client_id=1000003 
+                            ) as t
+                            join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003                   
+                        
+                            
+                        --Chi tieu so 24: Thanh pham ngao nau du tru 80/100 nhap kho 
+                        union all
+                        --trong ky
+                        select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+                        from(select '24' as ct,COALESCE(sum(pl.productionqty),0) as sl
+                                 from m_productionplan pl
+                                            join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000001 and hsv_c_thuoctinh_id=1000032 
+                                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+                                                                        AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+                                            where  pl.ad_client_id=1000003 
+                            ) as t
+                            join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003       
+                        
+                            
+                        --Chi tieu so 25: Thanh pham ngao nau du tru 100/120 nhap kho 
+                        union all
+                        --tron gky    
+                        select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+                        from(select '25' as ct,COALESCE(sum(pl.productionqty),0) as sl
+                                 from m_productionplan pl
+                                            join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000001 and hsv_c_thuoctinh_id=1000035 
+                                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+                                                                        AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+                                            where  pl.ad_client_id=1000003 
+                            ) as t
+                            join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003       
+                        
+                            
+                        --Chi tieu so 26: Thanh pham ngao nau du tru 120/150 nhap kho 
+                        union all
+                        --trong ky
+                        select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+                        from(select '26' as ct,COALESCE(sum(pl.productionqty),0) as sl
+                                 from m_productionplan pl
+                                            join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000001 and hsv_c_thuoctinh_id=1000040 
+                                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+                                                                        AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+                                            where  pl.ad_client_id=1000003 
+                            ) as t
+                            join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003           
+                        
+                            
+                        --Chi tieu so 27: Thanh pham ngao nau du tru 11/16 nhap kho 
+                        union all
+                        --trong ky
+                        select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+                        from(select '27' as ct,COALESCE(sum(pl.productionqty),0) as sl
+                                 from m_productionplan pl
+                                            join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000001 and hsv_c_thuoctinh_id=1000037 
+                                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+                                                                        AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+                                            where  pl.ad_client_id=1000003 
+                            ) as t
+                            join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003               
+                
+                            
+                        --Chi tieu so 28: Thanh pham ngao trang du tru 17/22 nhap kho 
+                        union all
+                        --trong ky
+                        select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+                        from(select '28' as ct,COALESCE(sum(pl.productionqty),0) as sl
+                                 from m_productionplan pl
+                                            join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000001 and hsv_c_thuoctinh_id=1000038 
+                                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+                                                                        AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+                                            where  pl.ad_client_id=1000003 
+                            ) as t
+                            join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003               
+                
+                            
+                        --Chi tieu so 29: Thanh pham ngao trang du tru 40/60 nhap kho 
+                        union all
+                        --trong ky
+                        select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+                        from(select '29' as ct,COALESCE(sum(pl.productionqty),0) as sl
+                                 from m_productionplan pl
+                                            join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000001 and hsv_c_thuoctinh_id=1000029
+                                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+                                                                        AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+                                            where  pl.ad_client_id=1000003 
+                            ) as t
+                            join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003          
+                
+                        
+                        --Chi tieu so 30: Thanh pham ngao trang du tru 60/80 nhap kho 
+                        union all
+                        --trong ky
+                        select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+                        from(select '30' as ct,COALESCE(sum(pl.productionqty),0) as sl
+                                 from m_productionplan pl
+                                            join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000001 and hsv_c_thuoctinh_id=1000030 
+                                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+                                                                        AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+                                            where  pl.ad_client_id=1000003 
+                            ) as t
+                            join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003              
+                            
+                            
+                        --Chi tieu so 31: Thanh pham ngao trang du tru 80/100 nhap kho 
+                        union all
+                        --trong ky
+                        select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+                        from(select '31' as ct,COALESCE(sum(pl.productionqty),0) as sl
+                                 from m_productionplan pl
+                                            join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000001 and hsv_c_thuoctinh_id=1000033
+                                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+                                                                        AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+                                            where  pl.ad_client_id=1000003 
+                            ) as t
+                            join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003              
+                            
+                            
+                        --Chi tieu so 32: Thanh pham ngao trang du tru 17/22 nhap kho 
+                        union all
+                        --Trong ky
+                        select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+                        from(select '32' as ct,COALESCE(sum(pl.productionqty),0) as sl
+                                 from m_productionplan pl
+                                            join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000001 and hsv_c_thuoctinh_id=1000034 
+                                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+                                                                        AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+                                            where  pl.ad_client_id=1000003 
+                            ) as t
+                            join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003                      
+                        
+                            
+                        union all
+                        --33: trong ky
+                        select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+                        from(select '33' as ct,COALESCE(sum(pl.productionqty),0) as sl		 from m_productionplan pl
+                                            join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000001 and hsv_c_thuoctinh_id=1000041 
+                                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+                                                                        AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+                                            where  pl.ad_client_id=1000003 
+                            ) as t
+                            join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003                              
+                            
+                            
+                        --Chi tieu so 35: Ngao nau (teo,cat,mui)
+                        union all
+                        --Trong ky
+                        select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+                        from(select '35' as ct,COALESCE(sum(pl.productionqty),0) as sl		
+                                 from m_productionplan pl
+                                            join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000006 and hsv_c_thuoctinh_id=1000042 
+                                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+                                                                        AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+                                            where  pl.ad_client_id=1000003 
+                            ) as t    
+                            join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003                                      
+                        
+                            
+                        --Chi tieu so 36: Ngao trang (teo,cat,mui)
+                        union all
+                        --trong ky
+                        select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+                        from(select '36' as ct,COALESCE(sum(pl.productionqty),0) as sl		
+                                 from m_productionplan pl
+                                            join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000006 and hsv_c_thuoctinh_id=1000043 
+                                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+                                                                        AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+                                            where  pl.ad_client_id=1000003 
+                            ) as t    
+                            join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003  
+                
+                
+                        --Chi tieu so 37: Ngao loai noi dia
+                        union all
+                        --trong ky
+                        select '112' as ct,COALESCE(sum(t.sl*dm.hsv_dinhmuc),0) as sl,0 as lk
+                        from(select '37' as ct,COALESCE(sum(pl.productionqty),0) as sl		
+                                 from m_productionplan pl
+                                            join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000006 and hsv_c_thuoctinh_id=1000044
+                                            join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') and p.C_Campaign_ID in ('1000007','1000018')
+                                                                        AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
+                                            where  pl.ad_client_id=1000003 
+                            ) as t    
+                            join hsv_giathanhvan dm on t.ct=dm.value and dm.ad_client_id=1000003  
+
+                            
+                        ) as t
+                    
+                ) as t
+) as t
+join hsv_chiso dm on cast(t.ct as float  )=cast(dm.value as float) and dm.ad_client_id=1000003
+LEFT join c_uom dvt on t.dvt=dvt.c_uom_id and dm.ad_client_id=1000003
+group by dm.value,dm.name,dvt.name,dvt.c_uom_id,dm.hsv_stt
+order by cast(dm.hsv_stt as float) asc]]>
+	</queryString>
+	<field name="stt" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="stt"/>
+		<property name="com.jaspersoft.studio.field.label" value="stt"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="hsv_chiso"/>
+	</field>
+	<field name="value" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="value"/>
+		<property name="com.jaspersoft.studio.field.label" value="value"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="hsv_chiso"/>
+	</field>
+	<field name="name" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="name"/>
+		<property name="com.jaspersoft.studio.field.label" value="name"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="hsv_chiso"/>
+	</field>
+	<field name="sl" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="sl"/>
+		<property name="com.jaspersoft.studio.field.label" value="sl"/>
+	</field>
+	<field name="lk" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="lk"/>
+		<property name="com.jaspersoft.studio.field.label" value="lk"/>
+	</field>
+	<field name="dvt" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="dvt"/>
+		<property name="com.jaspersoft.studio.field.label" value="dvt"/>
+	</field>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="113">
+			<property name="local_mesure_unitheight" value="pixel"/>
+			<property name="com.jaspersoft.studio.unit.height" value="px"/>
+			<textField>
+				<reportElement x="11" y="86" width="580" height="20" uuid="78c9e16a-13e7-4ab9-ad70-f3b3971b2459">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Kỳ báo cáo : " + new SimpleDateFormat("dd/MM/yyyy").format($P{StartDate}) + " To "  + new SimpleDateFormat("dd/MM/yyyy").format($P{EndDate})]]></textFieldExpression>
+			</textField>
+			<textField pattern="" isBlankWhenNull="false">
+				<reportElement key="textField-2" x="318" y="6" width="190" height="19" forecolor="#000000" backcolor="#FFFFFF" uuid="60934052-ee8f-49bd-9d0a-7ae83bb2a10f"/>
+				<box>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Trang " + $V{PAGE_NUMBER} + " của "]]></textFieldExpression>
+			</textField>
+			<textField evaluationTime="Report" pattern="" isBlankWhenNull="false">
+				<reportElement key="textField-3" x="512" y="6" width="36" height="19" forecolor="#000000" backcolor="#FFFFFF" uuid="289fbb8e-6542-4e0c-9ff4-c35b72356357"/>
+				<box>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA["" + $V{PAGE_NUMBER}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="13" y="63" width="578" height="20" uuid="0f051dca-ba94-4491-aa78-c32e22ab5c19">
+					<property name="local_mesure_unitheight" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="14" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["BÁO CÁO KẾT QUẢ THU MUA - SẢN XUẤT"]]></textFieldExpression>
+			</textField>
+			<subreport>
+				<reportElement x="7" y="10" width="303" height="50" uuid="ee841cb0-9a83-4ab7-92c5-0c1b3926861e"/>
+				<subreportParameter name="AD_Client_ID">
+					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"CompanyHeader.jasper"]]></subreportExpression>
+			</subreport>
+		</band>
+	</title>
+	<columnHeader>
+		<band height="32" splitType="Stretch">
+			<property name="local_mesure_unitheight" value="pixel"/>
+			<property name="com.jaspersoft.studio.unit.height" value="px"/>
+			<staticText>
+				<reportElement x="8" y="1" width="50" height="30" uuid="9b25b95e-b85e-44d8-95c8-0b7b1661b48c"/>
+				<box>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[STT]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="58" y="1" width="201" height="30" uuid="edfe045e-26e4-4b3c-8d08-1bd0f99baca6">
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					<property name="local_mesure_unitwidth" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Nội dung]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="325" y="1" width="263" height="30" uuid="8a5bbc35-31b1-46a3-b331-486d7ccc51da">
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Số liệu trong kỳ]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="259" y="1" width="66" height="30" uuid="5d02e3a8-5456-4607-8e86-9ef3c6e16947">
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					<property name="local_mesure_unitwidth" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[ĐVT]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="27" splitType="Stretch">
+			<property name="local_mesure_unitheight" value="pixel"/>
+			<property name="com.jaspersoft.studio.unit.height" value="px"/>
+			<textField>
+				<reportElement x="8" y="-1" width="50" height="27" uuid="238320d9-52f4-4b8d-997b-4a9ee348cf20">
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					<property name="local_mesure_unitheight" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{stt}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.###" isBlankWhenNull="true">
+				<reportElement x="58" y="-1" width="201" height="27" uuid="d5d34af4-7867-4347-82a4-03db48dd2fc2">
+					<property name="local_mesure_unitwidth" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{name}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.##" isBlankWhenNull="true">
+				<reportElement x="325" y="-1" width="263" height="27" uuid="28dd3c2e-37c4-4b18-abe1-9bc77e3b45bb">
+					<property name="local_mesure_unitheight" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="local_mesure_unitwidth" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{sl}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.###" isBlankWhenNull="true">
+				<reportElement x="259" y="-1" width="66" height="27" uuid="b41bd05b-a3ca-47c0-9c16-6879c0727eae">
+					<property name="local_mesure_unitwidth" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.2" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{dvt}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<summary>
+		<band height="149">
+			<textField pattern="" isBlankWhenNull="false">
+				<reportElement key="textField-4" x="320" y="87" width="227" height="19" forecolor="#000000" backcolor="#FFFFFF" uuid="26c2a31c-7c51-4f79-8242-3a5bf4892e52"/>
+				<box>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Ngày in: " + new SimpleDateFormat("dd/MM/yyyy hh24:mm").format(new Date())]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement key="staticText-8" positionType="Float" stretchType="RelativeToTallestObject" x="371" y="109" width="182" height="16" uuid="93296666-d7b3-4d74-9655-09d2b4993bcf"/>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Giám đốc]]></text>
+			</staticText>
+			<staticText>
+				<reportElement key="staticText-8" positionType="Float" stretchType="RelativeToTallestObject" x="235" y="108" width="148" height="16" uuid="7e444384-a93a-4097-84ef-e251613901c5"/>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Kế toán trưởng]]></text>
+			</staticText>
+			<staticText>
+				<reportElement key="staticText-8" positionType="Float" stretchType="RelativeToTallestObject" x="2" y="107" width="118" height="16" uuid="5b337119-c93f-4b0b-9db5-bd89ec2894fa"/>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Lập biểu]]></text>
+			</staticText>
+			<subreport>
+				<reportElement x="7" y="1" width="581" height="27" uuid="3a49c32c-ec6b-45f3-8012-4b608b9bad5d"/>
+				<subreportParameter name="AD_Client_ID">
+					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="StartDate">
+					<subreportParameterExpression><![CDATA[$P{StartDate}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="EndDate">
+					<subreportParameterExpression><![CDATA[$P{EndDate}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"Rpt_BCThuMuaSanXuatChiTieu115.jasper"]]></subreportExpression>
+			</subreport>
+			<subreport>
+				<reportElement x="7" y="28" width="581" height="27" uuid="7c0f0ca0-4dc7-4405-a2fe-b17a7870eb0c"/>
+				<subreportParameter name="AD_Client_ID">
+					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="StartDate">
+					<subreportParameterExpression><![CDATA[$P{StartDate}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="EndDate">
+					<subreportParameterExpression><![CDATA[$P{EndDate}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"Rpt_BCThuMuaSanXuatChiTieu116.jasper"]]></subreportExpression>
+			</subreport>
+			<subreport>
+				<reportElement x="7" y="55" width="581" height="27" uuid="54ce1a11-52c8-4628-a96f-4aa425d5ef5e"/>
+				<subreportParameter name="AD_Client_ID">
+					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="StartDate">
+					<subreportParameterExpression><![CDATA[$P{StartDate}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="EndDate">
+					<subreportParameterExpression><![CDATA[$P{EndDate}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"Rpt_BCThuMuaSanXuatChiTieu117.jasper"]]></subreportExpression>
+			</subreport>
+		</band>
+	</summary>
+</jasperReport>

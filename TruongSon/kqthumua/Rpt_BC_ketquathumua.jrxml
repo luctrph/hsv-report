@@ -1,0 +1,1558 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.4.3.final using JasperReports Library version 6.4.3  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Rpt_BC_ketquathumua" pageWidth="612" pageHeight="800" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="73c8c666-93f3-4aa6-a6da-31b6d8141046">
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="HSV"/>
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<parameter name="StartDate" class="java.util.Date">
+		<defaultValueExpression><![CDATA[new Date(218,11,10)]]></defaultValueExpression>
+	</parameter>
+	<parameter name="EndDate" class="java.util.Date">
+		<defaultValueExpression><![CDATA[NOW()]]></defaultValueExpression>
+	</parameter>
+	<parameter name="DateFrom" class="java.util.Date">
+		<defaultValueExpression><![CDATA[new Date(217,1,1)]]></defaultValueExpression>
+	</parameter>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String">
+		<defaultValueExpression><![CDATA["dev/"]]></defaultValueExpression>
+	</parameter>
+	<queryString>
+		<![CDATA[select '1.Thu mua gỗ tròn' as a1, 'kg' as a2, sum(a3) as a3, sum(a4) as a4, id
+from (
+	select '1' as id, sum(cil.qtyentered) as a3, 0 as a4
+	from c_invoiceline cil
+	join c_invoice ci on ci.c_invoice_id=cil.c_invoice_id and ci.docstatus in ('CO', 'CL')
+	join m_product hh on hh.m_product_id=cil.m_product_id and hh.m_product_category_id in (1000450) and hh.M_AttributeSet_ID=1000067
+	where cil.ad_client_id=1000017 and ci.dateacct>=$P{StartDate} and ci.dateacct<=$P{EndDate} and ci.issotrx='N'
+	
+	union all
+	
+	select '1' as id, 0 as a3, sum(cil.qtyentered) as a4
+	from c_invoiceline cil
+	join c_invoice ci on ci.c_invoice_id=cil.c_invoice_id and ci.docstatus in ('CO', 'CL')
+	join m_product hh on hh.m_product_id=cil.m_product_id and hh.m_product_category_id in (1000450) and hh.M_AttributeSet_ID=1000067
+	where cil.ad_client_id=1000017 and ci.dateacct>=$P{StartDate} and ci.dateacct<=$P{EndDate} and ci.issotrx='N'
+	) as t
+group by t.id
+
+union all
+
+select '2.Gỗ tròn các lô đã bóc xong' as a1, 'kg' as a2, sum(a3) as a3, sum(a4) as a4, id
+from (
+	select '2' as id, sum(k.sl) as a3, 0 as a4
+	from (
+		select hh.m_product_id, att.m_attributesetinstance_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+		from c_invoiceline civ
+		join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+		join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_Category_ID=1000450
+		join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id and att.M_AttributeSet_ID=1000067
+		where civ.ad_client_id=1000017 and ci.issotrx='N'
+		group by att.m_attributesetinstance_id, hh.m_product_id
+		) as k
+	join m_lot lo on lo.name=k.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+	
+	union all
+	
+	select '2' as id, 0 as a3, sum(k.sl) as a4
+	from (
+		select hh.m_product_id, att.m_attributesetinstance_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+		from c_invoiceline civ
+		join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+		join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_Category_ID=1000450
+		join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id and att.M_AttributeSet_ID=1000067
+		where civ.ad_client_id=1000017 and ci.issotrx='N'
+		group by att.m_attributesetinstance_id, att.lot, hh.m_product_id
+		) as k
+	join m_lot lo on lo.name=k.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+	) as t
+group by t.id
+
+union all
+
+select '3.Sô lượng ván bóc hết lô thu được' as a1, 'm3' as a2, sum(a3) as a3, sum(a4) as a4, id
+from (
+	select '3' as id, sum(civ.productionqty) as a3, 0 as a4
+	from m_productionplan civ
+	join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+	join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_Category_ID=1000449
+	join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id and tt.M_AttributeSet_ID=1000067
+	join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+	where civ.ad_client_id=1000017
+	
+	union all
+	
+	select '3' as id, 0 as a3, sum(civ.productionqty) as a4
+	from m_productionplan civ
+	join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+	join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_Category_ID=1000449
+	join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id and tt.M_AttributeSet_ID=1000067
+	join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+	where civ.ad_client_id=1000017
+	) as t
+group by t.id
+
+union all
+
+select 'Trong đó :  A (2 850 000)' as a1, '%' as a2, sum(a3) as a3, sum(a4) as a4, id
+from (
+	select '4' as id, case when sum(b2) <> 0 then round(sum(b1) / sum(b2) * 100, 2) else 0 end as a3, 0 as a4 
+	from (
+		select sum(civ.productionqty) as b1, 0 as b2
+		from m_productionplan civ
+		join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+		join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1005237
+		join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id
+		join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+		where civ.ad_client_id=1000017
+		
+		union all
+		
+		select 0 as b1, sum(civ.productionqty) as b2
+		from m_productionplan civ
+		join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+		join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_Category_ID=1000449
+		join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id and tt.M_AttributeSet_ID=1000067
+		join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+		where civ.ad_client_id=1000017
+		) as t
+	
+	union all
+	
+	select '4' as id, 0 as a3, case when sum(b2) <> 0 then round(sum(b1) / sum(b2) * 100, 2) else 0 end as a4
+	from (
+		select sum(cil.qtyentered) as b1, 0 as b2
+		from c_invoiceline cil
+		join c_invoice ci on ci.c_invoice_id=cil.c_invoice_id and ci.docstatus in ('CO', 'CL')
+		join m_product hh on hh.m_product_id=cil.m_product_id and hh.m_product_id=1005237
+		where cil.ad_client_id=1000017 and ci.dateacct>=$P{DateFrom} and ci.dateacct<=$P{EndDate} and ci.issotrx='N'
+		
+		union all
+		
+		select 0 as b1, sum(civ.productionqty) as a2
+		from m_productionplan civ
+		join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+		join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_Category_ID=1000449
+		join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id and tt.M_AttributeSet_ID=1000067
+		join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+		where civ.ad_client_id=1000017
+		) as t
+	) as k
+group by k.id
+
+union all
+
+select '                   B (2 050 000)' as a1, '%' as a2, sum(a3) as a3, sum(a4) as a4, id
+from (
+	select '5' as id, case when sum(b2) <> 0 then round(sum(b1) / sum(b2) * 100, 2) else 0 end as a3, 0 as a4
+	from (
+		select sum(civ.productionqty) as b1, 0 as b2
+		from m_productionplan civ
+		join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+		join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1008756
+		join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id
+		join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+		where civ.ad_client_id=1000017
+		
+		union all
+		
+		select 0 as b1, sum(civ.productionqty) as a2
+		from m_productionplan civ
+		join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+		join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_Category_ID=1000449
+		join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id and tt.M_AttributeSet_ID=1000067
+		join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+		where civ.ad_client_id=1000017
+		) as t
+	
+	union all
+	
+	select '5' as id, 0 as a3, case when sum(b2) <> 0 then round(sum(b1) / sum(b2) * 100, 2) else 0 end as a4
+	from (
+		select sum(cil.qtyentered) as b1, 0 as b2
+		from c_invoiceline cil
+		join c_invoice ci on ci.c_invoice_id=cil.c_invoice_id and ci.docstatus in ('CO', 'CL')
+		join m_product hh on hh.m_product_id=cil.m_product_id and hh.M_Product_ID=1008756
+		where cil.ad_client_id=1000017 and ci.dateacct>=$P{DateFrom} and ci.dateacct<=$P{EndDate} and ci.issotrx='N'
+		
+		union all
+		
+		select 0 as b1, sum(civ.productionqty) as a2
+		from m_productionplan civ
+		join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+		join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_Category_ID=1000449
+		join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id and tt.M_AttributeSet_ID=1000067
+		join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+		where civ.ad_client_id=1000017
+		) as t
+	) as k
+group by k.id
+
+union all
+
+select '                   C (800 000)' as a1, '%' as a2, sum(a3) as a3, sum(a4) as a4, id
+from (
+	select '6' as id, case when sum(b2) <> 0 then round(sum(b1) / sum(b2) * 100, 2) else 0 end as a3, 0 as a4
+	from (
+		select sum(civ.productionqty) as b1, 0 as b2
+		from m_productionplan civ
+		join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+		join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1008757
+		join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id
+		join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+		where civ.ad_client_id=1000017
+		
+		union all
+		
+		select 0 as b1, sum(civ.productionqty) as b2
+		from m_productionplan civ
+		join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+		join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_Category_ID=1000449
+		join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id and tt.M_AttributeSet_ID=1000067
+		join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+		where civ.ad_client_id=1000017
+		) as t
+	
+	union all
+	
+	select '6' as id, 0 as a3, case when sum(b2) <> 0 then round(sum(b1) / sum(b2) * 100, 2) else 0 end as a4
+	from (
+		select sum(cil.qtyentered) as b1, 0 as b2
+		from c_invoiceline cil
+		join c_invoice ci on ci.c_invoice_id=cil.c_invoice_id and ci.docstatus in ('CO', 'CL')
+		join m_product hh on hh.m_product_id=cil.m_product_id and hh.M_Product_ID=1008757
+		where cil.ad_client_id=1000017 and ci.dateacct>=$P{DateFrom} and ci.dateacct<=$P{EndDate} and ci.issotrx='N'
+		
+		union all
+		
+		select 0 as b1, sum(civ.productionqty) as a2
+		from m_productionplan civ
+		join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+		join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_Category_ID=1000449
+		join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id and tt.M_AttributeSet_ID=1000067
+		join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+		where civ.ad_client_id=1000017
+		) as t
+	) as k
+group by k.id
+
+union all
+
+select '4.Tỷ lệ thu hôi bóc (đã trừ gỗ hỏng)' as a1, 'kg/m3' as a2, round(sum(a3), 2) as a3, sum(a4) as a4, id
+from (
+	select id, case when sum(b2) <> 0 then sum(b1) / sum(b2) else 0 end as a3, 0 as a4
+	from (
+		select '7' as id, sum(k.sl) as b1, 0 as b2
+		from (
+			select hh.m_product_id, att.m_attributesetinstance_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+			from c_invoiceline civ
+			join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+			join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_Category_ID=1000450
+			join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id and att.M_AttributeSet_ID=1000067
+			where civ.ad_client_id=1000017 and ci.issotrx='N'
+			group by att.m_attributesetinstance_id, att.lot, hh.m_product_id
+			) as k
+		join m_lot lo on lo.name=k.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+		
+		union all
+		
+		select '7' as id, 0 as b1, sum(civ.productionqty) as b2
+		from m_productionplan civ
+		join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+		join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_Category_ID=1000449
+		join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id and tt.M_AttributeSet_ID=1000067
+		join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+		where civ.ad_client_id=1000017
+		) as k
+	group by k.id
+	
+	union all
+	
+	select id, 0 as a3, case when sum(b2) <> 0 then sum(b1) / sum(b2) else 0 end as a4
+	from (
+		select '7' as id, sum(k.sl) as b1, 0 as b2
+		from (
+			select hh.m_product_id, att.m_attributesetinstance_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+			from c_invoiceline civ
+			join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+			join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_Category_ID=1000450
+			join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id and att.M_AttributeSet_ID=1000067
+			where civ.ad_client_id=1000017 and ci.issotrx='N'
+			group by att.m_attributesetinstance_id, att.lot, hh.m_product_id
+			) as k
+		join m_lot lo on lo.name=k.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+		
+		union all
+		
+		select '7' as id, 0 as b1, sum(civ.productionqty) as b2
+		from m_productionplan civ
+		join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+		join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_Category_ID=1000449
+		join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id and tt.M_AttributeSet_ID=1000067
+		join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+		where civ.ad_client_id=1000017
+		) as k
+	group by k.id
+	) as t
+group by t.id
+
+union all
+
+select '5.Giá mua NL BQ (trừ gỗ loại)' as a1, 'đ/kg' as a2, sum(a3) as a3, sum(a4) as a4, id
+from (
+	select '8' as id, case when sum(k.sl) <> 0 then sum(k.tt) / sum(k.sl) else 0 end as a3, 0 as a4
+	from (
+		select hh.m_product_id, att.m_attributesetinstance_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+		from c_invoiceline civ
+		join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+		join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_Category_ID=1000450
+		join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id and att.M_AttributeSet_ID=1000067
+		where civ.ad_client_id=1000017 and ci.issotrx='N'
+		group by att.m_attributesetinstance_id, hh.m_product_id
+		) as k
+	join m_lot lo on lo.name=k.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+	
+	union all
+	
+	select '8' as id, 0 as a3, case when sum(k.sl) <> 0 then sum(k.tt) / sum(k.sl) else 0 end as a4
+	from (
+		select hh.m_product_id, att.m_attributesetinstance_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+		from c_invoiceline civ
+		join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+		join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_Category_ID=1000450
+		join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id and att.M_AttributeSet_ID=1000067
+		where civ.ad_client_id=1000017 and ci.issotrx='N'
+		group by att.m_attributesetinstance_id, hh.m_product_id
+		) as k
+	join m_lot lo on lo.name=k.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+	) as t
+group by t.id
+
+union all
+
+select '6.Thu từ khâu bóc (trừ gỗ loại), C L giá' as a1, 'đ' as a2, sum(a3) as a3, sum(a4) as a4, id
+from (
+	select '9' as id, (sum(k.b1) + sum(k.b2) + sum(k.b3)) - sum(b4) as a3, 0 as a4
+	from (
+		select '9' as id, sum(c1) * 2850000 as b1, 0 as b2, 0 as b3, 0 as b4
+		from (
+			select sum(civ.productionqty) as c1
+			from m_productionplan civ
+			join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+			join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1005237
+			join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id
+			join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+			where civ.ad_client_id=1000017
+			) as k
+		
+		union all
+		
+		select '9' as id, 0 as b1, sum(c2) * 2050000 as b2, 0 as b3, 0 as b4
+		from (
+			select sum(civ.productionqty) as c2
+			from m_productionplan civ
+			join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+			join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1008756
+			join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id
+			join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+			where civ.ad_client_id=1000017
+			) as k
+		
+		union all
+		
+		select '9' as id, 0 as b1, 0 as b2, sum(c3) * 800000 as b3, 0 as b4
+		from (
+			select sum(civ.productionqty) as c3
+			from m_productionplan civ
+			join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+			join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1008757
+			join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id
+			join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+			where civ.ad_client_id=1000017
+			) as k
+		
+		union all
+		
+		select '9' as id, 0 as b1, 0 as b2, 0 as b3, sum(k.tt) as b4
+		from (
+			select hh.m_product_id, att.m_attributesetinstance_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+			from c_invoiceline civ
+			join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+			join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_Category_ID=1000450
+			join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id and att.M_AttributeSet_ID=1000067
+			where civ.ad_client_id=1000017 and ci.issotrx='N'
+			group by att.m_attributesetinstance_id, hh.m_product_id
+			) as k
+		join m_lot lo on lo.name=k.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+		) as k
+	group by k.id
+	
+	union all
+	
+	select '9' as id, 0 as a3, (sum(k.b1) + sum(k.b2) + sum(k.b3)) - sum(b4) as a4
+	from (
+		select '9' as id, sum(c1) * 2850000 as b1, 0 as b2, 0 as b3, 0 as b4
+		from (
+			select sum(civ.productionqty) as c1
+			from m_productionplan civ
+			join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+			join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1005237
+			join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id
+			join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+			where civ.ad_client_id=1000017
+			) as k
+		
+		union all
+		
+		select '9' as id, 0 as b1, sum(c2) * 2050000 as b2, 0 as b3, 0 as b4
+		from (
+			select sum(civ.productionqty) as c2
+			from m_productionplan civ
+			join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+			join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1008756
+			join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id
+			join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+			where civ.ad_client_id=1000017
+			) as k
+		
+		union all
+		
+		select '9' as id, 0 as b1, 0 as b2, sum(c3) * 800000 as b3, 0 as b4
+		from (
+			select sum(civ.productionqty) as c3
+			from m_productionplan civ
+			join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+			join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1008757
+			join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id
+			join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+			where civ.ad_client_id=1000017
+			) as k
+		
+		union all
+		
+		select '9' as id, 0 as b1, 0 as b2, 0 as b3, sum(k.tt) as b4
+		from (
+			select hh.m_product_id, att.m_attributesetinstance_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+			from c_invoiceline civ
+			join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+			join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_Category_ID=1000450
+			join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id and att.M_AttributeSet_ID=1000067
+			where civ.ad_client_id=1000017 and ci.issotrx='N'
+			group by att.m_attributesetinstance_id, hh.m_product_id
+			) as k
+		join m_lot lo on lo.name=k.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+		) as k
+	group by k.id
+	) as t
+group by t.id
+
+union all
+
+select '7.Thu lõi và gỗ hỏng không bóc' as a1, 'đ' as a2, sum(a3) as a3, sum(a4) as a4, id
+from (
+	select '10' as id, sum(cil.linetotalamt) as a3, 0 as a4
+	from c_invoiceline cil
+	join c_invoice ci on ci.c_invoice_id=cil.c_invoice_id and ci.docstatus in ('CO', 'CL')
+	join m_product hh on hh.m_product_id=cil.m_product_id and hh.M_Product_ID=1012371
+	where cil.ad_client_id=1000017 and ci.issotrx='Y' and ci.dateacct>=$P{StartDate} and ci.dateacct<=$P{EndDate}
+	
+	union all
+	
+	select '10' as id, 0 as a3, sum(cil.linetotalamt) as a4
+	from c_invoiceline cil
+	join c_invoice ci on ci.c_invoice_id=cil.c_invoice_id and ci.docstatus in ('CO', 'CL')
+	join m_product hh on hh.m_product_id=cil.m_product_id and hh.M_Product_ID=1012371
+	where cil.ad_client_id=1000017 and ci.issotrx='Y' and ci.dateacct>=$P{DateFrom} and ci.dateacct<=$P{EndDate}
+	) as t
+group by t.id
+
+union all
+
+select '7.1 Trong đó  gổ hỏng khi mua trong lô mua' as a1, 'đ' as a2, sum(a3) as a3, sum(a4) as a4, id
+from (
+	select '11' as id, sum(t.tt) as a3, 0 as a4
+	from (
+		select hh.m_product_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+		from c_invoiceline civ
+		join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+		join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1013024
+		join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id
+		where civ.ad_client_id=1000017 and ci.issotrx='N'
+		group by hh.m_product_id, att.lot
+		) as t
+	join m_lot lo on lo.name=t.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+	
+	union all
+	
+	select '11' as id, 0 as a3, sum(t.tt) as a4
+	from (
+		select hh.m_product_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+		from c_invoiceline civ
+		join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+		join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1013024
+		join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id
+		where civ.ad_client_id=1000017 and ci.issotrx='N'
+		group by hh.m_product_id, att.lot
+		) as t
+	join m_lot lo on lo.name=t.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+	) as t
+group by t.id
+
+union all
+
+select '8.Thu rác gỗ' as a1, 'đ' as a2, sum(a3) as a3, sum(a4) as a4, id
+from (
+	select '12' as id, sum(t.tt) as a3, 0 as a4
+	from (
+		select hh.m_product_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+		from c_invoiceline civ
+		join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+		join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_ID=1012372
+		join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id
+		where civ.ad_client_id=1000017 and ci.issotrx='Y'
+		group by hh.m_product_id, att.lot
+		) as t
+	join m_lot lo on lo.name=t.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+	
+	union all
+	
+	select '12' as id, 0 as a3, sum(t.tt) as a4
+	from (
+		select hh.m_product_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+		from c_invoiceline civ
+		join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+		join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_ID=1012372
+		join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id
+		where civ.ad_client_id=1000017 and ci.issotrx='Y'
+		group by hh.m_product_id, att.lot
+		) as t
+	join m_lot lo on lo.name=t.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+	) as t
+group by t.id
+
+union all
+
+select '9.Thu bột chà' as a1, 'đ' as a2, sum(a3) as a3, sum(a4) as a4, id
+from (
+	select '13' as id, sum(t.tt) as a3, 0 as a4
+	from (
+		select hh.m_product_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+		from c_invoiceline civ
+		join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+		join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_ID=1012373
+		join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id
+		where civ.ad_client_id=1000017 and ci.issotrx='Y'
+		group by hh.m_product_id, att.lot
+		) as t
+	join m_lot lo on lo.name=t.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+	
+	union all
+	
+	select '13' as id, 0 as a3, sum(t.tt) as a4
+	from (
+		select hh.m_product_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+		from c_invoiceline civ
+		join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+		join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_ID=1012373
+		join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id
+		where civ.ad_client_id=1000017 and ci.issotrx='Y'
+		group by hh.m_product_id, att.lot
+		) as t
+	join m_lot lo on lo.name=t.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+	) as t
+group by t.id
+
+union all
+
+select '10.KQ thu từ bóc  (6+7-7.1+8+9)' as a1, 'đ' as a2, sum(a3) as a3, sum(a4) as a4, id
+from (
+	select '14' as id, (sum(b6) + sum(b7) - sum(b71) + sum(b8) + sum(b9)) as a3, 0 as a4
+	from (
+		
+		select '14' as id, (sum(k.b1) + sum(k.b2) + sum(k.b3)) - sum(b4) as b6, 0 as b7, 0 as b71, 0 as b8, 0 as b9
+		from (
+			select '9' as id, sum(c1) * 2850000 as b1, 0 as b2, 0 as b3, 0 as b4
+			from (
+				select sum(civ.productionqty) as c1
+				from m_productionplan civ
+				join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1005237
+				join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id
+				join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+				where civ.ad_client_id=1000017
+				) as k
+			
+			union all
+			
+			select '9' as id, 0 as b1, sum(c2) * 2050000 as b2, 0 as b3, 0 as b4
+			from (
+				select sum(civ.productionqty) as c2
+				from m_productionplan civ
+				join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1008756
+				join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id
+				join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+				where civ.ad_client_id=1000017
+				) as k
+			
+			union all
+			
+			select '9' as id, 0 as b1, 0 as b2, sum(c3) * 800000 as b3, 0 as b4
+			from (
+				select sum(civ.productionqty) as c3
+				from m_productionplan civ
+				join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1008757
+				join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id
+				join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+				where civ.ad_client_id=1000017
+				) as k
+			
+			union all
+			
+			select '9' as id, 0 as b1, 0 as b2, 0 as b3, sum(k.tt) as b4
+			from (
+				select hh.m_product_id, att.m_attributesetinstance_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+				from c_invoiceline civ
+				join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_Category_ID=1000450
+				join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id and att.M_AttributeSet_ID=1000067
+				where civ.ad_client_id=1000017 and ci.issotrx='N'
+				group by att.m_attributesetinstance_id, hh.m_product_id
+				) as k
+			join m_lot lo on lo.name=k.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+			) as k
+		group by k.id
+		
+		union all
+		
+		        
+		select '14' as id, 0 as b6, sum(cil.linetotalamt) as b7, 0 as b71, 0 as b8, 0 as b9
+		from c_invoiceline cil
+		join c_invoice ci on ci.c_invoice_id=cil.c_invoice_id and ci.docstatus in ('CO', 'CL')
+		join m_product hh on hh.m_product_id=cil.m_product_id and hh.M_Product_ID=1012371
+		where cil.ad_client_id=1000017 and ci.issotrx='Y' and ci.dateacct>=$P{StartDate} and ci.dateacct<=$P{EndDate}
+		
+		union all
+		
+		
+		select '14' as id, 0 as b6, 0 as b7, sum(t.tt) as b71, 0 as b8, 0 as b9
+		from (
+			select hh.m_product_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+			from c_invoiceline civ
+			join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+			join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1013024
+			join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id
+			where civ.ad_client_id=1000017 and ci.issotrx='N'
+			group by hh.m_product_id, att.lot
+			) as t
+		join m_lot lo on lo.name=t.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+		
+		union all
+		
+		
+		select '14' as id, 0 as b6, 0 as b7, 0 as b71, sum(t.tt) as b8, 0 as b9
+		from (
+			select hh.m_product_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+			from c_invoiceline civ
+			join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+			join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_ID=1012372
+			join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id
+			where civ.ad_client_id=1000017 and ci.issotrx='Y'
+			group by hh.m_product_id, att.lot
+			) as t
+		join m_lot lo on lo.name=t.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+		
+		
+		union all
+		
+		select '14' as id, 0 as b6, 0 as b7, 0 as b71, 0 as b8, sum(t.tt) as b9
+		from (
+			select hh.m_product_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+			from c_invoiceline civ
+			join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+			join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_ID=1012373
+			join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id
+			where civ.ad_client_id=1000017 and ci.issotrx='Y'
+			group by hh.m_product_id, att.lot
+			) as t
+		join m_lot lo on lo.name=t.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+		) as k
+	group by k.id
+	
+	union all
+	
+	
+	select '14' as id, 0 as a3, (sum(b6) + sum(b7) - sum(b71) + sum(b8) + sum(b9)) as a4
+	from (
+		---6--
+		select '14' as id, (sum(k.b1) + sum(k.b2) + sum(k.b3)) - sum(b4) as b6, 0 as b7, 0 as b71, 0 as b8, 0 as b9
+		from (
+			select '9' as id, sum(c1) * 2850000 as b1, 0 as b2, 0 as b3, 0 as b4
+			from (
+				select sum(civ.productionqty) as c1
+				from m_productionplan civ
+				join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1005237
+				join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id
+				join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+				where civ.ad_client_id=1000017
+				) as k
+			
+			union all
+			
+			select '9' as id, 0 as b1, sum(c2) * 2050000 as b2, 0 as b3, 0 as b4
+			from (
+				select sum(civ.productionqty) as c2
+				from m_productionplan civ
+				join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1008756
+				join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id
+				join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+				where civ.ad_client_id=1000017
+				) as k
+			
+			union all
+			
+			select '9' as id, 0 as b1, 0 as b2, sum(c3) * 800000 as b3, 0 as b4
+			from (
+				select sum(civ.productionqty) as c3
+				from m_productionplan civ
+				join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1008757
+				join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id
+				join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+				where civ.ad_client_id=1000017
+				) as k
+			
+			union all
+			
+			select '9' as id, 0 as b1, 0 as b2, 0 as b3, sum(k.tt) as b4
+			from (
+				select hh.m_product_id, att.m_attributesetinstance_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+				from c_invoiceline civ
+				join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_Category_ID=1000450
+				join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id and att.M_AttributeSet_ID=1000067
+				where civ.ad_client_id=1000017 and ci.issotrx='N'
+				group by att.m_attributesetinstance_id, hh.m_product_id
+				) as k
+			join m_lot lo on lo.name=k.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+			) as k
+		group by k.id
+		
+		union all
+		
+		        
+		select '14' as id, 0 as b6, sum(cil.linetotalamt) as b7, 0 as b71, 0 as b8, 0 as b9
+		from c_invoiceline cil
+		join c_invoice ci on ci.c_invoice_id=cil.c_invoice_id and ci.docstatus in ('CO', 'CL')
+		join m_product hh on hh.m_product_id=cil.m_product_id and hh.M_Product_ID=1012371
+		where cil.ad_client_id=1000017 and ci.issotrx='Y' and ci.dateacct>=$P{DateFrom} and ci.dateacct<=$P{EndDate}
+		
+		union all
+		
+		
+		select '14' as id, 0 as b6, 0 as b7, sum(t.tt) as b71, 0 as b8, 0 as b9
+		from (
+			select hh.m_product_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+			from c_invoiceline civ
+			join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+			join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1013024
+			join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id
+			where civ.ad_client_id=1000017 and ci.issotrx='N'
+			group by hh.m_product_id, att.lot
+			) as t
+		join m_lot lo on lo.name=t.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+		
+		union all
+		
+		
+		select '14' as id, 0 as b6, 0 as b7, 0 as b71, sum(t.tt) as b8, 0 as b9
+		from (
+			select hh.m_product_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+			from c_invoiceline civ
+			join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+			join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_ID=1012372
+			join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id
+			where civ.ad_client_id=1000017 and ci.issotrx='Y'
+			group by hh.m_product_id, att.lot
+			) as t
+		join m_lot lo on lo.name=t.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+	
+		
+		union all
+		
+		select '14' as id, 0 as b6, 0 as b7, 0 as b71, 0 as b8, sum(t.tt) as b9
+		from (
+			select hh.m_product_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+			from c_invoiceline civ
+			join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+			join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_ID=1012373
+			join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id
+			where civ.ad_client_id=1000017 and ci.issotrx='Y'
+			group by hh.m_product_id, att.lot
+			) as t
+		join m_lot lo on lo.name=t.lot and lo.dateto='01-01-2018' and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+		) as k
+	group by k.id
+	) as t
+group by t.id
+UNION ALL
+select '11.Kết quả /m3 bóc' as a1, 'đ/m3 ván bóc' as a2, sum(a3) as a3, sum(a4) as a4, id
+FROM (
+   
+	select '15' as id, case when sum(b10) <> 0 then (sum(b6) + sum(b7) - sum(b71) + sum(b8) + sum(b9))/sum(b10) else 0 end as a3, 0 as a4
+	from (
+		
+		select '15' as id, (sum(k.b1) + sum(k.b2) + sum(k.b3)) - sum(b4) as b6, 0 as b7, 0 as b71, 0 as b8, 0 as b9, 0 as b10
+		from (
+			select '9' as id, sum(c1) * 2850000 as b1, 0 as b2, 0 as b3, 0 as b4
+			from (
+				select sum(civ.productionqty) as c1
+				from m_productionplan civ
+				join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1005237
+				join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id
+				join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+				where civ.ad_client_id=1000017
+				) as k
+			
+			union all
+			
+			select '9' as id, 0 as b1, sum(c2) * 2050000 as b2, 0 as b3, 0 as b4
+			from (
+				select sum(civ.productionqty) as c2
+				from m_productionplan civ
+				join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1008756
+				join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id
+				join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+				where civ.ad_client_id=1000017
+				) as k
+			
+			union all
+			
+			select '9' as id, 0 as b1, 0 as b2, sum(c3) * 800000 as b3, 0 as b4
+			from (
+				select sum(civ.productionqty) as c3
+				from m_productionplan civ
+				join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1008757
+				join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id
+				join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+				where civ.ad_client_id=1000017
+				) as k
+			
+			union all
+			
+			select '9' as id, 0 as b1, 0 as b2, 0 as b3, sum(k.tt) as b4
+			from (
+				select hh.m_product_id, att.m_attributesetinstance_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+				from c_invoiceline civ
+				join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_Category_ID=1000450
+				join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id and att.M_AttributeSet_ID=1000067
+				where civ.ad_client_id=1000017 and ci.issotrx='N'
+				group by att.m_attributesetinstance_id, hh.m_product_id
+				) as k
+			join m_lot lo on lo.name=k.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+			) as k
+		group by k.id
+		
+		union all
+		
+	       
+		select '15' as id, 0 as b6, sum(cil.linetotalamt) as b7, 0 as b71, 0 as b8, 0 as b9,0 as b10
+		from c_invoiceline cil
+		join c_invoice ci on ci.c_invoice_id=cil.c_invoice_id and ci.docstatus in ('CO', 'CL')
+		join m_product hh on hh.m_product_id=cil.m_product_id and hh.M_Product_ID=1012371
+		where cil.ad_client_id=1000017 and ci.issotrx='Y' and ci.dateacct>=$P{StartDate} and ci.dateacct<=$P{EndDate}
+		
+		union all
+		
+		
+		select '15' as id, 0 as b6, 0 as b7, sum(t.tt) as b71, 0 as b8, 0 as b9,0 as b10
+		from (
+			select hh.m_product_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+			from c_invoiceline civ
+			join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+			join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1013024
+			join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id
+			where civ.ad_client_id=1000017 and ci.issotrx='N'
+			group by hh.m_product_id, att.lot
+			) as t
+		join m_lot lo on lo.name=t.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+		
+		union all
+		
+		
+		select '15' as id, 0 as b6, 0 as b7, 0 as b71, sum(t.tt) as b8, 0 as b9,0 as b10
+		from (
+			select hh.m_product_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+			from c_invoiceline civ
+			join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+			join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_ID=1012372
+			join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id
+			where civ.ad_client_id=1000017 and ci.issotrx='Y'
+			group by hh.m_product_id, att.lot
+			) as t
+		join m_lot lo on lo.name=t.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+		
+		
+		union all
+		
+		select '15' as id, 0 as b6, 0 as b7, 0 as b71, 0 as b8, sum(t.tt) as b9,0 as b10
+		from (
+			select hh.m_product_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+			from c_invoiceline civ
+			join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+			join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_ID=1012373
+			join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id
+			where civ.ad_client_id=1000017 and ci.issotrx='Y'
+			group by hh.m_product_id, att.lot
+			) as t
+		join m_lot lo on lo.name=t.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+		
+		UNION ALL
+		select '15' as id, 0 as b6, 0 as b7, 0 as b71, 0 as b8, 0 as b9,sum(a3) as b10 
+		FROM(
+            select '3' as id, sum(civ.productionqty) as a3
+            from m_productionplan civ
+            join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+            join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_Category_ID=1000449
+            join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id and tt.M_AttributeSet_ID=1000067
+            join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+            where civ.ad_client_id=1000017 
+		) as k
+		) as k
+	group by k.id
+	
+	union all
+	
+	
+	select '15' as id, 0 as a3, case when sum(b10) <> 0 then (sum(b6) + sum(b7) - sum(b71) + sum(b8) + sum(b9))/sum(b10) else 0 end as a4
+	from (
+		
+		select '15' as id, (sum(k.b1) + sum(k.b2) + sum(k.b3)) - sum(b4) as b6, 0 as b7, 0 as b71, 0 as b8, 0 as b9,0 as b10
+		from (
+			select '9' as id, sum(c1) * 2850000 as b1, 0 as b2, 0 as b3, 0 as b4
+			from (
+				select sum(civ.productionqty) as c1
+				from m_productionplan civ
+				join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1005237
+				join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id
+				join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+				where civ.ad_client_id=1000017
+				) as k
+			
+			union all
+			
+			select '9' as id, 0 as b1, sum(c2) * 2050000 as b2, 0 as b3, 0 as b4
+			from (
+				select sum(civ.productionqty) as c2
+				from m_productionplan civ
+				join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1008756
+				join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id
+				join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+				where civ.ad_client_id=1000017
+				) as k
+			
+			union all
+			
+			select '9' as id, 0 as b1, 0 as b2, sum(c3) * 800000 as b3, 0 as b4
+			from (
+				select sum(civ.productionqty) as c3
+				from m_productionplan civ
+				join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1008757
+				join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id
+				join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+				where civ.ad_client_id=1000017
+				) as k
+			
+			union all
+			
+			select '9' as id, 0 as b1, 0 as b2, 0 as b3, sum(k.tt) as b4
+			from (
+				select hh.m_product_id, att.m_attributesetinstance_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+				from c_invoiceline civ
+				join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_Category_ID=1000450
+				join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id and att.M_AttributeSet_ID=1000067
+				where civ.ad_client_id=1000017 and ci.issotrx='N'
+				group by att.m_attributesetinstance_id, hh.m_product_id
+				) as k
+			join m_lot lo on lo.name=k.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+			) as k
+        group by k.id
+		
+		union all
+		
+		    
+		select '15' as id, 0 as b6, sum(cil.linetotalamt) as b7, 0 as b71, 0 as b8, 0 as b9,0 as b10
+		from c_invoiceline cil
+		join c_invoice ci on ci.c_invoice_id=cil.c_invoice_id and ci.docstatus in ('CO', 'CL')
+		join m_product hh on hh.m_product_id=cil.m_product_id and hh.M_Product_ID=1012371
+		where cil.ad_client_id=1000017 and ci.issotrx='Y' and ci.dateacct>=$P{DateFrom} and ci.dateacct<=$P{EndDate}
+		
+		union all
+		
+	
+		select '15' as id, 0 as b6, 0 as b7, sum(t.tt) as b71, 0 as b8, 0 as b9,0 as b10
+		from (
+			select hh.m_product_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+			from c_invoiceline civ
+			join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+			join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1013024
+			join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id
+			where civ.ad_client_id=1000017 and ci.issotrx='N'
+			group by hh.m_product_id, att.lot
+			) as t
+		join m_lot lo on lo.name=t.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+		
+		union all
+		
+		
+		select '15' as id, 0 as b6, 0 as b7, 0 as b71, sum(t.tt) as b8, 0 as b9,0 as b10
+		from (
+			select hh.m_product_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+			from c_invoiceline civ
+			join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+			join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_ID=1012372
+			join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id
+			where civ.ad_client_id=1000017 and ci.issotrx='Y'
+			group by hh.m_product_id, att.lot
+			) as t
+		join m_lot lo on lo.name=t.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+		
+		
+		union all
+		
+		select '15' as id, 0 as b6, 0 as b7, 0 as b71, 0 as b8, sum(t.tt) as b9,0 as b10
+		from (
+			select hh.m_product_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+			from c_invoiceline civ
+			join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+			join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_ID=1012373
+			join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id
+			where civ.ad_client_id=1000017 and ci.issotrx='Y'
+			group by hh.m_product_id, att.lot
+			) as t
+		join m_lot lo on lo.name=t.lot and lo.dateto='01-01-2018' and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+		
+		UNION ALL
+		select '15' as id, 0 as b6, 0 as b7, 0 as b71, 0 as b8, 0 as b9,sum(a4) as b10
+		from (
+            select '3' as id, 0 as a3, sum(civ.productionqty) as a4
+            from m_productionplan civ
+            join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+            join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_Category_ID=1000449
+            join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id and tt.M_AttributeSet_ID=1000067
+            join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+            where civ.ad_client_id=1000017
+            ) as k
+		) as k
+	) as t
+group by t.id
+UNION ALL
+select '12.Kết quả trên m3 vấn ép (hệ số 1,15)' as a1, 'đ/ván ép' as a2, sum(a3) as a3, sum(a4) as a4, id
+FROM (
+   
+	select '16' as id,case when sum(b10) <>0 then 1.15*(sum(b6) + sum(b7) - sum(b71) + sum(b8) + sum(b9))/sum(b10) else 0 end as a3, 0 as a4
+	from (
+		
+		select '16' as id, (sum(k.b1) + sum(k.b2) + sum(k.b3)) - sum(b4) as b6, 0 as b7, 0 as b71, 0 as b8, 0 as b9, 0 as b10
+		from (
+			select '9' as id, sum(c1) * 2850000 as b1, 0 as b2, 0 as b3, 0 as b4
+			from (
+				select sum(civ.productionqty) as c1
+				from m_productionplan civ
+				join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1005237
+				join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id
+				join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+				where civ.ad_client_id=1000017
+				) as k
+			
+			union all
+			
+			select '9' as id, 0 as b1, sum(c2) * 2050000 as b2, 0 as b3, 0 as b4
+			from (
+				select sum(civ.productionqty) as c2
+				from m_productionplan civ
+				join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1008756
+				join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id
+				join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+				where civ.ad_client_id=1000017
+				) as k
+			
+			union all
+			
+			select '9' as id, 0 as b1, 0 as b2, sum(c3) * 800000 as b3, 0 as b4
+			from (
+				select sum(civ.productionqty) as c3
+				from m_productionplan civ
+				join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1008757
+				join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id
+				join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+				where civ.ad_client_id=1000017
+				) as k
+			
+			union all
+			
+			select '9' as id, 0 as b1, 0 as b2, 0 as b3, sum(k.tt) as b4
+			from (
+				select hh.m_product_id, att.m_attributesetinstance_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+				from c_invoiceline civ
+				join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_Category_ID=1000450
+				join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id and att.M_AttributeSet_ID=1000067
+				where civ.ad_client_id=1000017 and ci.issotrx='N'
+				group by att.m_attributesetinstance_id, hh.m_product_id
+				) as k
+			join m_lot lo on lo.name=k.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+			) as k
+		group by k.id
+		
+		union all
+		
+		        
+		select '16' as id, 0 as b6, sum(cil.linetotalamt) as b7, 0 as b71, 0 as b8, 0 as b9,0 as b10
+		from c_invoiceline cil
+		join c_invoice ci on ci.c_invoice_id=cil.c_invoice_id and ci.docstatus in ('CO', 'CL')
+		join m_product hh on hh.m_product_id=cil.m_product_id and hh.M_Product_ID=1012371
+		where cil.ad_client_id=1000017 and ci.issotrx='Y' and ci.dateacct>=$P{StartDate} and ci.dateacct<=$P{EndDate}
+		
+		union all
+		
+	
+		select '16' as id, 0 as b6, 0 as b7, sum(t.tt) as b71, 0 as b8, 0 as b9,0 as b10
+		from (
+			select hh.m_product_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+			from c_invoiceline civ
+			join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+			join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1013024
+			join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id
+			where civ.ad_client_id=1000017 and ci.issotrx='N'
+			group by hh.m_product_id, att.lot
+			) as t
+		join m_lot lo on lo.name=t.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+		
+		union all
+		
+		
+		select '16' as id, 0 as b6, 0 as b7, 0 as b71, sum(t.tt) as b8, 0 as b9,0 as b10
+		from (
+			select hh.m_product_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+			from c_invoiceline civ
+			join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+			join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_ID=1012372
+			join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id
+			where civ.ad_client_id=1000017 and ci.issotrx='Y'
+			group by hh.m_product_id, att.lot
+			) as t
+		join m_lot lo on lo.name=t.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+		
+		
+		union all
+		
+		select '16' as id, 0 as b6, 0 as b7, 0 as b71, 0 as b8, sum(t.tt) as b9,0 as b10
+		from (
+			select hh.m_product_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+			from c_invoiceline civ
+			join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+			join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_ID=1012373
+			join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id
+			where civ.ad_client_id=1000017 and ci.issotrx='Y'
+			group by hh.m_product_id, att.lot
+			) as t
+		join m_lot lo on lo.name=t.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+		
+		UNION ALL
+		select '16' as id, 0 as b6, 0 as b7, 0 as b71, 0 as b8, 0 as b9,sum(a3) as b10 
+		FROM(
+            select '3' as id, sum(civ.productionqty) as a3
+            from m_productionplan civ
+            join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+            join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_Category_ID=1000449
+            join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id and tt.M_AttributeSet_ID=1000067
+            join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{StartDate} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+            where civ.ad_client_id=1000017 
+		) as k
+		) as k
+	group by k.id
+	
+	union all
+	
+	
+	select '16' as id, 0 as a3, case when sum(b10) <>0 then  1.15*(sum(b6) + sum(b7) - sum(b71) + sum(b8) + sum(b9))/sum(b10) else 0 end as a4
+	from (
+		
+		select '16' as id, (sum(k.b1) + sum(k.b2) + sum(k.b3)) - sum(b4) as b6, 0 as b7, 0 as b71, 0 as b8, 0 as b9,0 as b10
+		from (
+			select '9' as id, sum(c1) * 2850000 as b1, 0 as b2, 0 as b3, 0 as b4
+			from (
+				select sum(civ.productionqty) as c1
+				from m_productionplan civ
+				join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1005237
+				join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id
+				join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+				where civ.ad_client_id=1000017
+				) as k
+			
+			union all
+			
+			select '9' as id, 0 as b1, sum(c2) * 2050000 as b2, 0 as b3, 0 as b4
+			from (
+				select sum(civ.productionqty) as c2
+				from m_productionplan civ
+				join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1008756
+				join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id
+				join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+				where civ.ad_client_id=1000017
+				) as k
+			
+			union all
+			
+			select '9' as id, 0 as b1, 0 as b2, sum(c3) * 800000 as b3, 0 as b4
+			from (
+				select sum(civ.productionqty) as c3
+				from m_productionplan civ
+				join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1008757
+				join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id
+				join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+				where civ.ad_client_id=1000017
+				) as k
+			
+			union all
+			
+			select '9' as id, 0 as b1, 0 as b2, 0 as b3, sum(k.tt) as b4
+			from (
+				select hh.m_product_id, att.m_attributesetinstance_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+				from c_invoiceline civ
+				join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+				join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_Category_ID=1000450
+				join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id and att.M_AttributeSet_ID=1000067
+				where civ.ad_client_id=1000017 and ci.issotrx='N'
+				group by att.m_attributesetinstance_id, hh.m_product_id
+				) as k
+			join m_lot lo on lo.name=k.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+			) as k
+        group by k.id
+		
+		union all
+		
+		     
+		select '16' as id, 0 as b6, sum(cil.linetotalamt) as b7, 0 as b71, 0 as b8, 0 as b9,0 as b10
+		from c_invoiceline cil
+		join c_invoice ci on ci.c_invoice_id=cil.c_invoice_id and ci.docstatus in ('CO', 'CL')
+		join m_product hh on hh.m_product_id=cil.m_product_id and hh.M_Product_ID=1012371
+		where cil.ad_client_id=1000017 and ci.issotrx='Y' and ci.dateacct>=$P{DateFrom} and ci.dateacct<=$P{EndDate}
+		
+		union all
+		
+		
+		select '16' as id, 0 as b6, 0 as b7, sum(t.tt) as b71, 0 as b8, 0 as b9,0 as b10
+		from (
+			select hh.m_product_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+			from c_invoiceline civ
+			join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+			join m_product hh on civ.m_product_id=hh.m_product_id and hh.m_product_id=1013024
+			join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id
+			where civ.ad_client_id=1000017 and ci.issotrx='N'
+			group by hh.m_product_id, att.lot
+			) as t
+		join m_lot lo on lo.name=t.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+		
+		union all
+		
+	
+		select '16' as id, 0 as b6, 0 as b7, 0 as b71, sum(t.tt) as b8, 0 as b9,0 as b10
+		from (
+			select hh.m_product_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+			from c_invoiceline civ
+			join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+			join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_ID=1012372
+			join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id
+			where civ.ad_client_id=1000017 and ci.issotrx='Y'
+			group by hh.m_product_id, att.lot
+			) as t
+		join m_lot lo on lo.name=t.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+		
+		
+		union all
+		
+		select '16' as id, 0 as b6, 0 as b7, 0 as b71, 0 as b8, sum(t.tt) as b9,0 as b10
+		from (
+			select hh.m_product_id, att.lot, sum(civ.qtyinvoiced) as sl, sum(civ.linetotalamt) as tt
+			from c_invoiceline civ
+			join c_invoice ci on ci.c_invoice_id=civ.c_invoice_id and ci.docstatus in ('CO', 'CL')
+			join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_ID=1012373
+			join m_attributesetinstance att on civ.m_attributesetinstance_id=att.m_attributesetinstance_id
+			where civ.ad_client_id=1000017 and ci.issotrx='Y'
+			group by hh.m_product_id, att.lot
+			) as t
+		join m_lot lo on lo.name=t.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+		
+		UNION ALL
+		select '16' as id, 0 as b6, 0 as b7, 0 as b71, 0 as b8, 0 as b9,sum(a4) as b10
+		from (
+            select '3' as id, 0 as a3, sum(civ.productionqty) as a4
+            from m_productionplan civ
+            join m_production ci on civ.m_production_id=ci.m_production_id and ci.docstatus in ('CO', 'CL')
+            join m_product hh on civ.m_product_id=hh.m_product_id and hh.M_Product_Category_ID=1000449
+            join m_attributesetinstance tt on civ.m_attributesetinstance_id=tt.m_attributesetinstance_id and tt.M_AttributeSet_ID=1000067
+            join m_lot lo on lo.name=tt.lot and lo.dateto>=$P{DateFrom} and lo.dateto<=$P{EndDate} and lo.m_lot_id is not null
+            where civ.ad_client_id=1000017
+            ) as k
+		) as k
+	) as t
+group by t.id]]>
+	</queryString>
+	<field name="a1" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="a1"/>
+	</field>
+	<field name="a2" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="a2"/>
+	</field>
+	<field name="a3" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.label" value="a3"/>
+	</field>
+	<field name="a4" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.label" value="a4"/>
+	</field>
+	<field name="id" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="id"/>
+	</field>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="92" splitType="Stretch">
+			<textField isBlankWhenNull="true">
+				<reportElement x="1" y="48" width="571" height="22" uuid="0dbae86b-e34c-432b-ac80-ac182660174a">
+					<property name="local_mesure_unitheight" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="16" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["BÁO CÁO KẾT QỦA THU MUA"]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="1" y="68" width="571" height="23" uuid="0266357d-56b6-4988-959e-d6321adbb990"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Từ ngày: " + new SimpleDateFormat("dd/MM/yyyy").format($P{StartDate}) + "   Đến ngày: "  + new SimpleDateFormat("dd/MM/yyyy").format($P{EndDate})]]></textFieldExpression>
+			</textField>
+			<textField pattern="" isBlankWhenNull="false">
+				<reportElement key="textField-2" x="384" y="-19" width="190" height="19" forecolor="#000000" backcolor="#FFFFFF" uuid="9b2d8506-9686-4506-88e3-adad7c9bd143"/>
+				<box>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Trang " + $V{PAGE_NUMBER} + " của "+$V{PAGE_COUNT}]]></textFieldExpression>
+			</textField>
+			<subreport>
+				<reportElement x="1" y="2" width="199" height="21" uuid="3137745c-4426-432e-8e9b-2b8a6b57823e"/>
+				<subreportParameter name="StartDate">
+					<subreportParameterExpression><![CDATA[$P{StartDate}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="EndDate">
+					<subreportParameterExpression><![CDATA[$P{EndDate}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="DateFrom">
+					<subreportParameterExpression><![CDATA[$P{DateFrom}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="SUBREPORT_DIR">
+					<subreportParameterExpression><![CDATA[$P{SUBREPORT_DIR}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"CompanyHeader.jasper"]]></subreportExpression>
+			</subreport>
+		</band>
+	</title>
+	<columnHeader>
+		<band height="25" splitType="Stretch">
+			<staticText>
+				<reportElement x="0" y="0" width="204" height="25" uuid="85f61ed5-2ae5-4be2-8c78-45de58d1818c">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="bdcf8b8b-2ad5-4a57-903d-bf02e1c88ff7"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Thu bột trà]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="204" y="0" width="96" height="25" uuid="bd456c47-086b-4236-86de-b4c6b6252d73">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="47421600-1dbb-4219-a0e4-1dc767770ca3"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Đơn vị tính]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="300" y="0" width="129" height="25" uuid="ef7575ee-33cd-4991-98e5-84a6145c045a">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="0665041c-a65d-4421-ba71-e59e705feafd"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Kỳ báo cáo]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="429" y="0" width="143" height="25" uuid="d67ce437-d767-4bcb-86c9-35df9663ec74">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="d6d93ad1-88c9-4593-a11a-dde666bbb393"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Lũy kế đầu năm]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="25" splitType="Stretch">
+			<textField>
+				<reportElement x="0" y="0" width="204" height="25" uuid="d1ebbc9d-510f-49cc-8f55-37e1fb0b4ee3">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="bdcf8b8b-2ad5-4a57-903d-bf02e1c88ff7"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{a1}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="204" y="0" width="96" height="25" uuid="2b5b0f4d-7376-4802-a84f-ad1b4060a435">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="47421600-1dbb-4219-a0e4-1dc767770ca3"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{a2}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.###">
+				<reportElement x="300" y="0" width="129" height="25" uuid="421d6cce-4f40-4782-bebd-025a45aa5f0a">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="0665041c-a65d-4421-ba71-e59e705feafd"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{a3}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.###">
+				<reportElement x="429" y="0" width="143" height="25" uuid="cb4e8bd0-fa3d-4eae-95d1-fd327e378005">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="d6d93ad1-88c9-4593-a11a-dde666bbb393"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{a4}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<summary>
+		<band height="63" splitType="Stretch">
+			<staticText>
+				<reportElement key="staticText-8" positionType="Float" stretchType="RelativeToTallestObject" x="-10" y="47" width="201" height="16" uuid="2f23dfac-e910-4de7-996c-be1738e57728"/>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Lập biểu]]></text>
+			</staticText>
+			<staticText>
+				<reportElement key="staticText-8" positionType="Float" stretchType="RelativeToTallestObject" x="171" y="47" width="201" height="16" uuid="3c441ab9-6fc1-4098-828c-11011448caaa"/>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Kiểm soát]]></text>
+			</staticText>
+			<staticText>
+				<reportElement key="staticText-8" positionType="Float" stretchType="RelativeToTallestObject" x="366" y="47" width="201" height="16" uuid="187cabf4-b347-473b-a896-c89d6be357ef"/>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Giám đốc]]></text>
+			</staticText>
+			<textField pattern="" isBlankWhenNull="false">
+				<reportElement key="textField-4" x="385" y="10" width="196" height="19" forecolor="#000000" backcolor="#FFFFFF" uuid="17fc6507-b4f4-4ffb-a785-8d6e35f0b49b"/>
+				<box>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Ngày in: " + new SimpleDateFormat("dd/MM/yyyy hh24:mm").format(new Date())]]></textFieldExpression>
+			</textField>
+		</band>
+	</summary>
+</jasperReport>

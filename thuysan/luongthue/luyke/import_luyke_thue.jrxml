@@ -1,0 +1,829 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.20.0.final using JasperReports Library version 6.20.0-2bc7ab61c56f459e8176eb05c7705e145cd400ad  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="import_luyke_thue" language="javascript" pageWidth="1100" pageHeight="612" orientation="Landscape" columnWidth="1100" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="cdd1200d-ecaf-4188-8710-b2d2c946139c">
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.rows" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.columns" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.ignore.cell.border" value="false"/>
+	<property name="net.sf.jasperreports.export.xls.detect.cell.type" value="true"/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="HSV"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="0"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="1000"/>
+	<property name="com.jaspersoft.studio.unit." value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.pageHeight" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.pageWidth" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.topMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.bottomMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.leftMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.rightMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.columnWidth" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.columnSpacing" value="pixel"/>
+	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
+	<parameter name="AD_OrgType_ID" class="java.lang.Integer"/>
+	<parameter name="C_Period_ID" class="java.lang.Integer"/>
+	<queryString language="SQL">
+		<![CDATA[select  case when stt=1 then c_period_name else null end as header_period ,
+case when stt=1 then orgtype_name else null end as header_orgtype
+ ,nhomcv,namenv,ngaycong,round(hesoluong,2) as hesoluong,luongbhxh,luongtg,round(luongsp,0) as luongsp,
+ round(tongluong,0) as tongluong, cpbhxh,round(trbhxh,0) as trbhxh, ckluong, round(tongluong,0) as tnct, hsv_gtgcbt,songuoi_pt, hsv_gtgcnpt,round(case when  tn_tinhthue <0 then 0 else tn_tinhthue end,0) as tn_tinhthue, 
+round(case when tn_tinhthue < 0 then 0 else 
+case when tn_tinhthue < 5000000 then tn_tinhthue * 5/100  else
+case when tn_tinhthue >5000000 and tn_tinhthue <= 10000000 then -250000+tn_tinhthue * 10/100 else 
+case when tn_tinhthue >10000000 and tn_tinhthue <= 18000000 then -750000+tn_tinhthue * 15/100 else 
+case when tn_tinhthue >18000000 and tn_tinhthue <= 32000000 then -1650000+tn_tinhthue * 20/100 else
+case when tn_tinhthue >32000000 and tn_tinhthue <= 52000000 then -3250000+tn_tinhthue * 25/100 else 
+case when tn_tinhthue >52000000 and tn_tinhthue <= 80000000 then -5850000+tn_tinhthue * 30/100 else  
+-9850000+tn_tinhthue * 35/100 end end end end end end end,0) as a1
+
+from(
+select row_number() over() as stt,k.hsv_nhanvien_id,ky.c_period_name,ky.orgtype_name as orgtype_name, namenv,nhomcv, luongbhxh, hesoluong, ngaycong,luongtg,luongsp, tongluong, cpbhxh,trbhxh, ckluong,
+case when k.hsv_nhanvien_id =t.hsv_nhanvien_id  then t.songuoi_pt else 0 end songuoi_pt,
+  z.hsv_gtgcbt  as hsv_gtgcbt, 
+ case when k.hsv_nhanvien_id =t.hsv_nhanvien_id  then songuoi_pt* t.hsv_gtgcnpt else 0  end as hsv_gtgcnpt,
+ tongluong-trbhxh-z.hsv_gtgcbt-case when t.hsv_nhanvien_id = k.hsv_nhanvien_id   then t.songuoi_pt * t.hsv_gtgcnpt else 0 * z.hsv_gtgcnpt end  as tn_tinhthue
+from (
+select 1 as id, hsv_nhanvien_id,namenv,nhomcv,luongbhxh,hesoluong,ngaycong, luongtg,luongsp,luongtg+luongsp as tongluong,cpbhxh,trbhxh,ckluong
+from (
+select nhomcv,namenv,id_nhanvien as hsv_nhanvien_id, mst, bhxh,luongbhxh,case when s_hsv_hesoluong is not null then s_hsv_hesoluong else   hesoluong end as hesoluong ,ngaycong,case when s_hsv_hesoluong is not null then s_hsv_hesoluong else   hesoluong end*quydoi as quydoi, case when (hsv_maxcong <>0 or hsv_maxcong is not null) and hsv_maxcong <>0 then (hsv_luongcd/hsv_maxcong) * ngaycong else 0 end + hsv_phucap as luongtg, case when s_hsv_hesoluong is not null then s_hsv_hesoluong else   hesoluong end *quydoi *case when h.tongcong <>0 then  g.tongluong/h.tongcong else 0 end as luongsp,cpbhxh,trbhxh,(ckluong+ckluong1) as ckluong,hsv_luongcd+ hsv_phucap+case when s_hsv_hesoluong is not null then s_hsv_hesoluong else hesoluong end *quydoi*case when h.tongcong <>0 then  g.tongluong/h.tongcong else 0 end - (ckluong+ckluong1)- trbhxh as conlai
+from (
+	select nhomcv,t.hsv_nhanvien_id as id_nhanvien,c_jobcategory_id,t.hsv_toluong_id,coalesce(s.hsv_maxcong,0) as hsv_maxcong ,s.hsv_hesoluong as s_hsv_hesoluong,coalesce(s.hsv_luongcd,0) as hsv_luongcd ,coalesce(s.hsv_phucap,0) as hsv_phucap,t.hsv_nhanvien_id,namenv, mst,bhxh,luongbhxh, hesoluong, case when   hsv_ngaycong >zz.hsv_congmaxthg then zz.hsv_congmaxthg else hsv_ngaycong end as ngaycong,case when hsv_ngaycong >zz.hsv_congmaxthg then zz.hsv_congmaxthg else hsv_ngaycong end as quydoi,trbhxh , cpbhxh,hsv_TLBHXH,hsv_LuongBHXH,ckluong1, ckluong	
+	from(			
+	select f.nhomcv,c.c_period_id, c.c_jobcategory_id,c.hsv_toluong_id,c.hsv_nhanvien_id,nv.value as namenv, nv.taxid as mst,nv.bhxhid as bhxh,c.hsv_LuongBHXH as luongbhxh,case when (congsua is null or congsua=0) then hsv_ngaycong else congsua end as hsv_ngaycong,case when hesoluong =0 or hesoluong is null then 1 else hesoluong end as hesoluong,coalesce(c.hsv_LuongBHXH,0)*(f.hsv_TLBHXH-f.hsv_TLHTBHXH)/100 as trbhxh ,coalesce(c.hsv_LuongBHXH,0)*f.hsv_TLHTBHXH/100  as cpbhxh,f.hsv_TLBHXH,c.hsv_LuongBHXH,c.ckluong1,coalesce(e.ckluong,0) as ckluong
+	from(
+		select  c_jobcategory_id,hsv_toluong_id, t.hsv_nhanvien_id,hsv_luongbhxh,t.hsv_ngaycong,z.congsua, hesoluong,ckluong1, c_period_id
+		from(
+		
+			
+		select b.c_jobcategory_id,b.hsv_toluong_id,b.hsv_nhanvien_id,  a.hsv_luongbhxh  as hsv_luongbhxh, b.hsv_ngaycong,
+			b.hsv_hesoluong  as hesoluong, coalesce(b.hsv_ckluong,0) as ckluong1,b.c_period_id
+		from (							
+				select  nv.hsv_nhanvien_id, MAX(nv.hsv_ngaycong) as ngaycongk,bhxh.hsv_luongbhxh,bhxh.hsv_htbhxh 						
+				from hsv_nkluong nk
+				join hsv_nkluongnv nv on nk.hsv_nkluong_id = nv.hsv_nkluong_id 
+				join hsv_luongbhxhline bhxh on bhxh.hsv_nhanvien_id = nv.hsv_nhanvien_id and bhxh.hsv_luongbhxh >0 
+				where  nk.ad_client_id = $P{AD_CLIENT_ID} and nk.c_period_id =  $P{C_Period_ID} 
+					and  (select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) <= bhxh.dateto	                                                                                                                                                                                                                                                                                                                          
+					and (select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) >= bhxh.datefrom                                                                                                                                                                                                                                                                                                                         
+					and (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) >= bhxh.datefrom                                                                                                                                                                                                                                                                                                                      
+					and (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) <= bhxh.dateto					
+				group by nv.hsv_nhanvien_id,bhxh.hsv_luongbhxh,bhxh.hsv_htbhxh											
+			) as a
+			 join (
+				select tl.c_jobcategory_id,nkl.c_period_id, hsv_nkluongnv_id,nkl.hsv_toluong_id,nklnv.hsv_nhanvien_id, hsv_ngaycong,nklnv.hsv_hesoluong, nklnv.hsv_ckluong
+				from hsv_NkluongNV nklnv
+				join hsv_nkluong nkl on nkl.hsv_nkluong_id = nklnv.hsv_nkluong_id 
+				join hsv_toluong tl on tl.hsv_toluong_id =nkl.hsv_toluong_id 
+				where  nkl.ad_client_id = $P{AD_CLIENT_ID} and nkl.c_period_id =  $P{C_Period_ID} and nklnv.isactive = 'Y' 								
+			) as b on a.hsv_nhanvien_id =b.hsv_nhanvien_id and a.ngaycongk =  b.hsv_ngaycong 																
+	
+			union all 
+			
+			
+			select  tl.c_jobcategory_id,tl.hsv_toluong_id, lnv.hsv_nhanvien_id, 0 as hsv_luongbhxh  ,lnv.hsv_ngaycong,
+			 lnv.hsv_hesoluong  as hesoluong,
+			coalesce(lnv.hsv_ckluong,0) as ckluong1,  nkl.c_period_id
+			from hsv_nkluong nkl
+			join hsv_nkluongnv lnv on nkl.hsv_nkluong_id = lnv.hsv_nkluong_id 
+			join hsv_toluong tl on nkl.hsv_toluong_id = tl.hsv_toluong_id 
+			join hsv_nhanvien nv on nv.hsv_nhanvien_id = lnv.hsv_nhanvien_id and nv.hsv_qtluong ='Y'
+			where nkl.c_period_id = $P{C_Period_ID} and lnv.isactive = 'Y' and nkl.isactive = 'Y' and nkl.ad_client_id =$P{AD_CLIENT_ID}	
+		
+			union all 
+			select  tl.c_jobcategory_id,tl.hsv_toluong_id, gbhxh.hsv_nhanvien_id,gbhxh.hsv_luongbhxh,gbhxh.hsv_ngaycong,  
+			coalesce(gbhxh.hsv_hesoluong,1) as hesoluong ,0 as ckluong1,$P{C_Period_ID} as c_period_id
+			from hsv_guibhxh gbhxh 
+			join hsv_toluong tl on gbhxh.hsv_toluong_id = tl.hsv_toluong_id
+			where 		(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) <= gbhxh.dateto	                                                                                                                                                                                                                                                                                                                          
+						and (select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})	>=gbhxh.datefrom                                                                                                                                                                                                                                                                                                                         
+						and (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) >= gbhxh.datefrom                                                                                                                                                                                                                                                                                                                      
+						and (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) <=gbhxh.dateto                                                                                                                                                                                                                                                                                                                         
+						and gbhxh.ad_client_id =$P{AD_CLIENT_ID}  and gbhxh.isactive = 'Y' 
+				
+						
+		) as t  left join (
+					select hn.hsv_nhanvien_id, hsv_ngaycong as congsua 
+					from hsv_suangaycong sua
+					join hsv_nkngaycongline hn on sua.hsv_suangaycong_id = hn.hsv_suangaycong_id 	
+					where sua.c_period_id =$P{C_Period_ID}
+					and sua.ad_client_id =$P{AD_CLIENT_ID}  and hn.isactive = 'Y' 
+		
+		) as z on t.hsv_nhanvien_id=z.hsv_nhanvien_id	
+	) as c join ( ---chedo---
+		select  cv.name as nhomcv, cd.hsv_chedo_id,tl.hsv_toluong_id, tl.c_jobcategory_id ,cdl.hsv_TLBHXH,cdl.hsv_TLHTBHXH 
+		from hsv_chedo cd 		
+		join hsv_cd_luong cdl on cd.hsv_chedo_id = cdl.hsv_chedo_id and cdl.isactive = 'Y'
+		join hsv_toluong tl on tl.hsv_chedo_id = cd.hsv_chedo_id and tl.isactive = 'Y'
+		join c_jobcategory cv on cv.c_jobcategory_id = tl.c_jobcategory_id 
+		where (select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) <= cdl.dateto	                                                                                                                                                                                                                                                                                                                              
+		and (select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})	>=cdl.datefrom                                                                                                                                                                                                                                                                                                                            
+		and (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) >= cdl.datefrom                                                                                                                                                                                                                                                                                                                         
+		and (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) <=cdl.dateto                                                                                                                                                                                                                             		
+		and cd.isactive = 'Y' and cd.ad_client_id =$P{AD_CLIENT_ID}
+	) as f on f.hsv_toluong_id =c.hsv_toluong_id
+	left join (
+		--luongck_nv---
+		select tl.c_jobcategory_id,ck.hsv_toluong_id,ck.hsv_nhanvien_id, coalesce(ck.hsv_ckluong) as ckluong
+		from hsv_chuyenkhoan ck
+		join hsv_toluong tl on ck.hsv_toluong_id  = tl.hsv_toluong_id 
+		where 			(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) <= ck.dateto	                                                                                                                                                                                                                                                                                                                          
+					and (select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})	>=ck.datefrom                                                                                                                                                                                                                                                                                                                         
+					and (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) >= ck.datefrom                                                                                                                                                                                                                                                                                                                      
+					and (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) <=ck.dateto                                                                                                                                                                                                                                                                                                                         
+					and ck.ad_client_id =$P{AD_CLIENT_ID}  and ck.isactive = 'Y'
+	
+	) as e on e.c_jobcategory_id = c.c_jobcategory_id and e.hsv_nhanvien_id =c.hsv_nhanvien_id and e.hsv_toluong_id =c.hsv_toluong_id
+	join hsv_nhanvien nv on nv.hsv_nhanvien_id = c.hsv_nhanvien_id
+	
+where  hsv_qtluong='Y' or c.hsv_luongbhxh>0
+) as t
+---ngay max trong thang -----
+left join (
+	select c_period_id, case when hsv_congmaxthg is null or hsv_congmaxthg = 0 then 26 else hsv_congmaxthg end hsv_congmaxthg
+	from hsv_sanluong where c_period_id  =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}
+) as zz on t.c_period_id = zz.c_period_id
+---end ngay max trong thang ---
+left join  (
+	select hsv_nhanvien_id, hsv_luongcd, ad_orgtype_id,hsv_maxcong,hsv_toluong_id, hsv_phucap, ck.hsv_hesoluong 
+	from hsv_luongbctc ck
+	where (select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) <= ck.dateto	                                                                                                                                                                                                                                                                                                                          
+					and (select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})	>=ck.datefrom                                                                                                                                                                                                                                                                                                                         
+					and (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) >= ck.datefrom                                                                                                                                                                                                                                                                                                                      
+					and (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) <=ck.dateto                                                                                                                                                                                                                                                                                                                         
+					and ck.ad_client_id =$P{AD_CLIENT_ID}  and ck.isactive = 'Y'
+) as s on t.hsv_nhanvien_id=s.hsv_nhanvien_id 
+
+) as t left join (
+	select a.c_jobcategory_id, a.name, sum(a.hsv_dongialuong*b.amount) as tongluong
+	from 
+	(
+		select cj.name, dgl.hsv_luongsp_id,dgl.c_jobcategory_id, dgl.hsv_dongialuong 
+		from hsv_dgluong dg
+		join hsv_dgluongLine dgl on dg.hsv_dgluong_id =dgl.hsv_dgluong_id and dg.hsv_loaidongia_ID in (1000039)
+		join c_jobcategory cj on cj.c_jobcategory_id = dgl.c_jobcategory_id
+		where dg.ad_client_id =$P{AD_CLIENT_ID} 
+		and (select startdate from  c_period cp where cp.c_period_id = $P{C_Period_ID}  and cp.ad_client_id =$P{AD_CLIENT_ID}) <=dg.enddate 
+		and (select enddate from  c_period cp where cp.c_period_id = $P{C_Period_ID}  and cp.ad_client_id =$P{AD_CLIENT_ID}) <=dg.enddate 
+	) as a join 
+	(
+		select sll.hsv_luongsp_id, sll.amount ,c_period_id
+		from hsv_sanluong sl 
+		join hsv_sanluongline sll on sl.hsv_sanluong_id  = sll.hsv_sanluong_id  
+		where sl.c_period_id =  $P{C_Period_ID}  
+	) as b on a.hsv_luongsp_id =  b.hsv_luongsp_id
+	group by a.name,a.c_jobcategory_id 
+) as g on t.c_jobcategory_id =g.c_jobcategory_id
+
+left join (
+
+	select c.c_jobcategory_id,sum(case when hsv_ngaycong>zz.hsv_congmaxthg then zz.hsv_congmaxthg else hsv_ngaycong end * case when s.hsv_hesoluong is not null then s.hsv_hesoluong else 
+			case when c.hsv_hesoluong =0 or c.hsv_hesoluong is null  then 1 else c.hsv_hesoluong end end) as tongcong
+			
+	from (
+		select  c_jobcategory_id,c_period_id,hsv_toluong_id,t.hsv_nhanvien_id,case when (z.hsv_ngaycong is null or z.hsv_ngaycong =0) then t.hsv_ngaycong else z.hsv_ngaycong end as hsv_ngaycong,t.hsv_hesoluong
+		from(
+				select  tl.c_jobcategory_id,tl.hsv_toluong_id, lnv.hsv_nhanvien_id ,lnv.hsv_ngaycong, hsv_hesoluong ,nkl.c_period_id 
+				from hsv_nkluong nkl
+				join hsv_nkluongnv lnv on nkl.hsv_nkluong_id = lnv.hsv_nkluong_id 
+				join hsv_toluong tl on nkl.hsv_toluong_id = tl.hsv_toluong_id 
+				join hsv_luongbhxhline bhxh on bhxh.hsv_nhanvien_id = lnv.hsv_nhanvien_id 
+							and (select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) <= bhxh.dateto	                                                                                                                                                                                                                                                                                                                          
+							and (select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})	>=bhxh.datefrom                                                                                                                                                                                                                                                                                                                         
+	 						and (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) >= bhxh.datefrom                                                                                                                                                                                                                                                                                                                      
+							and (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) <=bhxh.dateto  
+							and bhxh.isactive ='Y' and bhxh.hsv_luongbhxh >0 
+				where nkl.c_period_id = $P{C_Period_ID} and lnv.isactive = 'Y' and nkl.isactive = 'Y' and nkl.ad_client_id =$P{AD_CLIENT_ID}	
+				
+				union all 
+						
+				
+				select  tl.c_jobcategory_id,tl.hsv_toluong_id,lnv.hsv_nhanvien_id ,lnv.hsv_ngaycong,lnv.hsv_hesoluong as hesoluong,nkl.c_period_id
+				from hsv_nkluong nkl
+				join hsv_nkluongnv lnv on nkl.hsv_nkluong_id = lnv.hsv_nkluong_id 
+				join hsv_toluong tl on nkl.hsv_toluong_id = tl.hsv_toluong_id 
+				join hsv_nhanvien nv on nv.hsv_nhanvien_id = lnv.hsv_nhanvien_id and nv.hsv_qtluong ='Y'
+				where nkl.c_period_id = $P{C_Period_ID} and lnv.isactive = 'Y' and nkl.isactive = 'Y' and nkl.ad_client_id =$P{AD_CLIENT_ID}	
+			
+		
+				
+				union all 
+				
+				select  tl.c_jobcategory_id,tl.hsv_toluong_id, gbhxh.hsv_nhanvien_id,gbhxh.hsv_ngaycong, gbhxh.hsv_hesoluong, $P{C_Period_ID} as c_period_id
+				from hsv_guibhxh gbhxh 
+				join hsv_toluong tl on gbhxh.hsv_toluong_id = tl.hsv_toluong_id
+				where 		(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) <= gbhxh.dateto	                                                                                                                                                                                                                                                                                                                          
+							and (select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})	>=gbhxh.datefrom                                                                                                                                                                                                                                                                                                                         
+							and (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) >= gbhxh.datefrom                                                                                                                                                                                                                                                                                                                      
+							and (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) <=gbhxh.dateto                                                                                                                                                                                                                                                                                                                         
+							and gbhxh.ad_client_id =$P{AD_CLIENT_ID}  and gbhxh.isactive = 'Y' 
+							
+			) as t  left join (
+					select hn.hsv_nhanvien_id, hsv_ngaycong  
+					from hsv_suangaycong sua
+					join hsv_nkngaycongline hn on sua.hsv_suangaycong_id = hn.hsv_suangaycong_id 	
+					where sua.c_period_id =$P{C_Period_ID}
+					and sua.ad_client_id =$P{AD_CLIENT_ID}  and hn.isactive = 'Y' 
+			) as z on t.hsv_nhanvien_id=z.hsv_nhanvien_id	
+			 
+
+	) as c 
+	---ngay max trong thang -----
+	left join (
+		select c_period_id, case when hsv_congmaxthg is null or hsv_congmaxthg = 0 then 26 else hsv_congmaxthg end hsv_congmaxthg
+		from hsv_sanluong where c_period_id  =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}
+	) as zz on c.c_period_id = zz.c_period_id
+---end ngay max trong thang ---
+	left join  (
+					select hsv_nhanvien_id, ck.hsv_hesoluong 
+					from hsv_luongbctc ck
+					where (select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) <= ck.dateto	                                                                                                                                                                                                                                                                                                                          
+							and (select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})	>=ck.datefrom                                                                                                                                                                                                                                                                                                                         
+							and (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) >= ck.datefrom                                                                                                                                                                                                                                                                                                                      
+							and (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) <=ck.dateto                                                                                                                                                                                                                                                                                                                         
+							and ck.ad_client_id =$P{AD_CLIENT_ID}  and ck.isactive = 'Y'
+		) as s on c.hsv_nhanvien_id=s.hsv_nhanvien_id 
+	group by c_jobcategory_id
+) as h on g.c_jobcategory_id =h.c_jobcategory_id
+
+) as t
+ where luongsp >0
+)as k left JOIN   (
+ 
+ 						select 1 as id, hsv_nhanvien_id,coalesce(songuoi_pt,0) as songuoi_pt , coalesce(hsv_gtgcbt,0) as hsv_gtgcbt , coalesce(hsv_GTGCNPT,0) as hsv_GTGCNPT
+ 						from(					
+					 		select 1 as id, coalesce(hsv_gtgcbt,0) as hsv_gtgcbt, coalesce(hsv_GTGCNPT,0) as hsv_GTGCNPT 
+					 		from hsv_CDTTNCN cdtn 
+					 		where ad_client_id = $P{AD_CLIENT_ID}
+ 							and (select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) <= cdtn.dateto	                                                                                                                                                                                                                                                                                                                          
+							and (select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})	>=cdtn.datefrom                                                                                                                                                                                                                                                                                                                         
+	 						and (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) >= cdtn.datefrom                                                                                                                                                                                                                                                                                                                      
+							and (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) <=cdtn.dateto  
+						) as k join (														
+							select 1 as id, hsv_nhanvien_id,count(hsv_nknguoipt_id) as songuoi_pt 
+							from  hsv_nknguoipt npt
+							where ad_client_id = $P{AD_CLIENT_ID} and (select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) <= npt.dateto	                                                                                                                                                                                                                                                                                                                          
+							and (select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})	>=npt.datefrom                                                                                                                                                                                                                                                                                                                         
+	 						and (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) >= npt.datefrom                                                                                                                                                                                                                                                                                                                      
+							and (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) <=npt.dateto  				
+							group by hsv_nhanvien_id 
+		 				) as t on k.id = t.id
+		 ) as t on k.hsv_nhanvien_id= t.hsv_nhanvien_id
+		 left join (
+		 					select 1 as id, coalesce(hsv_gtgcbt,0) as hsv_gtgcbt, coalesce(hsv_GTGCNPT,0) as hsv_GTGCNPT 
+					 		from hsv_CDTTNCN cdtn 
+					 		where ad_client_id = $P{AD_CLIENT_ID}
+ 							and (select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) <= cdtn.dateto	                                                                                                                                                                                                                                                                                                                          
+							and (select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})	>=cdtn.datefrom                                                                                                                                                                                                                                                                                                                         
+	 						and (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) >= cdtn.datefrom                                                                                                                                                                                                                                                                                                                      
+							and (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) <=cdtn.dateto  
+		
+		 ) as z on k.id =z.id
+		 left join(	select 1 as id,cp.name as c_period_name, ao.name as orgtype_name
+				from c_period cp,ad_orgtype ao 
+				where cp.c_period_id = $P{C_Period_ID} and cp.ad_client_id = $P{AD_CLIENT_ID}
+				and ao.ad_orgtype_id =$P{AD_OrgType_ID} and ao.ad_client_id = $P{AD_CLIENT_ID}
+		) as ky on ky.id = k.id
+) as g]]>
+	</queryString>
+	<field name="header_period" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="header_period"/>
+		<property name="com.jaspersoft.studio.field.label" value="header_period"/>
+	</field>
+	<field name="header_orgtype" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="header_orgtype"/>
+		<property name="com.jaspersoft.studio.field.label" value="header_orgtype"/>
+	</field>
+	<field name="nhomcv" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="nhomcv"/>
+		<property name="com.jaspersoft.studio.field.label" value="nhomcv"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_jobcategory"/>
+	</field>
+	<field name="namenv" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="namenv"/>
+		<property name="com.jaspersoft.studio.field.label" value="namenv"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="hsv_nhanvien"/>
+	</field>
+	<field name="ngaycong" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="ngaycong"/>
+		<property name="com.jaspersoft.studio.field.label" value="ngaycong"/>
+	</field>
+	<field name="hesoluong" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="hesoluong"/>
+		<property name="com.jaspersoft.studio.field.label" value="hesoluong"/>
+	</field>
+	<field name="luongbhxh" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="luongbhxh"/>
+		<property name="com.jaspersoft.studio.field.label" value="luongbhxh"/>
+	</field>
+	<field name="luongtg" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="luongtg"/>
+		<property name="com.jaspersoft.studio.field.label" value="luongtg"/>
+	</field>
+	<field name="luongsp" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="luongsp"/>
+		<property name="com.jaspersoft.studio.field.label" value="luongsp"/>
+	</field>
+	<field name="tongluong" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="tongluong"/>
+		<property name="com.jaspersoft.studio.field.label" value="tongluong"/>
+	</field>
+	<field name="cpbhxh" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="cpbhxh"/>
+		<property name="com.jaspersoft.studio.field.label" value="cpbhxh"/>
+	</field>
+	<field name="trbhxh" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="trbhxh"/>
+		<property name="com.jaspersoft.studio.field.label" value="trbhxh"/>
+	</field>
+	<field name="ckluong" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="ckluong"/>
+		<property name="com.jaspersoft.studio.field.label" value="ckluong"/>
+	</field>
+	<field name="tnct" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="tnct"/>
+		<property name="com.jaspersoft.studio.field.label" value="tnct"/>
+	</field>
+	<field name="hsv_gtgcbt" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="hsv_gtgcbt"/>
+		<property name="com.jaspersoft.studio.field.label" value="hsv_gtgcbt"/>
+	</field>
+	<field name="songuoi_pt" class="java.lang.Long">
+		<property name="com.jaspersoft.studio.field.name" value="songuoi_pt"/>
+		<property name="com.jaspersoft.studio.field.label" value="songuoi_pt"/>
+	</field>
+	<field name="hsv_gtgcnpt" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="hsv_gtgcnpt"/>
+		<property name="com.jaspersoft.studio.field.label" value="hsv_gtgcnpt"/>
+	</field>
+	<field name="tn_tinhthue" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="tn_tinhthue"/>
+		<property name="com.jaspersoft.studio.field.label" value="tn_tinhthue"/>
+	</field>
+	<field name="a1" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="a1"/>
+		<property name="com.jaspersoft.studio.field.label" value="a1"/>
+	</field>
+	<variable name="total_no" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{tongluong}]]></variableExpression>
+	</variable>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="30" splitType="Stretch">
+			<staticText>
+				<reportElement stretchType="RelativeToBandHeight" x="0" y="0" width="58" height="30" uuid="bbe3eefb-bf32-4f2f-94b3-b2fc17e2d0a9">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[C_Period_ID[Name]]]></text>
+			</staticText>
+			<staticText>
+				<reportElement stretchType="RelativeToBandHeight" x="58" y="0" width="84" height="30" uuid="8c598ac4-1e77-4938-b093-305bd3632cef">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[AD_OrgType_ID[Name]]]></text>
+			</staticText>
+			<staticText>
+				<reportElement stretchType="RelativeToBandHeight" x="142" y="0" width="58" height="30" uuid="186ce4da-2fd7-4e97-80df-a8a3d6a591e7">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[hsv_LKNKluongthueLine>C_JobCategory_ID[Name]]]></text>
+			</staticText>
+			<staticText>
+				<reportElement stretchType="RelativeToBandHeight" x="200" y="0" width="58" height="30" uuid="d1de52bf-64f9-4b77-bd42-dec343bfc7cc">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[hsv_LKNKluongthueLine>hsv_nhanvien_ID[Value]]]></text>
+			</staticText>
+			<staticText>
+				<reportElement stretchType="RelativeToBandHeight" x="258" y="0" width="58" height="30" uuid="b8d95487-a7ce-40de-a71b-6b94114811e7">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[hsv_LKNKluongthueLine>hsv_ngaycong]]></text>
+			</staticText>
+			<staticText>
+				<reportElement stretchType="RelativeToBandHeight" x="316" y="0" width="58" height="30" uuid="9a66076a-b345-444d-afab-7f9aa90430b0">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[hsv_LKNKluongthueLine>hsv_hesoLuong]]></text>
+			</staticText>
+			<staticText>
+				<reportElement stretchType="RelativeToBandHeight" x="374" y="0" width="58" height="30" uuid="2e391aba-0932-4068-b4d1-288fb9c090d4">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[hsv_LKNKluongthueLine>hsv_LuongBHXH]]></text>
+			</staticText>
+			<staticText>
+				<reportElement stretchType="RelativeToBandHeight" x="432" y="0" width="58" height="30" uuid="5383842d-8094-4c31-bd1b-d882da040c9e">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[hsv_LKNKluongthueLine>hsv_luongtg]]></text>
+			</staticText>
+			<staticText>
+				<reportElement stretchType="RelativeToBandHeight" x="490" y="0" width="58" height="30" uuid="56a678c5-2414-46f5-844f-0f5dedba6124">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[hsv_LKNKluongthueLine>hsv_luongsp]]></text>
+			</staticText>
+			<staticText>
+				<reportElement stretchType="RelativeToBandHeight" x="548" y="0" width="55" height="30" uuid="54cd5e94-7f9e-41b2-bc98-5cea7cca4b9b">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[hsv_LKNKluongthueLine>hsv_tongluong]]></text>
+			</staticText>
+			<staticText>
+				<reportElement stretchType="RelativeToBandHeight" x="603" y="0" width="55" height="30" uuid="b7be87be-ffc8-4c77-ab81-3ea62a5176ef">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[hsv_LKNKluongthueLine>hsv_THTBHXH]]></text>
+			</staticText>
+			<staticText>
+				<reportElement stretchType="RelativeToBandHeight" x="658" y="0" width="55" height="30" uuid="17bc8bc3-8464-4d1f-aec0-7b5c98bc09b3">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[hsv_LKNKluongthueLine>hsv_trubhxh]]></text>
+			</staticText>
+			<staticText>
+				<reportElement stretchType="RelativeToBandHeight" x="713" y="0" width="55" height="30" uuid="b088530b-fb66-4e68-bc09-1ed2d7817c31">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[hsv_LKNKluongthueLine>hsv_CKLuong]]></text>
+			</staticText>
+			<staticText>
+				<reportElement stretchType="RelativeToBandHeight" x="768" y="0" width="55" height="30" uuid="723a342b-acce-4bde-83eb-c9db3994f25e">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[hsv_LKNKluongthueLine>hsv_TNCT]]></text>
+			</staticText>
+			<staticText>
+				<reportElement stretchType="RelativeToBandHeight" x="823" y="0" width="55" height="30" uuid="10a6c2f5-ebc3-4de6-bca0-67cecc81c95d">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[hsv_LKNKluongthueLine>hsv_GTGCBT]]></text>
+			</staticText>
+			<staticText>
+				<reportElement stretchType="RelativeToBandHeight" x="878" y="0" width="55" height="30" uuid="3719233e-f408-4a6f-a32a-a4c403464931">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[hsv_LKNKluongthueLine>hsv_NPT]]></text>
+			</staticText>
+			<staticText>
+				<reportElement stretchType="RelativeToBandHeight" x="933" y="0" width="55" height="30" uuid="26d3018e-300e-412c-875f-cd05cc7cfed0">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[hsv_LKNKluongthueLine>hsv_GTGCNPT]]></text>
+			</staticText>
+			<staticText>
+				<reportElement stretchType="RelativeToBandHeight" x="988" y="0" width="55" height="30" uuid="94637e06-54eb-4bf9-9519-8b25e626e739">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[hsv_LKNKluongthueLine>hsv_TNTT]]></text>
+			</staticText>
+			<staticText>
+				<reportElement stretchType="RelativeToBandHeight" x="1043" y="0" width="57" height="30" uuid="a23c5033-85a9-4786-b080-56fd3d99900f">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[hsv_LKNKluongthueLine>hsv_TTNKT]]></text>
+			</staticText>
+		</band>
+	</title>
+	<detail>
+		<band height="24" splitType="Stretch">
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" mode="Transparent" x="0" y="0" width="58" height="24" uuid="d7d2d4b7-0020-4aac-a30b-54a1cc314ceb">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{header_period}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="58" y="0" width="84" height="24" uuid="e670cf4b-d8c4-4808-a900-a87467d2df3a">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement verticalAlignment="Middle" rotation="None">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{header_orgtype}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="142" y="0" width="58" height="24" uuid="96ea00a8-a019-4b81-9598-1353effeca32">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{nhomcv}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="200" y="0" width="58" height="24" uuid="710a95fe-5bb0-495e-a075-7ae65583f838">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{namenv}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="258" y="0" width="58" height="24" uuid="2fa42244-3316-4405-b0da-05a9ea96f081">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{ngaycong}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" pattern="#,##0.##" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="316" y="0" width="58" height="24" uuid="0b4b697c-627a-46a9-b82a-4cb8ceafd4c8">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{hesoluong}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="374" y="0" width="58" height="24" uuid="6560a2c2-05d1-465a-9fd4-5ace55b714dd">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{luongbhxh}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="432" y="0" width="58" height="24" uuid="66913f4a-5e82-4374-96f4-dbf026e9ca6b">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{luongtg}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="490" y="0" width="58" height="24" uuid="00145b18-d0e4-41df-9db3-2e173de5ee1a">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{luongsp}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="548" y="0" width="55" height="24" uuid="b0d0ad13-e9be-4b51-bba4-b36f27314ef6"/>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{tongluong}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="603" y="0" width="55" height="24" uuid="6a6b5b8f-f74d-4877-8c02-af06465b9817"/>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{cpbhxh}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="658" y="0" width="55" height="24" uuid="bc1ffa01-0737-47da-b05d-35acb9acf850">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{trbhxh}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="713" y="0" width="55" height="24" uuid="8636ab9a-efea-40f7-b9af-90c002fc7fdf"/>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{ckluong}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="768" y="0" width="55" height="24" uuid="bc80fe78-4284-4c2e-89b2-588e0abd76f2"/>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{tnct}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="823" y="0" width="55" height="24" uuid="2816e863-ba0c-46b2-a8a0-148db5278d64"/>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{hsv_gtgcbt}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="878" y="0" width="55" height="24" uuid="0cfc4149-1246-453c-9406-469abe34ae54"/>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{songuoi_pt}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="933" y="0" width="55" height="24" uuid="d20df37b-c7d7-419a-8cb1-a02d145a897a"/>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{hsv_gtgcnpt}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="988" y="0" width="55" height="24" uuid="55661ab6-18f3-4fb2-b0d9-7e4e709f2979"/>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{tn_tinhthue}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" pattern="#,##0" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="1043" y="0" width="57" height="24" uuid="50bfb363-6774-4ccf-8cb6-38493d2778dc"/>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{a1}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+</jasperReport>

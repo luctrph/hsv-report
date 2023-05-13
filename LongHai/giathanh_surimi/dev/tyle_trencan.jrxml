@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.19.0.final using JasperReports Library version 6.19.0-646c68931cebf1a58bc65c4359d1f0ca223c5e94  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="tyle_trencan" pageWidth="576" pageHeight="46" columnWidth="576" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="71115b91-dd99-4bc5-b217-10e925ac5efb">
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="adempiere_7.1"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="0"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="1000"/>
+	<parameter name="StartDate" class="java.util.Date">
+		<defaultValueExpression><![CDATA[new Date(120,0,1)]]></defaultValueExpression>
+	</parameter>
+	<parameter name="EndDate" class="java.util.Date">
+		<defaultValueExpression><![CDATA[new Date(120,0,31)]]></defaultValueExpression>
+	</parameter>
+	<parameter name="AD_CLIENT_ID" class="java.lang.Integer">
+		<defaultValueExpression><![CDATA[1000019]]></defaultValueExpression>
+	</parameter>
+	<queryString language="SQL">
+		<![CDATA[SELECT id ,tp.name, tp.hsv_dinhmuc,round(a37,0) as a37
+FROM(
+	select '37' as id, case when sum(qty)<>0 then sum(tt)/sum(qty) else 0 end as a37
+	from(
+	select  sum(qty) - sum(qty1) as qty , 0 as tt
+	from(
+		select  sum(civ.productionqty) as qty, 0 as qty1
+		from m_production ci
+		join m_productionplan civ on ci.m_production_id = civ.m_production_id
+		join m_product hh on civ.m_product_id = hh.m_product_id and hh.HSV_loaimat_ID=1000033
+		where ci.docstatus in ('CO', 'CL')  and ci.c_activity_id = 1000273 and ci.c_campaign_id = 1000062 and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
+				
+		union all
+				
+		select  0 as qty, sum(civ.qtyinternaluse) as qty1
+		from m_inventory ci
+		join m_inventoryline civ on ci.m_inventory_id = civ.m_inventory_id
+		join m_product hh on civ.m_product_id = hh.m_product_id and hh.HSV_loaimat_ID=1000033
+		where ci.docstatus in ('CO', 'CL')  and ci.c_activity_id = 1000273 and ci.c_campaign_id = 1000062 and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
+	) as k
+	union all
+	select  0 as qty, sum(- fc.amtacctcr + fc.amtacctdr) as "tt"
+	from fact_acct fc
+	join c_elementvalue acct on fc.account_id = acct.c_elementvalue_id and LEFT(acct.value, 2) in ('15')
+	where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.C_Activity_ID = 1000273 and ad_table_id = 325 and M_Product_ID = 1015083 and fc.dateacct >= $P{StartDate} and fc.dateacct <= $P{EndDate}				
+) as k
+) as k
+RIGHT JOIN hsv_giathanhvan tp ON tp.value = k.id
+WHERE ad_client_id = $P{AD_CLIENT_ID} AND tp.value = '37']]>
+	</queryString>
+	<field name="id" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="id"/>
+		<property name="com.jaspersoft.studio.field.label" value="id"/>
+	</field>
+	<field name="name" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="name"/>
+		<property name="com.jaspersoft.studio.field.label" value="name"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="hsv_giathanhvan"/>
+	</field>
+	<field name="hsv_dinhmuc" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="hsv_dinhmuc"/>
+		<property name="com.jaspersoft.studio.field.label" value="hsv_dinhmuc"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="hsv_giathanhvan"/>
+	</field>
+	<field name="a37" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="a37"/>
+		<property name="com.jaspersoft.studio.field.label" value="a37"/>
+	</field>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<detail>
+		<band height="46" splitType="Stretch">
+			<textField>
+				<reportElement x="0" y="23" width="220" height="23" uuid="8016b7e0-ba75-4884-9fc8-0dcd4bf2069c">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{name}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.###">
+				<reportElement x="480" y="23" width="78" height="23" uuid="384d18dd-f2f2-4160-9f61-1e56b5feca2a">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{a37}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="280" y="23" width="90" height="23" uuid="36108c7f-6760-4eaf-a64c-b591283dc27d">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.75"/>
+				</box>
+				<text><![CDATA[]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="370" y="23" width="110" height="23" uuid="15d66645-f1cb-4e46-b552-8bf9e0e4d888">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.75"/>
+				</box>
+				<text><![CDATA[]]></text>
+			</staticText>
+			<textField pattern="#,##0">
+				<reportElement x="220" y="23" width="60" height="23" uuid="e0f56881-714e-4b6a-899d-06cc195d0675"/>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{hsv_dinhmuc}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+</jasperReport>

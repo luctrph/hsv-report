@@ -1,0 +1,1298 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.17.0.final using JasperReports Library version 6.17.0-6d93193241dd8cc42629e188b94f9e0bc5722efd  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Chi phí sx surimi vươt dinh muc" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="af014a8f-6dda-42b0-9ac8-e37ef58eed74">
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.rows" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.columns" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.detect.cell.type" value="true"/>
+	<property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+	<property name="net.sf.jasperreports.exports.xls.font.size.fix.enabled" value="true"/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="adempiere_7.1"/>
+	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String">
+		<defaultValueExpression><![CDATA["dev/"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="StartDate" class="java.util.Date"/>
+	<parameter name="EndDate" class="java.util.Date"/>
+	<parameter name="EXPORT_TYPE" class="java.lang.String"/>
+	<queryString language="SQL">
+		<![CDATA[select row_number() over() as stt , nhom, ct, name,a3,sl1,a4,a5, a4-a5 as a6, case when sl1 <> 0 then (a4-a5) /sl1 end as a7
+from(
+	select t.nhom,ct, case when ct = '1000' then 'I. THÀNH PHÂM' else 
+	case when ct in ('2011') then 'II. NGUYÊN LIỆU PHỤ' else case when ct in ('2111') then 'II. CHI PHÍ SẢN XUẤT, VC' else  dm.name  end end end as name,
+	dm.hsv_dinhmuc as a3,
+	case when ct in('201', '203') then t.sl else t.tt end as a4,
+	--case when ct in ()
+	case when  t.ct = '223' then z.sl2*  dm.hsv_dinhmuc else dm.hsv_dinhmuc * z.sl1 end as a5,
+	case when t.ct = '223' then z.sl2 else case when t.ct not in ('2011','2111') then z.sl1 end end as sl1
+	--case when ct='223' then t.tt end as sl1
+	--case when t.ct not in ('2011','2111') then  z.sl1 else end as sl1
+	from(
+		select 'I' as nhom,'1000' as ct, null::int4 as sl, null::int4 as tt
+		union all
+		select 'I' as nhom,'201' as ct,sum(t.sl) as sl,0 as tt
+		from(	select COALESCE(sum(pl.productionqty),0 ) as sl
+				from m_productionplan pl
+				join m_product hh on hh.m_product_id =pl.m_product_id and hh.m_attributeset_id  in ('1000088','1000150','1000151')
+				join m_production p on p.m_production_id =pl.m_production_id and p.docstatus in ('CO','CL') and p.movementdate >=$P{StartDate}and p.movementdate <=$P{EndDate}
+				
+				where pl.ad_client_id =$P{AD_CLIENT_ID} 
+				
+				--Tru di so luong xuat kho su dung
+				union all
+								
+				select -1*COALESCE(sum(pl.qtyinternaluse ),0 ) as sl
+				from M_Inventoryline pl
+				join m_product hh on hh.m_product_id =pl.m_product_id and (hh.m_attributeset_id in ('1000088','1000150','1000151') or hh.M_Product_Category_ID=1000554)
+				join M_Inventory p on p.M_Inventory_id =pl.M_Inventory_id and p.docstatus in ('CO','CL') and p.movementdate >=$P{StartDate}and p.movementdate <=$P{EndDate}
+					 
+					 and p.C_DocType_ID=1001066
+				where pl.ad_client_id =$P{AD_CLIENT_ID} 			
+		 ) as t
+		 union all 
+		 SELECT 'I' as nhom,'203' AS ct,COALESCE(sum(t.sl)) AS sl,COALESCE(sum(t.tt)) AS tt
+		FROM (SELECT -1*COALESCE(sum(fc.qty),0) AS sl,COALESCE(sum(fc.amtacctcr),0)-COALESCE(sum(fc.amtacctdr),0) AS tt
+		      FROM fact_acct fc 
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+		      JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID in ('1000088','1000150','1000151') 
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.ad_table_id<>224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate}
+		        		
+		      UNION ALL
+						
+		      SELECT -1*COALESCE(sum(fc.qty),0) AS sl,COALESCE(sum(fc.amtacctcr),0)-COALESCE(sum(fc.amtacctdr),0) AS tt
+		      FROM fact_acct fc 
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+		      JOIN gl_journalline gl ON  Fc.record_id=gl.gl_journal_id AND Fc.line_id=gl.gl_journalline_id AND Fc.Account_ID=gl.Account_ID
+		                                   AND gl.IsGenerated='N'
+		      join m_product hh on hh.m_product_id =fc.m_product_id and hh.M_AttributeSet_ID in ('1000088','1000150','1000151')
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.ad_table_id=224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate}
+		                  
+			) AS t  
+		union all 
+		--chi tieu 206 2 Nguyên liệu phụ : Đường TK 6213
+		select 'II' as nhom,'2011' as ct, null::int4 as sl, null::int4 as tt
+		union all
+		
+		SELECT 'II' as nhom,'206' AS ct,0 AS sl,COALESCE(sum(t.tt)) AS tt
+		FROM (SELECT -1*COALESCE(sum(fc.qty),0) AS sl,COALESCE(sum(fc.amtacctdr),0)-COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4)='6213'
+		      JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_PartType_ID=1000053  
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.ad_table_id=321 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate}
+		       		                 
+			) AS t  
+		
+		--Chi tieu 207:3 Nguyên liệu phụ : Bột Dẻo TK 6213	
+		union all
+		
+		SELECT 'II' as nhom,'207' AS ct,0 AS sl,COALESCE(sum(t.tt)) AS tt
+		FROM (SELECT -1*COALESCE(sum(fc.qty),0) AS sl,COALESCE(sum(fc.amtacctdr),0)-COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4)='6213'
+		      JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_PartType_ID=1000054  
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.ad_table_id=321 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate}
+		       		                 
+			) AS t  
+				
+		--Chi tieu 208:4 Nguyên liệu phụ : TG TK 6213	
+		union all
+		
+		SELECT 'II' as nhom,'208' AS ct,0 AS sl,COALESCE(sum(t.tt)) AS tt
+		FROM (SELECT -1*COALESCE(sum(fc.qty),0) AS sl,COALESCE(sum(fc.amtacctdr),0)-COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4)='6213'
+		      JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_PartType_ID=1000055  
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.ad_table_id=321 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate}
+		       		                 
+			) AS t	
+			
+		--Chi tieu 209:5 Nguyên liệu phụ : Bột trứng    TK 6213	
+		union all
+		
+		SELECT 'II' as nhom,'209' AS ct,0 AS sl,COALESCE(sum(t.tt)) AS tt
+		FROM (SELECT -1*COALESCE(sum(fc.qty),0) AS sl,COALESCE(sum(fc.amtacctdr),0)-COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4)='6213'
+		      JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_PartType_ID=1000056  
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.ad_table_id=321 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate}
+		       		                 
+			) AS t		
+		
+		--Chi tieu 210:6 Nguyên liệu phụ : Muối, Khác.TK 6213.  (PS NO - PSCO  TK 6213 -thành tiền (ID206+ID207+ID208+ID209)	
+		union all
+		
+		SELECT 'II' as nhom,'210' AS ct,0 AS sl,COALESCE(sum(t.tt)) AS tt
+		FROM (SELECT -1*COALESCE(sum(fc.qty),0) AS sl,(COALESCE(sum(fc.amtacctdr),0)-COALESCE(sum(fc.amtacctcr),0)) AS tt
+		      FROM fact_acct fc 
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4)='6213'
+		      JOIN M_product hh ON fc.m_product_id=hh.m_product_id --AND hh.M_PartType_ID=1000056  
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.ad_table_id=321 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate}
+		       		                 
+		      --Tru di ID206+ID207+ID208+ID209
+		      union all
+		      
+		      SELECT -1*COALESCE(sum(fc.qty),0) AS sl,-1*(COALESCE(sum(fc.amtacctdr),0)-COALESCE(sum(fc.amtacctcr),0)) AS tt
+		      FROM fact_acct fc 
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4)='6213'
+		      JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_PartType_ID in ('1000053','1000054','1000055','1000056')
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.ad_table_id=321 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate}
+		      
+			) AS t			
+		union all	
+		select 'II' as nhom,'2111' as ct, null::int4 as sl, null::int4 as tt
+		union all
+		--Chi tieu 211:7. Bao Bì  TK 6276
+		SELECT 'II' as nhom,'211' AS ct,0 AS sl,COALESCE(sum(t.tt)) AS tt
+		FROM (SELECT -1*COALESCE(sum(fc.qty),0) AS sl,COALESCE(sum(fc.amtacctdr),0)-COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4)='6276'
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.ad_table_id<>224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.C_Activity_ID=1000273
+		      
+		      union all
+		      
+		      SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) -COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      join gl_journalline gl on  Fc.record_id=gl.gl_journal_id and Fc.line_id=gl.gl_journalline_id 
+		      		and Fc.Account_ID=gl.Account_ID and gl.IsGenerated='N'
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) in ('6276')
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.ad_table_id=224 and fc.C_Activity_ID=1000273
+		
+		      
+			) as t
+			
+		--Chi tieu 212:8. Điện sản xuất TK 6275
+		union all
+		
+		SELECT 'II' as nhom,'212' AS ct,0 AS sl,COALESCE(sum(t.tt)) AS tt
+		FROM (SELECT -1*COALESCE(sum(fc.qty),0) AS sl,COALESCE(sum(fc.amtacctdr),0)-COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4)='6277'
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.ad_table_id<>224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.C_Activity_ID=1000273
+		      
+		      union all
+		      
+		      SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) -COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      join gl_journalline gl on  Fc.record_id=gl.gl_journal_id and Fc.line_id=gl.gl_journalline_id 
+		      		and Fc.Account_ID=gl.Account_ID and gl.IsGenerated='N'
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) in ('6277')
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.ad_table_id=224 and fc.C_Activity_ID=1000273
+		
+		      
+			) as t
+		
+		--Chi tieu 213:9. Nước sạch PV SX TK 
+		union all
+		
+		SELECT 'II' as nhom,'213' AS ct,0 AS sl,COALESCE(sum(t.tt)) AS tt
+		FROM (SELECT -1*COALESCE(sum(fc.qty),0) AS sl,COALESCE(sum(fc.amtacctdr),0) AS tt
+		      FROM fact_acct fc 
+		      JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_PartType_ID=1000060  
+			  join m_inventory mi on mi.C_DocType_ID=1001066 and mi.m_inventory_id=fc.record_id and mi.docstatus in ('CO','CL')	and mi.C_Activity_ID=1000273      
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.ad_table_id=321 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.amtacctdr<>0
+		       		                 
+			) AS t
+			
+		--Chi tieu 214:10. Sửa chữa Thường Xuyên TK 6273
+		union all
+		
+		SELECT 'II' as nhom,'214' AS ct,0 AS sl,COALESCE(sum(t.tt)) AS tt
+		FROM (SELECT -1*COALESCE(sum(fc.qty),0) AS sl,COALESCE(sum(fc.amtacctdr),0)-COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4)='6273'
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.ad_table_id<>224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate}and fc.ad_table_id<>224 and fc.C_Activity_ID=1000273
+		
+		      union all
+		      
+		      SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) -COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      join gl_journalline gl on  Fc.record_id=gl.gl_journal_id and Fc.line_id=gl.gl_journalline_id 
+		      		and Fc.Account_ID=gl.Account_ID and gl.IsGenerated='N'
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) in ('6273')
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.ad_table_id=224 and fc.C_Activity_ID=1000273
+		            
+		      
+			) as t
+			
+		--Chi tieu 215:11..Nhiên liẹu ,vt khácTK 6272, 6278
+		union all
+		
+		SELECT 'II' as nhom,'215' AS ct,0 AS sl,COALESCE(sum(t.tt)) AS tt
+		FROM (SELECT -1*COALESCE(sum(fc.qty),0) AS sl,COALESCE(sum(fc.amtacctdr),0)-COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) in ('6272','6278')
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.ad_table_id<>224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.C_Activity_ID=1000273
+		      
+		      union all
+		      
+		      SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) -COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      join gl_journalline gl on  Fc.record_id=gl.gl_journal_id and Fc.line_id=gl.gl_journalline_id 
+		      		and Fc.Account_ID=gl.Account_ID and gl.IsGenerated='N'
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) in ('6272','6278')
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.ad_table_id=224 and fc.C_Activity_ID=1000273
+		      
+		      --Tru di chi tieu 213
+		      union all
+			  
+		      SELECT -1*COALESCE(sum(fc.qty),0) AS sl,-1*COALESCE(sum(fc.amtacctdr),0) AS tt
+		      FROM fact_acct fc 
+		      JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_PartType_ID=1000060  
+			  join m_inventory mi on mi.C_DocType_ID=1001066 and mi.m_inventory_id=fc.record_id and mi.docstatus in ('CO','CL')	and mi.C_Activity_ID=1000273      
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.ad_table_id=321 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.amtacctdr<>0
+		      
+		    
+			) as t
+		
+		--Chi tieu 216:12. Nhân công sơ chế surimi TK 6221
+		union all
+		
+		SELECT 'II' as nhom,'216' AS ct,0 AS sl,COALESCE(sum(t.tt)) AS tt
+		FROM (SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0)-COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) in ('6221')
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID}  AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.C_BPartner_ID in (1010338, 1010405)
+		      
+			) as t
+			
+		--Chi tieu 217:13. Nhân công Dây tuyền Sản xuất  tiếp khác TK 6221,C_BPartner_ID=1000142
+		union all
+		
+		SELECT 'II' as nhom,'217' AS ct,0 AS sl,COALESCE(sum(t.tt)) AS tt
+		FROM (SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0)-COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) in ('6221')
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID}  AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.C_BPartner_ID=1010042
+		            
+			) as t
+			
+		
+		--Chi tieu 218:14.Nhân Công Tổ bảo quản , cấp đông , khác  SX Surimi
+		union all
+		
+		sELECT 'II' as nhom,'218' AS ct,0 AS sl,COALESCE(sum(t.tt)) AS tt
+		FROM (SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0)-COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) in ('6221')
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate}and fc.ad_table_id<>224 and fc.C_Activity_ID=1000273 
+		      
+		      union all
+		      
+		      SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) -COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      join gl_journalline gl on  Fc.record_id=gl.gl_journal_id and Fc.line_id=gl.gl_journalline_id 
+		      		and Fc.Account_ID=gl.Account_ID and gl.IsGenerated='N'
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) in ('6221')
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.ad_table_id=224 and fc.C_Activity_ID=1000273
+
+			-- tru di 
+			union all
+			
+			SELECT 0 AS sl,-1*COALESCE(sum(fc.amtacctdr),0)-COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) in ('6221')
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID}  AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.C_BPartner_ID=1010042
+		      
+		      union all
+		      
+		      SELECT 0 AS sl,-1*COALESCE(sum(fc.amtacctdr),0)-COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) in ('6221')
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID}  AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.C_BPartner_ID in (1010338, 1010405)
+		      		      
+			) as t
+			
+		--Chi tieu 219:15. Nhân công quản lý sản xuất trực tiếp TK 62711
+		union all
+		
+		sELECT 'II' as nhom,'219' AS ct,0 AS sl,COALESCE(sum(t.tt)) AS tt
+		FROM (SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) -COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,5) in ('62711')
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.C_Activity_ID=1000273 and fc.ad_table_id<>224
+		      
+		      union all
+		      
+		      SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) -COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      join gl_journalline gl on  Fc.record_id=gl.gl_journal_id and Fc.line_id=gl.gl_journalline_id 
+		      		and Fc.Account_ID=gl.Account_ID and gl.IsGenerated='N'
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,5) in ('62711')
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.ad_table_id=224 and fc.C_Activity_ID=1000273
+		      
+			) as t
+			
+		--Chi tieu 223:16. Chi phí vận chuyển hàng bán TK 6417
+		
+		union all
+		
+		sELECT 'II' as nhom,'223' AS ct,0 AS sl,COALESCE(sum(t.tt)) AS tt
+		FROM (SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) -COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) in ('6417')
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.C_Activity_ID=1000273 and fc.ad_table_id<>224
+		      
+		      union all
+		      
+		      SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) -COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      join gl_journalline gl on  Fc.record_id=gl.gl_journal_id and Fc.line_id=gl.gl_journalline_id 
+		      		and Fc.Account_ID=gl.Account_ID and gl.IsGenerated='N'
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) in ('6417')
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.ad_table_id=224 and fc.C_Activity_ID=1000273
+		      
+			) as t
+			
+		--Chi tieu 224:16. Chi phí vận chuyển hàng bán TK 6417
+		
+		union all
+		
+		sELECT 'II' as nhom,'224' AS ct,0 AS sl,COALESCE(sum(t.tt)) AS tt
+		FROM (SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) -COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) in ('6411')
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate}and fc.ad_table_id<>224
+		      
+		      union all
+		      
+		      SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) -COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      join gl_journalline gl on  Fc.record_id=gl.gl_journal_id and Fc.line_id=gl.gl_journalline_id 
+		      		and Fc.Account_ID=gl.Account_ID and gl.IsGenerated='N'
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) in ('6411')
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.ad_table_id=224
+		     
+			) as t
+			
+		--Chi tieu 220:18. Nhân công cơ điện (phân bổ /kg) TK 62712,C_BPartner_ID=1010154
+		union all
+		
+		SELECT 'II' as nhom,'220' AS ct,0 AS sl,COALESCE(sum(t.tt)) AS tt
+		FROM (SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) -COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,5) in ('62712')
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.C_BPartner_ID=1010154
+		      
+			) as t
+			 
+		--Chi tieu 221:19. Nhân công Thu Mua (phân bổ /kg) TK 62712, C_BPartner_ID=1010150
+		union all
+		
+		SELECT 'II' as nhom,'221' AS ct,0 AS sl,COALESCE(sum(t.tt))* 50/100 AS tt
+		FROM (SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) -COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,5) in ('62712')
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.C_BPartner_ID not in (1010154,1010142)
+		      
+			) as t
+		--Chi tieu 222:20. Nhân Kỷ Thuật (phân bổ /kg) TK 62712,C_BPartner_ID=1010142
+		union all
+		
+		SELECT 'II' as nhom,'222' AS ct,0 AS sl,COALESCE(sum(t.tt)) AS tt
+		FROM (SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) -COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,5) in ('62712')
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.C_BPartner_ID=1010142
+		      
+			) as t
+			
+		--Chi tieu 225:21. Chi ăn ca, tăng ca  (phân bổ /kg) TK 6222
+		union all
+		
+		SELECT 'II' as nhom,'225' AS ct,0 AS sl,COALESCE(sum(t.tt)) * 50/100 AS tt
+		FROM (SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) -COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) in ('6222')
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.ad_table_id<>224
+		      
+		      union all
+		      
+		      SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) -COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      join gl_journalline gl on  Fc.record_id=gl.gl_journal_id and Fc.line_id=gl.gl_journalline_id 
+		      		and Fc.Account_ID=gl.Account_ID and gl.IsGenerated='N'
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) in ('6222')
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.ad_table_id=224
+		            
+			) as t
+		
+		--Chi tieu 226:22 Chi ho trợ BHXH (phân bổ /kg) TK 6223
+		union all
+		
+		SELECT 'II' as nhom,'226' AS ct,0 AS sl,COALESCE(sum(t.tt))*50/100 AS tt
+		FROM (SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) -COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) in ('6223')
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.ad_table_id<>224
+		      
+		      union all
+		      
+		      SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) -COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      join gl_journalline gl on  Fc.record_id=gl.gl_journal_id and Fc.line_id=gl.gl_journalline_id 
+		      		and Fc.Account_ID=gl.Account_ID and gl.IsGenerated='N'
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) in ('6223')
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.ad_table_id=224
+		            
+			) as t	
+			
+		--Chi tieu 227:23. Chi lương T 13 ,Thưởng  (phân bổ /kg) TK 6224
+		union all
+		
+		SELECT 'II' as nhom,'227' AS ct,0 AS sl,COALESCE(sum(t.tt)) * 50/100 AS tt
+		FROM (SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) -COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) in ('6224')
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.ad_table_id<>224
+		      
+		      union all
+		      
+		      SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) -COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      join gl_journalline gl on  Fc.record_id=gl.gl_journal_id and Fc.line_id=gl.gl_journalline_id 
+		      		and Fc.Account_ID=gl.Account_ID and gl.IsGenerated='N'
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) in ('6224')
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.ad_table_id=224
+		            
+			) as t		
+			
+		--Chi tieu 228:24. NC quản lý chung (KT,HC,TM) P.bổ/kg TK 6421
+		union all
+		
+		SELECT 'II' as nhom,'228' AS ct,0 AS sl,COALESCE(sum(t.tt)) *50/100 AS tt
+		FROM (SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) -COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) in ('6421')
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.ad_table_id<>224
+		      
+		      union all
+		      
+		      SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) -COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      join gl_journalline gl on  Fc.record_id=gl.gl_journal_id and Fc.line_id=gl.gl_journalline_id 
+		      		and Fc.Account_ID=gl.Account_ID and gl.IsGenerated='N'
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) in ('6421')
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.ad_table_id=224
+		            
+			) as t			
+			
+		--Chi tieu 229:25. Chi khác (phân bổ / kg)  6428	
+		union all
+		
+		SELECT 'II' as nhom,'229' AS ct,0 AS sl,COALESCE(sum(t.tt)) * 50/100 AS tt
+		FROM (SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) -COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) in ('6428')
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.ad_table_id<>224
+		      
+		      union all
+		      
+		      SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) -COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      join gl_journalline gl on  Fc.record_id=gl.gl_journal_id and Fc.line_id=gl.gl_journalline_id 
+		      		and Fc.Account_ID=gl.Account_ID and gl.IsGenerated='N'
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) in ('6428')
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.ad_table_id=224
+		            
+			) as t
+				union all
+		
+		SELECT 'II' as nhom,'2291' AS ct,0 AS sl,COALESCE(sum(t.tt))  AS tt
+		FROM (SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) -COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) in ('6279')
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.ad_table_id<>224 and  fc.C_Activity_ID=1000273
+		      
+		      union all
+		      
+		      SELECT 0 AS sl,COALESCE(sum(fc.amtacctdr),0) -COALESCE(sum(fc.amtacctcr),0) AS tt
+		      FROM fact_acct fc 
+		      join gl_journalline gl on  Fc.record_id=gl.gl_journal_id and Fc.line_id=gl.gl_journalline_id 
+		      		and Fc.Account_ID=gl.Account_ID and gl.IsGenerated='N'
+		      JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,4) in ('6279')
+		      WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.ad_table_id=224 and fc.C_Activity_ID=1000273
+		            
+			) as t
+	) as t
+	left join (
+				select 'II' as nhom,sum(z.sl) as sl1, sum(z.sl2) as sl2
+				from(	
+					select COALESCE(sum(pl.productionqty),0 ) as sl,0 as sl2
+					from m_productionplan pl
+					join m_product hh on hh.m_product_id =pl.m_product_id and hh.m_attributeset_id  in ('1000088','1000150','1000151')
+					join m_production p on p.m_production_id =pl.m_production_id and p.docstatus in ('CO','CL') and p.movementdate >=$P{StartDate}and p.movementdate <=$P{EndDate}				
+					where pl.ad_client_id =$P{AD_CLIENT_ID} 
+				
+				--Tru di so luong xuat kho su dung
+					union all
+								
+					select -1*COALESCE(sum(pl.qtyinternaluse ),0 ) as sl, 0 as sl2
+					from M_Inventoryline pl
+					join m_product hh on hh.m_product_id =pl.m_product_id and (hh.m_attributeset_id in ('1000088','1000150','1000151') or hh.M_Product_Category_ID=1000554)
+					join M_Inventory p on p.M_Inventory_id =pl.M_Inventory_id and p.docstatus in ('CO','CL') and p.movementdate >=$P{StartDate}and p.movementdate <=$P{EndDate}					 
+					 and p.C_DocType_ID=1001066
+					where pl.ad_client_id =$P{AD_CLIENT_ID} 
+					
+					union all 
+					
+					SELECT 0 as sl,-1*COALESCE(sum(fc.qty),0) AS sl2
+					FROM fact_acct fc 
+					JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+					JOIN M_product hh ON fc.m_product_id=hh.m_product_id AND hh.M_AttributeSet_ID in ('1000088','1000150','1000151') 
+					WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.ad_table_id<>224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate}
+		        		
+		      		UNION ALL
+						
+				    SELECT 0 as sl, -1*COALESCE(sum(fc.qty),0) AS sl2
+				    FROM fact_acct fc 
+				    JOIN c_elementvalue acct ON fc.account_id=acct.c_elementvalue_id AND LEFT(acct.value,2)='51'
+				    JOIN gl_journalline gl ON  Fc.record_id=gl.gl_journal_id AND Fc.line_id=gl.gl_journalline_id AND Fc.Account_ID=gl.Account_ID
+				                                   AND gl.IsGenerated='N'
+				    join m_product hh on hh.m_product_id =fc.m_product_id and hh.M_AttributeSet_ID in ('1000088','1000150','1000151')
+				    WHERE  fc.ad_client_id=$P{AD_CLIENT_ID} AND fc.ad_table_id=224 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate}
+		 		) as z 
+		 	) as z on t.nhom =z.nhom
+	left join hsv_giathanhvan dm on dm.value=t.ct and dm.ad_client_id =$P{AD_CLIENT_ID}
+	) as k]]>
+	</queryString>
+	<field name="stt" class="java.lang.Long">
+		<property name="com.jaspersoft.studio.field.name" value="stt"/>
+		<property name="com.jaspersoft.studio.field.label" value="stt"/>
+	</field>
+	<field name="nhom" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="nhom"/>
+		<property name="com.jaspersoft.studio.field.label" value="nhom"/>
+	</field>
+	<field name="ct" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="ct"/>
+		<property name="com.jaspersoft.studio.field.label" value="ct"/>
+	</field>
+	<field name="name" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="name"/>
+		<property name="com.jaspersoft.studio.field.label" value="name"/>
+	</field>
+	<field name="a3" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="a3"/>
+		<property name="com.jaspersoft.studio.field.label" value="a3"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="hsv_giathanhvan"/>
+	</field>
+	<field name="sl1" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="sl1"/>
+		<property name="com.jaspersoft.studio.field.label" value="sl1"/>
+	</field>
+	<field name="a4" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="a4"/>
+		<property name="com.jaspersoft.studio.field.label" value="a4"/>
+	</field>
+	<field name="a5" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="a5"/>
+		<property name="com.jaspersoft.studio.field.label" value="a5"/>
+	</field>
+	<field name="a6" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="a6"/>
+		<property name="com.jaspersoft.studio.field.label" value="a6"/>
+	</field>
+	<field name="a7" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="a7"/>
+		<property name="com.jaspersoft.studio.field.label" value="a7"/>
+	</field>
+	<variable name="sum_a6" class="java.lang.Double" calculation="Sum">
+		<variableExpression><![CDATA[$F{a6}]]></variableExpression>
+	</variable>
+	<variable name="sum_a4" class="java.math.BigDecimal" resetType="Group" resetGroup="nhom" calculation="Sum">
+		<variableExpression><![CDATA[$F{a4}]]></variableExpression>
+	</variable>
+	<variable name="sum_a5" class="java.math.BigDecimal" resetType="Group" resetGroup="nhom" calculation="Sum">
+		<variableExpression><![CDATA[$F{a5}]]></variableExpression>
+	</variable>
+	<variable name="sum_a6_1" class="java.math.BigDecimal" resetType="Group" resetGroup="nhom" calculation="Sum">
+		<variableExpression><![CDATA[$F{a6}]]></variableExpression>
+	</variable>
+	<variable name="sum_a7" class="java.math.BigDecimal" resetType="Group" resetGroup="nhom" calculation="Sum">
+		<variableExpression><![CDATA[$F{a7}]]></variableExpression>
+	</variable>
+	<variable name="sum_a3" class="java.math.BigDecimal" resetType="Group" resetGroup="nhom" calculation="Sum">
+		<variableExpression><![CDATA[$F{a3}]]></variableExpression>
+	</variable>
+	<variable name="sum_sl1" class="java.lang.Double" calculation="Sum">
+		<variableExpression><![CDATA[$F{sl1}]]></variableExpression>
+	</variable>
+	<group name="nhom">
+		<groupExpression><![CDATA[$F{nhom}]]></groupExpression>
+		<groupFooter>
+			<band height="27">
+				<textField pattern="#,##0" isBlankWhenNull="true">
+					<reportElement x="283" y="0" width="75" height="27" uuid="ece65306-5953-4d0d-baec-749f1abbe116">
+						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="4f1410d3-4fe2-4dcd-94d8-82e064578532"/>
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					</reportElement>
+					<box padding="2">
+						<pen lineWidth="0.5"/>
+						<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{sum_a4}]]></textFieldExpression>
+				</textField>
+				<textField>
+					<reportElement x="0" y="0" width="187" height="27" uuid="75716306-33c0-4318-b622-e8f988c1b8c8">
+						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="7c3faafd-fd81-48d2-a33a-a8c060e3d59f"/>
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					</reportElement>
+					<box padding="2">
+						<pen lineWidth="0.5"/>
+						<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textElement textAlignment="Left" verticalAlignment="Middle">
+						<font fontName="Arial" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA["Cộng nhóm"]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0" isBlankWhenNull="true">
+					<reportElement x="520" y="0" width="43" height="27" uuid="161d8db4-f58f-4c0e-95e4-f3db3a83904b">
+						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="173fcf86-c0ab-4c45-8699-a8bda318a74c"/>
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					</reportElement>
+					<box padding="2">
+						<pen lineWidth="0.5"/>
+						<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{sum_a7}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0" isBlankWhenNull="true">
+					<reportElement x="440" y="0" width="80" height="27" uuid="2754a2e9-9ab1-47a6-adeb-1bd44721299b">
+						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="455f179a-2b80-43c1-9373-8e4a8e79e5e0"/>
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					</reportElement>
+					<box padding="2">
+						<pen lineWidth="0.5"/>
+						<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{sum_a6_1}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0" isBlankWhenNull="true">
+					<reportElement x="187" y="0" width="43" height="27" uuid="e66967c8-9afb-45e1-9bc9-6a0a51221084">
+						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="173fcf86-c0ab-4c45-8699-a8bda318a74c"/>
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					</reportElement>
+					<box padding="2">
+						<pen lineWidth="0.5"/>
+						<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{sum_a3}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0" isBlankWhenNull="true">
+					<reportElement x="358" y="0" width="82" height="27" uuid="a8769147-6115-4fc3-b523-9f5d8b9f63bb">
+						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="41b0ef9b-9308-40c3-ab66-c48a18985a40"/>
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					</reportElement>
+					<box padding="2">
+						<pen lineWidth="0.5"/>
+						<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{sum_a5}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0" isBlankWhenNull="true">
+					<reportElement x="230" y="0" width="53" height="27" uuid="3fdb92c8-abe0-4d24-b6aa-e12080a1e2bc">
+						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="173fcf86-c0ab-4c45-8699-a8bda318a74c"/>
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					</reportElement>
+					<box padding="2">
+						<pen lineWidth="0.5"/>
+						<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{sum_sl1}]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupFooter>
+	</group>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="79" splitType="Stretch">
+			<printWhenExpression><![CDATA[$P{EXPORT_TYPE}==null]]></printWhenExpression>
+			<textField isBlankWhenNull="true">
+				<reportElement x="0" y="27" width="555" height="30" uuid="042d822b-ea0d-40eb-a594-2b758d840877">
+					<property name="local_mesure_unitheight" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="18" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["CHI PHÍ SẢN XUẤT SURIMI VƯỢT ĐỊNH MỨC"]]></textFieldExpression>
+			</textField>
+			<textField pattern="dd/MM/yyyy" isBlankWhenNull="true">
+				<reportElement key="textField-5" x="0" y="53" width="555" height="23" uuid="2094e069-4ed5-4111-8c12-74c4119f913c">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Kỳ báo cáo : " + new SimpleDateFormat("dd/MM/yyyy").format($P{StartDate}) + " To "  + new SimpleDateFormat("dd/MM/yyyy").format($P{EndDate})]]></textFieldExpression>
+			</textField>
+			<subreport>
+				<reportElement x="0" y="-7" width="350" height="40" uuid="a0f95ad9-d0e4-41e5-b44f-e8c46d09def1"/>
+				<subreportParameter name="AD_CLIENT_ID">
+					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="SUBREPORT_DIR">
+					<subreportParameterExpression><![CDATA[$P{SUBREPORT_DIR}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="StartDate">
+					<subreportParameterExpression><![CDATA[$P{StartDate}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="EndDate">
+					<subreportParameterExpression><![CDATA[$P{EndDate}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"CompanyHeader.jasper"]]></subreportExpression>
+			</subreport>
+		</band>
+	</title>
+	<columnHeader>
+		<band height="27" splitType="Stretch">
+			<printWhenExpression><![CDATA[$V{PAGE_NUMBER}==1]]></printWhenExpression>
+			<staticText>
+				<reportElement x="0" y="0" width="30" height="27" uuid="0ad94fdf-e7a8-4d16-8135-3dcafd9c5a94">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="80c430ed-1e7f-4a17-bba7-4d876d5a6d15"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<text><![CDATA[STT]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="30" y="0" width="157" height="27" uuid="27ba4295-6c0e-482a-a45a-f0fa639f8e21">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="7c3faafd-fd81-48d2-a33a-a8c060e3d59f"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Nội dung]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="187" y="0" width="43" height="27" uuid="d50ad441-b507-4174-9a3d-524dfb4b3898">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="173fcf86-c0ab-4c45-8699-a8bda318a74c"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Định mức]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="283" y="0" width="75" height="27" uuid="e235d782-496a-455f-9597-fbd114d365ff">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="4f1410d3-4fe2-4dcd-94d8-82e064578532"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Chi phí thực tế]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="358" y="0" width="82" height="27" uuid="a856d737-bceb-497b-93c0-a4bc28de984a">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="41b0ef9b-9308-40c3-ab66-c48a18985a40"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Chi phí định mức]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="440" y="0" width="80" height="27" uuid="33ee67a7-c100-4cef-a2d4-d522181ba81f">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="455f179a-2b80-43c1-9373-8e4a8e79e5e0"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Chi phí vượt định mức]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="520" y="0" width="43" height="27" uuid="e5bed49f-10f5-44d2-92b4-226ba4205a76">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="173fcf86-c0ab-4c45-8699-a8bda318a74c"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<text><![CDATA[CP vượt/ 1 kg TP]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="230" y="0" width="53" height="27" uuid="ae469a93-e2b9-44af-8957-266e5a6c3f02">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="173fcf86-c0ab-4c45-8699-a8bda318a74c"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<text><![CDATA[SL tính đm]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="27" splitType="Stretch">
+			<textField>
+				<reportElement x="0" y="0" width="30" height="27" uuid="4c85ee5e-072f-45de-9438-0853f1198e24">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="80c430ed-1e7f-4a17-bba7-4d876d5a6d15"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{stt}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="30" y="0" width="157" height="27" uuid="c13fb043-2158-4d1b-9005-1cc0fa38e067">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="7c3faafd-fd81-48d2-a33a-a8c060e3d59f"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{name}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="187" y="0" width="43" height="27" uuid="296c057e-1593-4a01-ab47-f81d836bdee4">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="173fcf86-c0ab-4c45-8699-a8bda318a74c"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{a3}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="283" y="0" width="75" height="27" uuid="73d65206-29f2-46dd-a255-c4ac915666bb">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="4f1410d3-4fe2-4dcd-94d8-82e064578532"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{a4}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="358" y="0" width="82" height="27" uuid="0d4731b7-b354-48b4-8f33-91a5cc053200">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="41b0ef9b-9308-40c3-ab66-c48a18985a40"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{a5}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="440" y="0" width="80" height="27" uuid="1422a00d-10fa-4cbb-8b81-43fb4eab815f">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="455f179a-2b80-43c1-9373-8e4a8e79e5e0"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{a6}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="520" y="0" width="43" height="27" uuid="9be2af5b-3379-4ea6-b028-f3380ab20177">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="173fcf86-c0ab-4c45-8699-a8bda318a74c"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{a7}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="230" y="0" width="53" height="27" uuid="4abab7c6-b238-484f-9500-f1a1962fd749">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="173fcf86-c0ab-4c45-8699-a8bda318a74c"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{sl1}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<pageFooter>
+		<band height="30">
+			<printWhenExpression><![CDATA[$P{EXPORT_TYPE}==null]]></printWhenExpression>
+			<textField>
+				<reportElement x="0" y="0" width="280" height="30" uuid="049f77c8-9ea2-427f-95f0-3020c7b499fd">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{PAGE_NUMBER}]]></textFieldExpression>
+			</textField>
+			<textField evaluationTime="Report">
+				<reportElement x="280" y="0" width="280" height="30" uuid="2b69a25d-aaf2-442d-85a5-df64805913b3">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA["/"+$V{PAGE_NUMBER}]]></textFieldExpression>
+			</textField>
+		</band>
+	</pageFooter>
+	<summary>
+		<band height="127">
+			<staticText>
+				<reportElement key="staticText-8" positionType="Float" stretchType="RelativeToTallestObject" x="35" y="111" width="100" height="16" uuid="c57554f2-6cd9-4442-9010-b5f76bba771f">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<printWhenExpression><![CDATA[$P{EXPORT_TYPE}==null]]></printWhenExpression>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Lập biểu]]></text>
+			</staticText>
+			<staticText>
+				<reportElement key="staticText-8" positionType="Float" stretchType="RelativeToTallestObject" x="225" y="111" width="100" height="16" uuid="ca2d8c4e-31ab-48ea-b603-b303afc8ef30">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<printWhenExpression><![CDATA[$P{EXPORT_TYPE}==null]]></printWhenExpression>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Kiểm soát]]></text>
+			</staticText>
+			<textField pattern="" isBlankWhenNull="false">
+				<reportElement key="textField-4" x="338" y="90" width="212" height="19" forecolor="#000000" backcolor="#FFFFFF" uuid="0ca355e0-94cc-4b58-a540-393d49f72c31">
+					<printWhenExpression><![CDATA[$P{EXPORT_TYPE}==null]]></printWhenExpression>
+				</reportElement>
+				<box>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Ngày in: " + new SimpleDateFormat("dd/MM/yyyy hh24:mm").format(new Date())]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement key="staticText-8" positionType="Float" stretchType="RelativeToTallestObject" x="415" y="111" width="100" height="16" uuid="958e6641-ab5b-44bd-9889-fa8d7a066a40">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<printWhenExpression><![CDATA[$P{EXPORT_TYPE}==null]]></printWhenExpression>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Giám đốc]]></text>
+			</staticText>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="187" y="27" width="376" height="27" uuid="a0f49674-6641-492a-879d-073b0703323c">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="173fcf86-c0ab-4c45-8699-a8bda318a74c"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{sum_a6}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="30" y="27" width="157" height="27" uuid="55be3577-b766-45b7-8014-f4d3ca93117f">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="7c3faafd-fd81-48d2-a33a-a8c060e3d59f"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA["1. chi phí thực tế vượt định mức"]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="0" y="27" width="30" height="27" uuid="bc63f256-4782-4fdf-a5d7-b4de31953019">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="80c430ed-1e7f-4a17-bba7-4d876d5a6d15"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA["1"]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="0" y="54" width="30" height="27" uuid="ed2a443a-0fe0-420a-a3ae-c20b8e2c5502">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="80c430ed-1e7f-4a17-bba7-4d876d5a6d15"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA["2"]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="30" y="54" width="157" height="27" uuid="d57a5c31-1528-4b63-ae95-02d835007c54">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="7c3faafd-fd81-48d2-a33a-a8c060e3d59f"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA["2. chi phí vượt định mức /1 kg surimi"]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="187" y="54" width="376" height="27" uuid="1515cc97-83c4-45cf-b771-7b36029fbe4d">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="173fcf86-c0ab-4c45-8699-a8bda318a74c"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[new Double($F{sl1}.doubleValue()==0?0:$V{sum_a6}/$F{sl1}.doubleValue())]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="0" y="0" width="563" height="27" uuid="4f8445da-a77c-49f7-a81e-81cb7343dc60">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="7c3faafd-fd81-48d2-a33a-a8c060e3d59f"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["KẾT QUẢ"]]></textFieldExpression>
+			</textField>
+		</band>
+	</summary>
+</jasperReport>

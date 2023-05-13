@@ -1,0 +1,897 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.17.0.final using JasperReports Library version 6.17.0-6d93193241dd8cc42629e188b94f9e0bc5722efd  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Import_hach_toan_lai" pageWidth="1002" pageHeight="709" orientation="Landscape" columnWidth="1002" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="7d61c04b-daa6-45b5-b1d5-48251dd8d679">
+	<property name="net.sf.jasperreports.export.xls.detect.cell.type" value="true"/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="adempiere_7.1"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.keep.first.band.1" value="pageHeader"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.2" value="pageFooter"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.3" value="lastPageFooter"/>
+	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.rows" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.columns" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.white.page.background" value="false"/>
+	<property name="net.sf.jasperreports.export.xls.ignore.graphics" value="false"/>
+	<property name="net.sf.jasperreports.export.xls.ignore.cell.border" value="true"/>
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="com.jaspersoft.studio.unit." value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.pageHeight" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.pageWidth" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.topMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.bottomMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.leftMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.rightMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.columnWidth" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.columnSpacing" value="pixel"/>
+	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
+	<parameter name="AD_Org_ID" class="java.lang.Integer"/>
+	<parameter name="C_Period_ID" class="java.lang.Integer"/>
+	<parameter name="Account_ID" class="java.lang.Integer"/>
+	<parameter name="C_BPartner_ID" class="java.lang.Integer"/>
+	<parameter name="C_DocType_ID" class="java.lang.Integer"/>
+	<parameter name="GL_Category_ID" class="java.lang.Integer"/>
+	<queryString>
+		<![CDATA[select	 case when stt=10 then   z.org else null end as header_org
+,case when stt=10 then concat('LX.', to_char(t.ngay,'DDMMYY')) else null end  as header_sct
+,case when stt=10 then q.name else null end as header_gl
+,case when stt=10 then concat('Tính lãi vay ngoài T',to_char(t.ngay,'MM/YYYY')) else null end as header_desc
+, case when stt=10 then t.c_type else null end as header_type
+,case when stt=10 then to_char(t.ngay,'YYYY-MM-DD') else null end  as header_date
+,case when stt=10 then to_char(t.ngay,'MM-YYYY') else null end as header_period
+, stt  as detail_stt, concat('Lãi vay ngoài T',to_char(t.ngay,'MM/YYYY'))  as detail_desc ,doitac as detail_doitac,tk as detail_tk,hoatdong as detail_hoatdong,currency as detail_curencty,  round(tno,0) as detail_tno,  round(tco,0) as detail_tco
+from ( 
+	select 1 as id,cp.enddate as ngay, tye.name as c_type from c_period cp,C_DocType tye
+	where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id = $P{C_Period_ID} and  tye.c_doctype_id = $P{C_DocType_ID}
+) as t 
+join (select 1 as id, name from GL_Category where GL_Category_ID = $P{GL_Category_ID} and ad_client_id = $P{AD_CLIENT_ID}) as q on q.id = t.id
+join (
+	select 1 as id,org,row_number() over() * 10 as stt,name as cotluong,doitac,tk,hoatdong,currency ,  round(tno,0) as tno,  round(tco,0) as tco  
+	from(
+		select t.org,k.name,k.doitac,t.tk,t.hoatdong,t.currency , case when hsv_cotluong  ='lai_no' then   k.laithang  else 0 end as tno ,case when hsv_cotluong  ='lai_co' then   k.laithang  else 0 end as tco  
+		from( 
+			select 2 as id,  org.name as org,lb.name as cotluong, ce.value as tk,ac.value as hoatdong, cc.c_currency_id as currency, lb.hsv_cotluong 
+			from hsv_luongbep lb 
+			join ad_client cl on cl.ad_client_id = lb.ad_client_id
+			join ad_org org on lb.ad_org_id = org.ad_org_id
+			join c_elementvalue ce on ce.c_elementvalue_id = lb.account_id 
+			join c_activity ac on ac.c_activity_id = lb.c_activity_id 
+			join c_currency cc on cc.c_currency_id = lb.c_currency_id 
+			where lb.ad_client_id = $P{AD_CLIENT_ID} and (lb.ad_org_id =$P{AD_Org_ID} or $P{AD_Org_ID} is null) and hsv_cotluong in('lai_no','lai_co')
+		) as t
+		join (
+		SELECT 2 as id,cb.value as doitac,cb.name,k.sodu*rate.hsv_laisuat/100/30  as laithang
+		FROM(
+			select c_bpartner_id, sum(dudau) as dudau,sum(ducuoi) as ducuoi,sum(psco - psno) as sodu
+			FROM(
+				SELECT t.c_bpartner_id, 
+					sum(CASE WHEN t.dateacct < (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) THEN (t.amtacctcr - t.amtacctdr)  ELSE 0 END) AS dudau,
+					sum(CASE WHEN t.dateacct <= (select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) THEN (t.amtacctcr - t.amtacctdr)  ELSE 0 END) AS ducuoi,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) THEN (t.amtacctcr) ELSE 0 END) AS psco,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) THEN (t.amtacctdr) ELSE 0 END) AS psno
+				FROM fact_acct t 
+				where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
+				GROUP by c_bpartner_id
+				
+				UNION ALL
+				
+				SELECT t.c_bpartner_id, 
+					0 AS dudau,
+					0 AS ducuoi,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+1 THEN (t.amtacctcr) ELSE 0 END) AS psco,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+1 THEN (t.amtacctdr) ELSE 0 END) AS psno
+				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+1<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
+				GROUP by c_bpartner_id
+				
+				UNION ALL
+				
+				SELECT t.c_bpartner_id, 
+					0 AS dudau,
+					0 AS ducuoi,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+2 THEN (t.amtacctcr) ELSE 0 END) AS psco,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+2 THEN (t.amtacctdr) ELSE 0 END) AS psno
+				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+2<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
+				GROUP by c_bpartner_id
+				
+				UNION ALL
+				
+				SELECT t.c_bpartner_id, 
+					0 AS dudau,
+					0 AS ducuoi,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+3 THEN (t.amtacctcr) ELSE 0 END) AS psco,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+3 THEN (t.amtacctdr) ELSE 0 END) AS psno
+				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+3<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
+				GROUP by c_bpartner_id
+				
+				UNION ALL
+				
+				SELECT t.c_bpartner_id, 
+					0 AS dudau,
+					0 AS ducuoi,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+4 THEN (t.amtacctcr) ELSE 0 END) AS psco,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+4 THEN (t.amtacctdr) ELSE 0 END) AS psno
+				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+4<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
+				GROUP by c_bpartner_id
+				
+				UNION ALL
+				
+				SELECT t.c_bpartner_id, 
+					0 AS dudau,
+					0 AS ducuoi,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+5 THEN (t.amtacctcr) ELSE 0 END) AS psco,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+5 THEN (t.amtacctdr) ELSE 0 END) AS psno
+				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+5<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
+				GROUP by c_bpartner_id
+				
+				UNION ALL
+				
+				SELECT t.c_bpartner_id, 
+					0 AS dudau,
+					0 AS ducuoi,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+6 THEN (t.amtacctcr) ELSE 0 END) AS psco,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+6 THEN (t.amtacctdr) ELSE 0 END) AS psno
+				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+6<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
+				GROUP by c_bpartner_id
+				
+				UNION ALL
+				
+				SELECT t.c_bpartner_id, 
+					0 AS dudau,
+					0 AS ducuoi,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+7 THEN (t.amtacctcr) ELSE 0 END) AS psco,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+7 THEN (t.amtacctdr) ELSE 0 END) AS psno
+				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+7<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
+				GROUP by c_bpartner_id
+				
+				UNION ALL
+				
+				SELECT t.c_bpartner_id, 
+					0 AS dudau,
+					0 AS ducuoi,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+8 THEN (t.amtacctcr) ELSE 0 END) AS psco,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+8 THEN (t.amtacctdr) ELSE 0 END) AS psno
+				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+8<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
+				GROUP by c_bpartner_id
+				
+				UNION ALL
+				
+				SELECT t.c_bpartner_id, 
+					0 AS dudau,
+					0 AS ducuoi,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+9 THEN (t.amtacctcr) ELSE 0 END) AS psco,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+9 THEN (t.amtacctdr) ELSE 0 END) AS psno
+				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+9<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
+				GROUP by c_bpartner_id
+				
+				UNION ALL
+				
+				SELECT t.c_bpartner_id, 
+					0 AS dudau,
+					0 AS ducuoi,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+10 THEN (t.amtacctcr) ELSE 0 END) AS psco,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+10 THEN (t.amtacctdr) ELSE 0 END) AS psno
+				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+10<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
+				GROUP by c_bpartner_id
+				
+				UNION ALL
+				
+				SELECT t.c_bpartner_id, 
+					0 AS dudau,
+					0 AS ducuoi,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+11 THEN (t.amtacctcr) ELSE 0 END) AS psco,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+11 THEN (t.amtacctdr) ELSE 0 END) AS psno
+				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+11<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
+				GROUP by c_bpartner_id
+				
+				UNION ALL
+				
+				SELECT t.c_bpartner_id, 
+					0 AS dudau,
+					0 AS ducuoi,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+12 THEN (t.amtacctcr) ELSE 0 END) AS psco,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+12 THEN (t.amtacctdr) ELSE 0 END) AS psno
+				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+12<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
+				GROUP by c_bpartner_id
+				
+				UNION ALL
+				
+				SELECT t.c_bpartner_id, 
+					0 AS dudau,
+					0 AS ducuoi,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+13 THEN (t.amtacctcr) ELSE 0 END) AS psco,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+13 THEN (t.amtacctdr) ELSE 0 END) AS psno
+				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+13<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
+				GROUP by c_bpartner_id
+				
+				UNION ALL
+				
+				SELECT t.c_bpartner_id, 
+					0 AS dudau,
+					0 AS ducuoi,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+14 THEN (t.amtacctcr) ELSE 0 END) AS psco,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+14 THEN (t.amtacctdr) ELSE 0 END) AS psno
+				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+14<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
+				GROUP by c_bpartner_id
+				
+				UNION ALL
+				
+				SELECT t.c_bpartner_id, 
+					0 AS dudau,
+					0 AS ducuoi,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+15 THEN (t.amtacctcr) ELSE 0 END) AS psco,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+15 THEN (t.amtacctdr) ELSE 0 END) AS psno
+				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+15<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
+				GROUP by c_bpartner_id
+				
+				UNION ALL
+				
+				SELECT t.c_bpartner_id, 
+					0 AS dudau,
+					0 AS ducuoi,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+16 THEN (t.amtacctcr) ELSE 0 END) AS psco,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+16 THEN (t.amtacctdr) ELSE 0 END) AS psno
+				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+16<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
+				GROUP by c_bpartner_id
+				
+				UNION ALL
+				
+				SELECT t.c_bpartner_id, 
+					0 AS dudau,
+					0 AS ducuoi,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+17 THEN (t.amtacctcr) ELSE 0 END) AS psco,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+17 THEN (t.amtacctdr) ELSE 0 END) AS psno
+				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+17<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
+				GROUP by c_bpartner_id
+				
+				UNION ALL
+				
+				SELECT t.c_bpartner_id, 
+					0 AS dudau,
+					0 AS ducuoi,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+18 THEN (t.amtacctcr) ELSE 0 END) AS psco,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+18 THEN (t.amtacctdr) ELSE 0 END) AS psno
+				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+18<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
+				GROUP by c_bpartner_id
+				
+				UNION ALL
+				
+				SELECT t.c_bpartner_id, 
+					0 AS dudau,
+					0 AS ducuoi,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+19 THEN (t.amtacctcr) ELSE 0 END) AS psco,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+19 THEN (t.amtacctdr) ELSE 0 END) AS psno
+				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+19<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
+				GROUP by c_bpartner_id
+				
+				UNION ALL
+				
+				SELECT t.c_bpartner_id, 
+					0 AS dudau,
+					0 AS ducuoi,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+20 THEN (t.amtacctcr) ELSE 0 END) AS psco,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+20 THEN (t.amtacctdr) ELSE 0 END) AS psno
+				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+20<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
+				GROUP by c_bpartner_id
+				
+				UNION ALL
+				
+				SELECT t.c_bpartner_id, 
+					0 AS dudau,
+					0 AS ducuoi,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+21 THEN (t.amtacctcr) ELSE 0 END) AS psco,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+21 THEN (t.amtacctdr) ELSE 0 END) AS psno
+				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+21<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
+				GROUP by c_bpartner_id
+				
+				UNION ALL
+				
+				SELECT t.c_bpartner_id, 
+					0 AS dudau,
+					0 AS ducuoi,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+22 THEN (t.amtacctcr) ELSE 0 END) AS psco,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+22 THEN (t.amtacctdr) ELSE 0 END) AS psno
+				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+22<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
+				GROUP by c_bpartner_id
+				
+				UNION ALL
+				
+				SELECT t.c_bpartner_id, 
+					0 AS dudau,
+					0 AS ducuoi,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+23 THEN (t.amtacctcr) ELSE 0 END) AS psco,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+23 THEN (t.amtacctdr) ELSE 0 END) AS psno
+				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+23<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
+				GROUP by c_bpartner_id
+				
+				UNION ALL
+				
+				SELECT t.c_bpartner_id, 
+					0 AS dudau,
+					0 AS ducuoi,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+24 THEN (t.amtacctcr) ELSE 0 END) AS psco,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+24 THEN (t.amtacctdr) ELSE 0 END) AS psno
+				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+24<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
+				GROUP by c_bpartner_id
+				
+				UNION ALL
+				
+				SELECT t.c_bpartner_id, 
+					0 AS dudau,
+					0 AS ducuoi,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+25 THEN (t.amtacctcr) ELSE 0 END) AS psco,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+25 THEN (t.amtacctdr) ELSE 0 END) AS psno
+				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+25<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
+				GROUP by c_bpartner_id
+				
+				UNION ALL
+				
+				SELECT t.c_bpartner_id, 
+					0 AS dudau,
+					0 AS ducuoi,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+26 THEN (t.amtacctcr) ELSE 0 END) AS psco,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+26 THEN (t.amtacctdr) ELSE 0 END) AS psno
+				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+26<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
+				GROUP by c_bpartner_id
+				
+				UNION ALL
+				
+				SELECT t.c_bpartner_id, 
+					0 AS dudau,
+					0 AS ducuoi,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+27 THEN (t.amtacctcr) ELSE 0 END) AS psco,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+27 THEN (t.amtacctdr) ELSE 0 END) AS psno
+				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+27<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
+				GROUP by c_bpartner_id
+				
+				UNION ALL
+				
+				SELECT t.c_bpartner_id, 
+					0 AS dudau,
+					0 AS ducuoi,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+28 THEN (t.amtacctcr) ELSE 0 END) AS psco,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+28 THEN (t.amtacctdr) ELSE 0 END) AS psno
+				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+28<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
+				GROUP by c_bpartner_id
+				
+				UNION ALL
+				
+				SELECT t.c_bpartner_id, 
+					0 AS dudau,
+					0 AS ducuoi,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+29 THEN (t.amtacctcr) ELSE 0 END) AS psco,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+29 THEN (t.amtacctdr) ELSE 0 END) AS psno
+				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+29<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
+				GROUP by c_bpartner_id
+				
+				UNION ALL
+				
+				SELECT t.c_bpartner_id, 
+					0 AS dudau,
+					0 AS ducuoi,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+30 THEN (t.amtacctcr) ELSE 0 END) AS psco,
+					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+30 THEN (t.amtacctdr) ELSE 0 END) AS psno
+				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+30<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
+				GROUP by c_bpartner_id
+			) as k 
+			group by c_bpartner_id 
+		) as k  
+		join c_bpartner cb on  cb.c_bpartner_id = k.c_bpartner_id
+		join c_bpartner_rate rate on cb.c_bpartner_id = rate.c_bpartner_id 
+		where sodu<>0 and (cb.c_bpartner_id=$P{C_BPartner_ID} or $P{C_BPartner_ID} is null ) 
+		and  (select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) <= rate.dateto 
+		and  (select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})>=rate.datefrom
+		) as k on t.id = k.id
+		order by doitac, tk desc 
+	) as k
+	
+) as z on t.id = z.id
+where (tno<>0 or tco<>0)
+]]>
+	</queryString>
+	<field name="header_org" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="header_org"/>
+		<property name="com.jaspersoft.studio.field.label" value="header_org"/>
+	</field>
+	<field name="header_sct" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="header_sct"/>
+		<property name="com.jaspersoft.studio.field.label" value="header_sct"/>
+	</field>
+	<field name="header_gl" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="header_gl"/>
+		<property name="com.jaspersoft.studio.field.label" value="header_gl"/>
+	</field>
+	<field name="header_desc" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="header_desc"/>
+		<property name="com.jaspersoft.studio.field.label" value="header_desc"/>
+	</field>
+	<field name="header_type" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="header_type"/>
+		<property name="com.jaspersoft.studio.field.label" value="header_type"/>
+	</field>
+	<field name="header_date" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="header_date"/>
+		<property name="com.jaspersoft.studio.field.label" value="header_date"/>
+	</field>
+	<field name="header_period" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="header_period"/>
+		<property name="com.jaspersoft.studio.field.label" value="header_period"/>
+	</field>
+	<field name="detail_stt" class="java.lang.Long">
+		<property name="com.jaspersoft.studio.field.name" value="detail_stt"/>
+		<property name="com.jaspersoft.studio.field.label" value="detail_stt"/>
+	</field>
+	<field name="detail_desc" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="detail_desc"/>
+		<property name="com.jaspersoft.studio.field.label" value="detail_desc"/>
+	</field>
+	<field name="detail_doitac" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="detail_doitac"/>
+		<property name="com.jaspersoft.studio.field.label" value="detail_doitac"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_bpartner"/>
+	</field>
+	<field name="detail_tk" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="detail_tk"/>
+		<property name="com.jaspersoft.studio.field.label" value="detail_tk"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_elementvalue"/>
+	</field>
+	<field name="detail_hoatdong" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="detail_hoatdong"/>
+		<property name="com.jaspersoft.studio.field.label" value="detail_hoatdong"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_activity"/>
+	</field>
+	<field name="detail_curencty" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="detail_curencty"/>
+		<property name="com.jaspersoft.studio.field.label" value="detail_curencty"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_currency"/>
+	</field>
+	<field name="detail_tno" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="detail_tno"/>
+		<property name="com.jaspersoft.studio.field.label" value="detail_tno"/>
+	</field>
+	<field name="detail_tco" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="detail_tco"/>
+		<property name="com.jaspersoft.studio.field.label" value="detail_tco"/>
+	</field>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="30">
+			<staticText>
+				<reportElement x="0" y="0" width="50" height="30" uuid="728228b0-8e26-4d79-8df6-f0d5b25440b5">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="d7fbc9af-7155-47c8-af32-db514cbe3b05"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<text><![CDATA[AD_Org_ID[Name]]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="460" y="0" width="60" height="30" uuid="73e0cdad-2759-4c15-9cc6-57c8a6e34361">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="2a348f0e-57c6-419d-abdf-93b42d14de7a"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="6"/>
+				</textElement>
+				<text><![CDATA[GL_JournalLine>GL_Journal_ID[DocumentNo]]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="640" y="0" width="60" height="30" uuid="89aee59c-9cad-402f-b2a4-2b26487b111d">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c51600af-23ca-415d-894f-25ef56524fa8"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<text><![CDATA[GL_JournalLine>C_BPartner_ID[Value]]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="760" y="0" width="60" height="30" uuid="a5195047-8852-4eea-93ab-a7f9f97a77c0">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="8ddd8014-b76e-4b76-b04e-e5174041f58f"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<text><![CDATA[GL_JournalLine>C_Activity_ID[Value]]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="820" y="0" width="60" height="30" uuid="d780db9c-f84a-4d9a-8168-70551b80566d">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="4cc3b33f-9f87-4fa7-be1b-4917d65f8db9"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<text><![CDATA[GL_JournalLine>C_Currency_ID]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="940" y="0" width="62" height="30" uuid="749fb3dd-c0c1-4055-806b-4150ea7beb86">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="acf19882-8a15-4b90-802d-52cb6d3abc56"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<text><![CDATA[GL_JournalLine>AmtSourceCr]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="340" y="0" width="60" height="30" uuid="0b4c0e45-785b-4302-9018-0a31fa019dc3">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="f110c9d4-47d3-4800-9f5d-e1679bdd845f"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<text><![CDATA[C_Period_ID[Name]]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="580" y="0" width="60" height="30" uuid="5d76c654-5d06-485e-a777-304cad1f5f10">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="1a0d4f47-cb63-42f0-9b7e-c2478b20a465"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<text><![CDATA[GL_JournalLine>Description]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="400" y="0" width="60" height="30" uuid="e73328ac-08c8-4510-9c24-abdee82cb26f">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="2a348f0e-57c6-419d-abdf-93b42d14de7a"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<text><![CDATA[GL_JournalLine>AD_Org_ID[Name]]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="520" y="0" width="60" height="30" uuid="944f264f-9a18-4502-a47b-60f1ab367f26">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="2a348f0e-57c6-419d-abdf-93b42d14de7a"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<text><![CDATA[GL_JournalLine>Line]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="100" y="0" width="60" height="30" uuid="c30a5b3e-8586-4de2-bcf8-04e6fd82596f">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="76663413-3feb-45fb-88cf-fee1186972c8"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<text><![CDATA[Description]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="880" y="0" width="60" height="30" uuid="15204496-0832-41b4-9708-d041b4cda47e">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="49e55137-605d-43ca-a050-17b5cdee2b12"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<text><![CDATA[GL_JournalLine>AmtSourceDr]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="280" y="0" width="60" height="30" uuid="c86035e0-47bd-4296-9aca-59b3202906a1">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="066ce693-44e7-47d3-b566-b5ddb1a40057"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<text><![CDATA[DateDoc]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="50" y="0" width="50" height="30" uuid="4408e15d-dc2c-481b-9317-4b1df3a3959f">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="3120a5d8-5ab0-444a-9b08-d77abb2badec"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<text><![CDATA[DocumentNo]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="700" y="0" width="60" height="30" uuid="5f49dcac-761d-4e47-b0df-aa63a554f634">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c611a65f-4195-4a58-b0cc-65452e4724e7"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<text><![CDATA[GL_JournalLine>Account_ID[Value]]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="160" y="0" width="60" height="30" uuid="84cc6c36-62fe-4c55-80ce-07d1b25efe01">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="0ef2bc1d-b889-44dd-9e1e-fc918024a92d"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<text><![CDATA[C_DocType_ID[Name]]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="220" y="0" width="60" height="30" uuid="4c36dc9e-8dd5-4271-804a-7f6780895f3c">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="76663413-3feb-45fb-88cf-fee1186972c8"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<text><![CDATA[GL_Category_ID[Name]]]></text>
+			</staticText>
+		</band>
+	</title>
+	<detail>
+		<band height="23" splitType="Stretch">
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="0" y="0" width="50" height="23" uuid="11a19706-bf15-4229-b059-7ec73c2dca2f">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="d7fbc9af-7155-47c8-af32-db514cbe3b05"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{header_org}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="50" y="0" width="50" height="23" uuid="2c5cb1bd-afa0-4c78-801a-249357ed3be4">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="3120a5d8-5ab0-444a-9b08-d77abb2badec"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{header_sct}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="100" y="0" width="60" height="23" uuid="b3b41f84-0920-4bcc-b1ac-2908adaee914">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="76663413-3feb-45fb-88cf-fee1186972c8"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{header_desc}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="160" y="0" width="60" height="23" uuid="ced2bb50-3f7d-4c27-8d20-8f1aefceb3c0">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="0ef2bc1d-b889-44dd-9e1e-fc918024a92d"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{header_type}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="280" y="0" width="60" height="23" uuid="92d1db5a-0fdb-46df-828e-79cad0c39fb0">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="066ce693-44e7-47d3-b566-b5ddb1a40057"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{header_date}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="340" y="0" width="60" height="23" uuid="afaf93b1-30af-49c5-af45-4e8a76fb2234">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="f110c9d4-47d3-4800-9f5d-e1679bdd845f"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{header_period}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="520" y="0" width="60" height="23" uuid="f1d1e5a4-4a53-4fd8-8749-56c956510bd2">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="2a348f0e-57c6-419d-abdf-93b42d14de7a"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{detail_stt}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="580" y="0" width="60" height="23" uuid="3c903577-cd60-4c1d-aa7e-91e9da534185">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="1a0d4f47-cb63-42f0-9b7e-c2478b20a465"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{detail_desc}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="640" y="0" width="60" height="23" uuid="c4cfc87c-873f-477c-9fc4-b70176322311">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c51600af-23ca-415d-894f-25ef56524fa8"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{detail_doitac}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="700" y="0" width="60" height="23" uuid="2a05e35f-da58-41f3-9ce7-7a2d52633b8a">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c611a65f-4195-4a58-b0cc-65452e4724e7"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{detail_tk}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="760" y="0" width="60" height="23" uuid="0e1f9ed7-0a80-406d-8817-2e2c0fec0a78">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="8ddd8014-b76e-4b76-b04e-e5174041f58f"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{detail_hoatdong}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="820" y="0" width="60" height="23" uuid="333fcc9a-1c93-4584-9b64-2c906c57ecd2">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="4cc3b33f-9f87-4fa7-be1b-4917d65f8db9"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{detail_curencty}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="880" y="0" width="60" height="23" uuid="7c2a442f-d59b-48c3-9444-083a302ac543">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="49e55137-605d-43ca-a050-17b5cdee2b12"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{detail_tno}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="940" y="0" width="62" height="23" uuid="b8ea2405-22ba-4aac-ae4f-10ddd25bea9d">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="acf19882-8a15-4b90-802d-52cb6d3abc56"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{detail_tco}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="400" y="0" width="60" height="23" uuid="b2c88ae4-45ca-4db2-8e44-6bdfbf794ea3">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="f110c9d4-47d3-4800-9f5d-e1679bdd845f"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{header_org}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="460" y="0" width="60" height="23" uuid="6b677e9e-2d15-4353-88f3-43c6c1d97b80">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="f110c9d4-47d3-4800-9f5d-e1679bdd845f"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{header_sct}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="220" y="0" width="60" height="23" uuid="1dc0aa5c-fe91-4285-9415-12c5f4ecbc81">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="76663413-3feb-45fb-88cf-fee1186972c8"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="8"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{header_gl}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+</jasperReport>

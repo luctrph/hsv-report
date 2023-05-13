@@ -1,0 +1,317 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.4.3.final using JasperReports Library version 6.4.3  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="sub_detal" pageWidth="800" pageHeight="595" orientation="Landscape" columnWidth="800" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="f21f6f41-7a59-4451-bd91-2411f3d241ec">
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="HSV"/>
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="275"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="718"/>
+	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
+	<parameter name="C_Period_ID" class="java.lang.Integer"/>
+	<queryString>
+		<![CDATA[select ROW_NUMBER() OVER (PARTITION by k.name) as stt, tt.hsv_c_thuoctinh_id,k.name as nhom,tt.name , 
+(tt.hsv_dinhmuc +tt.hsv_dinhmuc1) as  tongso,
+tt.hsv_dinhmuc as cpsx,
+tt.hsv_dinhmuc1  as xpnl,
+dg1,
+case when dg1>0 then dg1-(tt.hsv_dinhmuc +tt.hsv_dinhmuc1) else 0 end as laigop1,
+dg2,
+case when dg2 >0 then dg2-(tt.hsv_dinhmuc +tt.hsv_dinhmuc1) else 0 end as laigop2
+from(
+select hsv_c_thuoctinh_id,name, case when sum(sl1)<>0 then sum(tt1)/sum(sl1) else 0 end as dg1, case when sum(sl2)<>0 then sum(tt2)/sum(sl2) else 0 end as dg2
+from(
+select ctt.hsv_c_thuoctinh_id ,lm.name,-1*sum(fc.amtacctdr-fc.amtacctcr) as tt1,-1* sum(fc.qty) as sl1,0 as tt2, 0 as sl2
+from c_invoice ci  
+join c_invoiceline civ on ci.c_invoice_id = civ.c_invoice_id  and ci.docstatus in ('CL','CO') and ci.issotrx = 'Y'
+join m_product hh on civ.m_product_id = hh.m_product_id 
+join hsv_loaimat lm on hh.hsv_loaimat_id =lm.hsv_loaimat_id 
+JOIN m_attributeinstance tt ON tt.m_attributesetinstance_id = civ.m_attributesetinstance_id   
+JOIN m_attributevalue attv ON tt.m_attribute_id = attv.m_attribute_id AND tt.m_attributevalue_id = attv.m_attributevalue_id
+join hsv_c_thuoctinh ctt on ctt.hsv_c_thuoctinh_id  = attv.hsv_c_thuoctinh_id  
+join fact_acct fc on fc.record_id = ci.c_invoice_id and fc.line_id = civ.c_invoiceline_id and fc.ad_table_id =318
+where ci.ad_client_id = $P{AD_CLIENT_ID} and ((lm.hsv_loaimat_id = 1000033 and tt.m_attribute_id =1000053) or 
+(lm.hsv_loaimat_id = 1000034 and tt.m_attribute_id =1000052)) 
+and ci.dateacct >= (select startdate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})
+and ci.dateacct <= (select enddate from c_period cp  where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id =$P{C_Period_ID})
+group by ctt.hsv_c_thuoctinh_id,lm.name
+union all
+select ctt.hsv_c_thuoctinh_id,lm.name ,0 as tt1, 0 as sl1, -1*sum(fc.amtacctdr-fc.amtacctcr) as tt2, -1*sum(fc.qty) as sl2
+from c_invoice ci  
+join c_invoiceline civ on ci.c_invoice_id = civ.c_invoice_id  and ci.docstatus in ('CL','CO') and ci.issotrx = 'Y'
+join m_product hh on civ.m_product_id = hh.m_product_id 
+join hsv_loaimat lm on hh.hsv_loaimat_id =lm.hsv_loaimat_id 
+JOIN m_attributeinstance tt ON tt.m_attributesetinstance_id = civ.m_attributesetinstance_id   
+JOIN m_attributevalue attv ON tt.m_attribute_id = attv.m_attribute_id AND tt.m_attributevalue_id = attv.m_attributevalue_id
+join hsv_c_thuoctinh ctt on ctt.hsv_c_thuoctinh_id  = attv.hsv_c_thuoctinh_id  
+join fact_acct fc on fc.record_id = ci.c_invoice_id and fc.line_id = civ.c_invoiceline_id and fc.ad_table_id =318
+where ci.ad_client_id = $P{AD_CLIENT_ID} and ((lm.hsv_loaimat_id = 1000033 and tt.m_attribute_id =1000053) or 
+(lm.hsv_loaimat_id = 1000034 and tt.m_attribute_id =1000052)) 
+and fc.dateacct >= (SELECT date_trunc('YEAR',(select p.enddate from C_Period p where p.c_period_id = $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}))::DATE) 
+and fc.dateacct <= (select p.enddate from C_Period p where p.c_period_id = $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID} )
+group by ctt.hsv_c_thuoctinh_id,lm.name
+) as k 
+group by hsv_c_thuoctinh_id,name
+) as k join hsv_c_thuoctinh tt on tt.hsv_c_thuoctinh_id = k.hsv_c_thuoctinh_id
+order by tt.hsv_stt asc
+
+ ]]>
+	</queryString>
+	<field name="stt" class="java.lang.Long">
+		<property name="com.jaspersoft.studio.field.label" value="stt"/>
+	</field>
+	<field name="hsv_c_thuoctinh_id" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.label" value="hsv_c_thuoctinh_id"/>
+	</field>
+	<field name="nhom" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="nhom"/>
+	</field>
+	<field name="name" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="name"/>
+	</field>
+	<field name="tongso" class="java.lang.Integer">
+		<property name="com.jaspersoft.studio.field.label" value="tongso"/>
+	</field>
+	<field name="cpsx" class="java.lang.Integer">
+		<property name="com.jaspersoft.studio.field.label" value="cpsx"/>
+	</field>
+	<field name="xpnl" class="java.lang.Integer">
+		<property name="com.jaspersoft.studio.field.label" value="xpnl"/>
+	</field>
+	<field name="dg1" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.label" value="dg1"/>
+	</field>
+	<field name="laigop1" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.label" value="laigop1"/>
+	</field>
+	<field name="dg2" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.label" value="dg2"/>
+	</field>
+	<field name="laigop2" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.label" value="laigop2"/>
+	</field>
+	<variable name="sum_tongso" class="java.math.BigDecimal" resetType="Group" resetGroup="Group1" calculation="Sum">
+		<variableExpression><![CDATA[$F{tongso}]]></variableExpression>
+	</variable>
+	<group name="Group1">
+		<groupExpression><![CDATA[$F{nhom}]]></groupExpression>
+		<groupFooter>
+			<band height="23">
+				<textField pattern="#,##0">
+					<reportElement x="123" y="0" width="90" height="23" uuid="d817c5a8-eca3-425d-bcc2-cd399b8993c3">
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					</reportElement>
+					<box leftPadding="2" rightPadding="2">
+						<pen lineWidth="0.5"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" size="10" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{sum_tongso}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0">
+					<reportElement x="213" y="0" width="90" height="23" uuid="a19a6644-1a92-4bb9-a500-29e3955e593e">
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					</reportElement>
+					<box leftPadding="2" rightPadding="2">
+						<pen lineWidth="0.5"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" size="10" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{cpsx}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0">
+					<reportElement x="693" y="0" width="107" height="23" uuid="9eae2a23-62cd-428a-9a3b-4d6c92dfd453">
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					</reportElement>
+					<box leftPadding="2" rightPadding="2">
+						<pen lineWidth="0.5"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" size="10" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{laigop2}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0">
+					<reportElement x="393" y="0" width="100" height="23" uuid="b5b42a26-2f7e-4ae9-970b-e028fd890d68">
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					</reportElement>
+					<box leftPadding="2" rightPadding="2">
+						<pen lineWidth="0.5"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" size="10" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{dg1}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0">
+					<reportElement x="303" y="0" width="90" height="23" uuid="4bdd9e09-8cdd-4213-ba69-0afb2af7a3f5">
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					</reportElement>
+					<box leftPadding="2" rightPadding="2">
+						<pen lineWidth="0.5"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" size="10" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{xpnl}]]></textFieldExpression>
+				</textField>
+				<textField>
+					<reportElement x="0" y="0" width="123" height="23" uuid="1bfa3fb8-f822-408b-88ef-c1d2f2a35862">
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					</reportElement>
+					<box leftPadding="2" rightPadding="2">
+						<pen lineWidth="0.5"/>
+					</box>
+					<textElement verticalAlignment="Middle">
+						<font fontName="Arial" size="10" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{nhom}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0">
+					<reportElement x="493" y="0" width="100" height="23" uuid="3f10ea93-50e6-48e3-a8f7-7445985cc1dc">
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					</reportElement>
+					<box leftPadding="2" rightPadding="2">
+						<pen lineWidth="0.5"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" size="10" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{laigop1}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0">
+					<reportElement x="593" y="0" width="100" height="23" uuid="0bec59ad-1dab-4a01-a164-0ebe746b607a">
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					</reportElement>
+					<box leftPadding="2" rightPadding="2">
+						<pen lineWidth="0.5"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" size="10" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$F{dg2}]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupFooter>
+	</group>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<detail>
+		<band height="23" splitType="Stretch">
+			<textField>
+				<reportElement x="0" y="0" width="23" height="23" uuid="881b4e22-7f26-4490-9266-cfd9a2a8cbd2">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[$F{stt}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="23" y="0" width="100" height="23" uuid="ce0de36d-a18f-4641-971c-a3108dee26bc">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{name}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0">
+				<reportElement x="123" y="0" width="90" height="23" uuid="9bfaf207-1985-44d5-b0f2-65b66f758c5d">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{tongso}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0">
+				<reportElement x="213" y="0" width="90" height="23" uuid="a03ed8a2-4b02-4755-a59d-bb34c4ef9845">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{cpsx}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0">
+				<reportElement x="303" y="0" width="90" height="23" uuid="5d60a78e-6e1e-44c3-b1e8-9a73097314d9">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{xpnl}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0">
+				<reportElement x="393" y="0" width="100" height="23" uuid="b66935db-fdcd-468d-9e75-eb164843bfc9">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{dg1}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0">
+				<reportElement x="493" y="0" width="100" height="23" uuid="92feb76d-0afe-46d9-8dfc-a3abe99b03b1">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{laigop1}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0">
+				<reportElement x="593" y="0" width="100" height="23" uuid="e419c7d1-5f2e-42df-b5b5-8167dcb9f525">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{dg2}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0">
+				<reportElement x="693" y="0" width="107" height="23" uuid="1b1b3c68-8004-40e4-a9f4-37fc8a0591b8">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{laigop2}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+</jasperReport>

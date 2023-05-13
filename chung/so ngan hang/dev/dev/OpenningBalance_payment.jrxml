@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.17.0.final using JasperReports Library version 6.17.0-6d93193241dd8cc42629e188b94f9e0bc5722efd  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="OpenningBalance_payment" pageWidth="842" pageHeight="535" orientation="Landscape" columnWidth="842" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="289eeb9a-1c87-40d1-becf-f5011e230f15">
+	<property name="ireport.scriptlethandling" value="0"/>
+	<property name="ireport.encoding" value="UTF-8"/>
+	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.rows" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.columns" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.detect.cell.type" value="true"/>
+	<property name="ireport.zoom" value="1.0"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="0"/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="adempiere_7.1"/>
+	<property name="com.jaspersoft.studio.unit." value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.pageHeight" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.pageWidth" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.topMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.bottomMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.leftMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.rightMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.columnWidth" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.columnSpacing" value="pixel"/>
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<import value="net.sf.jasperreports.engine.*"/>
+	<import value="java.util.*"/>
+	<import value="net.sf.jasperreports.engine.data.*"/>
+	<parameter name="C_BPartner_ID" class="java.lang.Integer"/>
+	<parameter name="StartDate" class="java.util.Date">
+		<defaultValueExpression><![CDATA[new Date(100,0,1)]]></defaultValueExpression>
+	</parameter>
+	<parameter name="TOTALS" class="java.util.HashMap" isForPrompting="false"/>
+	<parameter name="C_BankAccount_ID" class="java.lang.Integer"/>
+	<parameter name="AD_Org_ID" class="java.lang.Integer"/>
+	<parameter name="C_Currency_ID" class="java.lang.Integer"/>
+	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
+	<queryString language="SQL">
+		<![CDATA[select sum(ARPayments) as OPENNINGBAL from (              
+          	select COALESCE((SUM(par.PAYAMT) ),0) as ARPayments
+              from C_PAYMENT par,C_DOCTYPE doc
+              where doc.docbasetype IN ('ARR')
+              AND par.DOCSTATUS IN ('CO','CL')
+              AND  (par.C_BPARTNER_ID =$P{C_BPartner_ID} or $P{C_BPartner_ID} is null)
+              AND  (par.AD_Orgtrx_ID =$P{AD_Org_ID} or $P{AD_Org_ID} is null)
+              and par.C_BankAccount_ID=$P{C_BankAccount_ID}
+              AND par.C_DOCTYPE_ID=doc.C_DOCTYPE_ID
+              and par.posted='Y'
+              and (par.C_Currency_ID=$P{C_Currency_ID} or $P{C_Currency_ID} is null)
+              AND par.DATETRX < $P{StartDate}
+              and par.ad_client_id = $P{AD_CLIENT_ID}
+              union ALL
+           	select -1 * COALESCE((SUM(par.PAYAMT) ),0) as ARPayments
+              from C_PAYMENT par,C_DOCTYPE doc
+              where doc.docbasetype IN ('APP')
+              AND par.DOCSTATUS IN ('CO','CL')
+              AND  (par.C_BPARTNER_ID =$P{C_BPartner_ID} or $P{C_BPartner_ID} is null)
+              AND  (par.AD_Orgtrx_ID =$P{AD_Org_ID} or $P{AD_Org_ID} is null)
+              and par.C_BankAccount_ID=$P{C_BankAccount_ID}
+              AND par.C_DOCTYPE_ID=doc.C_DOCTYPE_ID
+              and par.posted='Y'
+              and (par.C_Currency_ID=$P{C_Currency_ID} or $P{C_Currency_ID} is null)
+              AND par.DATETRX < $P{StartDate}
+               and par.ad_client_id = $P{AD_CLIENT_ID}
+             union all
+              select -1* COALESCE(Sum(t.ps),0)
+              from (select pa.PAYAMT as ps,c_charge_acct.ch_expense_acct
+		                 from C_PAYMENT pa 
+                         inner join c_charge_acct on  pa.c_charge_id=c_charge_acct.c_charge_id 
+		                 inner join C_DOCTYPE doc on pa.C_DOCTYPE_ID=doc.C_DOCTYPE_ID AND doc.docbasetype IN ('ARR')
+               		     where pa.c_charge_id is not null and pa.docstatus in ('CO','CL')
+		                             AND  pa.DATETRX < $P{StartDate}
+                                     and pa.posted='Y'
+		                             AND (pa.C_BPARTNER_ID = $P{C_BPartner_ID} or $P{C_BPartner_ID} is null)
+		                             and (pa.C_Currency_ID=$P{C_Currency_ID} or $P{C_Currency_ID} is null)
+		                             and (pa.AD_Orgtrx_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
+		                              and pa.ad_client_id = $P{AD_CLIENT_ID}
+                            ) as t
+                 inner join c_bankaccount_acct acct on acct.b_asset_acct=t.ch_expense_acct and acct.C_BankAccount_ID=$P{C_BankAccount_ID}
+          	 union all 
+              select COALESCE(Sum(t.ps),0)
+              from (select pa.PAYAMT as ps,c_charge_acct.ch_expense_acct
+		                 from C_PAYMENT pa 
+                         inner join c_charge_acct on  pa.c_charge_id=c_charge_acct.c_charge_id 
+		                 inner join C_DOCTYPE doc on pa.C_DOCTYPE_ID=doc.C_DOCTYPE_ID AND doc.docbasetype IN ('APP')
+               		     where pa.c_charge_id is not null and pa.docstatus in ('CO','CL')
+		                             AND  pa.DATETRX < $P{StartDate}
+		                                           and pa.posted='Y'
+		                             AND (pa.C_BPARTNER_ID = $P{C_BPartner_ID} or $P{C_BPartner_ID} is null)
+		                             and (pa.C_Currency_ID=$P{C_Currency_ID} or $P{C_Currency_ID} is null)
+		                             and (pa.AD_Orgtrx_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
+		                            and pa.ad_client_id = $P{AD_CLIENT_ID}
+                            ) as t
+                 inner join c_bankaccount_acct acct on acct.b_asset_acct=t.ch_expense_acct and acct.C_BankAccount_ID=$P{C_BankAccount_ID}
+                            
+     ) as k]]>
+	</queryString>
+	<field name="openningbal" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="openningbal"/>
+		<property name="com.jaspersoft.studio.field.label" value="openningbal"/>
+	</field>
+	<variable name="TOTALS" class="java.lang.Double" calculation="Sum">
+		<variableExpression><![CDATA[$F{openningbal}]]></variableExpression>
+		<initialValueExpression><![CDATA[new Double(0)]]></initialValueExpression>
+	</variable>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band splitType="Stretch"/>
+	</title>
+	<pageHeader>
+		<band splitType="Stretch"/>
+	</pageHeader>
+	<columnHeader>
+		<band height="23" splitType="Stretch">
+			<textField textAdjust="StretchHeight" pattern="#,##0.00" isBlankWhenNull="true">
+				<reportElement key="textField" mode="Opaque" x="312" y="0" width="508" height="19" backcolor="#FFFFFF" uuid="975de3ea-a0ce-4dde-aabf-222492e62ca6">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.25"/>
+					<leftPen lineWidth="0.0"/>
+					<bottomPen lineWidth="0.25"/>
+					<rightPen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="DejaVu Sans" size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{openningbal}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement key="element-90" mode="Opaque" x="0" y="0" width="314" height="19" forecolor="#000000" backcolor="#FFFFFF" uuid="cd2b88a1-eead-4f15-bd31-68090c551d3c">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.25"/>
+					<leftPen lineWidth="0.25"/>
+					<bottomPen lineWidth="0.25"/>
+					<rightPen lineWidth="0.0"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[SỐ DƯ ĐẦU KỲ]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band splitType="Stretch"/>
+	</detail>
+	<columnFooter>
+		<band splitType="Stretch"/>
+	</columnFooter>
+	<pageFooter>
+		<band splitType="Stretch"/>
+	</pageFooter>
+	<summary>
+		<band splitType="Stretch"/>
+	</summary>
+</jasperReport>

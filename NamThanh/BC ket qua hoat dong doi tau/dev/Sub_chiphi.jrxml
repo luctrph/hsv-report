@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.4.3.final using JasperReports Library version 6.4.3  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Sub_chiphi" pageWidth="555" pageHeight="792" columnWidth="555" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="7dc32581-d115-4c81-a1fe-c4930e2e8860">
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="HSV"/>
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<parameter name="AD_CLIENT_ID" class="java.lang.Integer">
+		<defaultValueExpression><![CDATA[1000023]]></defaultValueExpression>
+	</parameter>
+	<parameter name="M_Lot_ID" class="java.lang.Integer"/>
+	<parameter name="StartDate" class="java.util.Date">
+		<defaultValueExpression><![CDATA[new Date(119,0,1)]]></defaultValueExpression>
+	</parameter>
+	<parameter name="EndDate" class="java.util.Date">
+		<defaultValueExpression><![CDATA[NOW()]]></defaultValueExpression>
+	</parameter>
+	<queryString>
+		<![CDATA[select cs.name,  sum(tt1) - sum(tt2) as tt
+from(
+select '11' as id,sum(tt) as tt1, 0 as tt2
+from(
+select '2' as id,sum(civ.qtyinvoiced) as sl,sum(civ.linenetamt) as tt 
+from c_invoice ci 
+join c_invoiceline civ on ci.c_invoice_id = civ.c_invoice_id and ci.issotrx = 'Y' and ci.docstatus in ('CO','CL')
+join M_AttributeSetInstance att on civ.m_attributesetinstance_id = att.m_attributesetinstance_id 
+join m_lot lo on lo.m_lot_id = att.m_lot_id  and lo.m_lotctl_id = 1000016 and lo.isactive = 'Y' 
+where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.c_doctype_id <> 1001103 and ci.dateacct >= lo.datefrom and lo.datefrom >= $P{StartDate} and lo.datefrom <= $P{EndDate} 
+
+union all
+select '3' as id, sum(qty) as sl, sum(tt) as tt
+from(
+	select sum(civ.productionqty) as qty,t.hsv_dinhmuc * sum(civ.productionqty) as tt
+	from  m_production ci
+	join m_productionplan civ on civ.m_production_id = ci.m_production_id and ci.docstatus in  ('CL','CO') 
+	join m_attributeinstance tt on civ.m_attributesetinstance_id = tt.m_attributesetinstance_id 
+	join m_lot lo on lo.m_lot_id = civ.m_lot_id and lo.m_lotctl_id = 1000016
+	join (
+		select dgl.m_product_id,dgl.m_attribute_id, dgl.m_attributevalue_id, dgl.hsv_dinhmuc,dg.enddate, dg.startdate 
+		from m_attributevalue atv      
+		join hsv_dongialine dgl on atv.m_attributevalue_id = dgl.m_attributevalue_id 
+		join hsv_dongia dg on dgl.hsv_nkdongia_id =  dg.hsv_nkdongia_id 
+		where dg.hsv_loaidongia_id = 1000009 	 
+	) as t on t.m_attribute_id = tt.m_attribute_id and t.m_attributevalue_id = tt.m_attributevalue_id 
+	where civ.ad_client_id = $P{AD_CLIENT_ID}  AND (civ.M_Lot_ID = $P{M_Lot_ID} OR $P{M_Lot_ID} IS NULL)  
+	and  lo.datefrom >= t.startdate and lo.datefrom <= t.enddate AND lo.datefrom >= $P{StartDate} AND lo.datefrom <= $P{EndDate}
+	group by  t.hsv_dinhmuc
+) as k
+) as k
+union  all
+select '11' as id, 0 as tt1, sum(tt) as tt2
+from(
+select '5' as id,sum(civ.qtyinvoiced) as sl,sum(civ.linenetamt) as tt 
+from c_invoice ci 
+join c_invoiceline civ on ci.c_invoice_id = civ.c_invoice_id and ci.issotrx = 'N' and ci.docstatus in ('CO','CL')
+join M_AttributeSetInstance att on civ.m_attributesetinstance_id = att.m_attributesetinstance_id 
+join m_lot lo on lo.m_lot_id = att.m_lot_id  and lo.m_lotctl_id = 1000016 and lo.isactive = 'Y' 
+where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.c_doctype_id <> 1001105 and ci.dateacct >= lo.datefrom and lo.datefrom >= $P{StartDate} and lo.datefrom <= $P{EndDate} 
+union all 
+
+select '7' as id , null::int4 as qty, sum(amtacctdr-amtacctcr) as tt
+from(
+	select fc.amtacctdr, fc.amtacctcr ,fc.account_id, fc.dateacct 
+	from fact_acct fc
+	join gl_journalline gl on fc.record_id = gl.gl_journal_id
+	and fc.line_id = gl.gl_journalline_id and fc.account_id =gl.account_id  and gl.isgenerated = 'N' 
+	join gl_journal a on a.gl_journal_id = fc.record_id  and a.docstatus in ('CO','CL')
+	where fc.ad_client_id =$P{AD_CLIENT_ID} and fc.ad_table_id = 224
+	union all 
+	select fc.amtacctdr, fc.amtacctcr ,fc.account_id, fc.dateacct 
+	from fact_acct fc
+	where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.ad_table_id <> 224
+) as t 
+join c_elementvalue acct on acct.c_elementvalue_id  = t.account_id and left(acct.value,4) in ('6274')
+where dateacct >= $P{StartDate}  and dateacct <= $P{EndDate}
+union all 
+
+select '8' as id , null::int4 as qty, sum(amtacctdr-amtacctcr) as tt
+from(
+	select fc.amtacctdr, fc.amtacctcr ,fc.account_id, fc.dateacct 
+	from fact_acct fc
+	join gl_journalline gl on fc.record_id = gl.gl_journal_id
+	and fc.line_id = gl.gl_journalline_id and fc.account_id =gl.account_id  and gl.isgenerated = 'N' 
+	join gl_journal a on a.gl_journal_id = fc.record_id  and a.docstatus in ('CO','CL')
+	where fc.ad_client_id =$P{AD_CLIENT_ID} and fc.ad_table_id = 224
+	union all 
+	select fc.amtacctdr, fc.amtacctcr ,fc.account_id, fc.dateacct 
+	from fact_acct fc
+	where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.ad_table_id <> 224
+) as t 
+join c_elementvalue acct on acct.c_elementvalue_id  = t.account_id and left(acct.value,4) in ('6275')
+where dateacct >= $P{StartDate}  and dateacct <= $P{EndDate}
+union all
+select '9' as id , null::int4 as qty, sum(amtacctdr-amtacctcr) as tt
+from(
+	select fc.amtacctdr, fc.amtacctcr ,fc.account_id, fc.dateacct 
+	from fact_acct fc
+	join gl_journalline gl on fc.record_id = gl.gl_journal_id
+	and fc.line_id = gl.gl_journalline_id and fc.account_id =gl.account_id  and gl.isgenerated = 'N' 
+	join gl_journal a on a.gl_journal_id = fc.record_id  and a.docstatus in ('CO','CL')
+	where fc.ad_client_id =$P{AD_CLIENT_ID} and fc.ad_table_id = 224
+	union all 
+	select fc.amtacctdr, fc.amtacctcr ,fc.account_id, fc.dateacct 
+	from fact_acct fc
+	where fc.ad_client_id = $P{AD_CLIENT_ID} and fc.ad_table_id <> 224
+) as t 
+join c_elementvalue acct on acct.c_elementvalue_id  = t.account_id and left(acct.value,5) in ('62788')
+where dateacct >= $P{StartDate}  and dateacct <= $P{EndDate}
+) as k
+) as k join hsv_chiso cs on cs.value = k.id 
+where cs.ad_client_id = $P{AD_CLIENT_ID}
+group by id, cs.name]]>
+	</queryString>
+	<field name="name" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="name"/>
+	</field>
+	<field name="tt" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.label" value="tt"/>
+	</field>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<columnHeader>
+		<band height="23" splitType="Stretch">
+			<staticText>
+				<reportElement x="0" y="0" width="555" height="23" uuid="14e3579b-de19-4714-a5cc-e31236e9bdf0">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="e210b6a3-3360-48ae-9b70-781352ec37b6"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="3">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Kết quả hoạt động]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="25" splitType="Stretch">
+			<textField>
+				<reportElement x="30" y="0" width="290" height="25" uuid="ddc6f1bd-f4d5-41f0-804f-2a0c9af4c3b5">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="a1f91829-8ead-4f41-b9bf-83f35ee229c4"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{name}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement positionType="FixRelativeToBottom" x="320" y="0" width="235" height="25" uuid="e0511e4d-520e-41b2-9957-8dc7b4aca88b">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="e84e370f-be36-4586-afdf-255a954d149b"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{tt}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="0" y="0" width="30" height="25" uuid="55835eae-c795-42d1-b03e-5dc66ef6b6cb">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="a1f91829-8ead-4f41-b9bf-83f35ee229c4"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{PAGE_COUNT}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+</jasperReport>
