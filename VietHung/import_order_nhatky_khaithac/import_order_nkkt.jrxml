@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Created with Jaspersoft Studio version 6.20.1.final using JasperReports Library version 6.20.1-7584acb244139816654f64e2fd57a00d3e31921e  -->
-<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="import_order" pageWidth="1470" pageHeight="480" orientation="Landscape" columnWidth="1470" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="faa67001-6b9f-4f5f-8216-b6ab4d10c3a6">
+<!-- Created with Jaspersoft Studio version 6.20.0.final using JasperReports Library version 6.20.0-2bc7ab61c56f459e8176eb05c7705e145cd400ad  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="import_order" pageWidth="1540" pageHeight="480" orientation="Landscape" columnWidth="1540" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="faa67001-6b9f-4f5f-8216-b6ab4d10c3a6">
 	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
-	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="Data Adapter"/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="psql"/>
 	<property name="net.sf.jasperreports.export.xls.exclude.origin.keep.first.band.1" value="columnHeader"/>
 	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.keep.first.band.1" value="columnHeader"/>
 	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.2" value="pageFooter"/>
@@ -48,15 +48,15 @@ t.documentno ,
  t.c_line,
 t.product_value,
 concat('«',t.thuoctinh_name,'»') as thuoctinh_name,
+t.line_description,
 t.qty as qty,
 t.dongia,
 k.tax_name
 from
 (
-	select 1 as id, cp.value as c_project_value, ca.value as activtiy_value,cd.name  as doctype_name,cpt.value  as paymentterm_value,
+	select 1 as id,  ca.value as activtiy_value,cd.name  as doctype_name,cpt.value  as paymentterm_value,
 	mp.name as pricelist_name ,cca.value  as campaign_value, mw.value  as warehouse_value,ct.name as tax_name, adu.name as lienhe
 	from hsv_luongbep lb
-	join c_project cp on cp.c_project_id = lb.c_project_id 
 	join c_activity ca on ca.c_activity_id = lb.c_activity_id 
 	join c_doctype cd on cd.c_doctype_id =lb.c_doctype_id 
 	join c_paymentterm cpt on cpt.c_paymentterm_id = lb.c_paymentterm_id 
@@ -64,25 +64,26 @@ from
 	join m_locator lv on lv.m_locator_id = lb.m_locator_id 
 	join m_warehouse mw on mw.m_warehouse_id  = lv.m_warehouse_id 
 	join c_tax ct on ct.c_tax_id = lb.c_tax_id 
-	join AD_User adu on adu.salesrep_id  = lb.salesrep_id
-	join m_pricelist mp on mp.m_pricelist_id =lb.m_pricelist_id 
+	join AD_User adu on adu.ad_user_id  = lb.salesrep_id
+	join m_pricelist mp on mp.m_pricelist_id =lb.m_pricelist_id 	
 	where lb.ad_client_id = $P{AD_CLIENT_ID} and lb.hsv_cotluong = 'xuat_ban.gokeo'
 ) as k
 join (
-	select 1 as id,10*row_number() over() as c_line,nkkt.documentno ,ao.name as org_name,nkkt.description,cb.value as bpartner_value , hh.value as product_value ,nkkt.dateacct ,ml.name as thuoctinh_name,sum(k.qty)  as qty,k.dongia  
+	select 1 as id,10*row_number() over() as c_line,nkkt.documentno ,ao.name as org_name,nkkt.description ,line_documentno as line_description,cb.value as bpartner_value , hh.value as product_value ,nkkt.dateacct ,ml.name as thuoctinh_name,k.qty  as qty,k.dongia  
 	,proj.value as project_value 
 	from m_product hh
 	join (
 	----Amount_size5dn
-		select hsv_nkkhaithac_id,dongia, qty,product_id  
+		select hsv_nkkhaithac_id,line_documentno,dongia, qty,product_id  
 		from(
-			select 1 as id, nkktl.hsv_nkkhaithac_id,1018883 as product_id, hn.dateacct, size_5dn *QtyOther/100 as qty 
+			select 1 as id, nkktl.hsv_nkkhaithac_id,nkktl.documentno as line_documentno,1018883 as product_id, hn.dateacct, size_5dn *QtyOther/100 as qty 
 			from hsv_nkkhaithacline nkktl 
 			join hsv_nkkhaithac hn on hn.hsv_nkkhaithac_id = nkktl.hsv_nkkhaithac_id
 			where nkktl.ad_client_id = $P{AD_CLIENT_ID} 
 		) as k
 		join (
-			select 1 as id, Amount_size5dn as dongia,dg.enddate ,dg.startdate  from hsv_dongiagokeo dg
+			select 1 as id, Amount_size5dn as dongia,dg.enddate ,dg.startdate  
+			from hsv_dongiagokeo dg
 			join hsv_dongiagokeoline dgl on dg.hsv_dongiagokeo_id = dgl.hsv_dongiagokeo_id 
 			where dg.ad_client_id =$P{AD_CLIENT_ID}                                                                                                                                                                                                                                                                                                                       
 	
@@ -90,9 +91,9 @@ join (
 		where k.dateacct>=t.startdate and k.dateacct<=t.enddate
 		union all 
 		----Amount_size5up
-		select hsv_nkkhaithac_id,dongia, qty,product_id  
+		select hsv_nkkhaithac_id,line_documentno,dongia, qty,product_id  
 		from(
-			select 1 as id,nkktl.hsv_nkkhaithac_id,1018882 as product_id,hn.dateacct,  size_5up *QtyOther/100 as qty 
+			select 1 as id,nkktl.hsv_nkkhaithac_id,nkktl.documentno as line_documentno,1018882 as product_id,hn.dateacct,  size_5up *QtyOther/100 as qty 
 			from hsv_nkkhaithacline nkktl 
 			join hsv_nkkhaithac hn on hn.hsv_nkkhaithac_id = nkktl.hsv_nkkhaithac_id
 			where nkktl.ad_client_id = $P{AD_CLIENT_ID}
@@ -105,9 +106,9 @@ join (
 		where k.dateacct>=t.startdate and k.dateacct<=t.enddate
 		union all 
 		----Amount_size9dn
-		select hsv_nkkhaithac_id,dongia, qty,product_id  
+		select hsv_nkkhaithac_id,line_documentno,dongia, qty,product_id  
 		from(
-			select 1 as id, nkktl.hsv_nkkhaithac_id,1018915 as product_id,hn.dateacct,  size_9dn *QtyOther/100 as qty
+			select 1 as id, nkktl.hsv_nkkhaithac_id,nkktl.documentno as line_documentno,1018915 as product_id,hn.dateacct,  size_9dn *QtyOther/100 as qty
 			from hsv_nkkhaithacline nkktl
 			join hsv_nkkhaithac hn on hn.hsv_nkkhaithac_id = nkktl.hsv_nkkhaithac_id
 			where nkktl.ad_client_id = $P{AD_CLIENT_ID}
@@ -121,9 +122,9 @@ join (
 		union all 
 		---Amount_loai
 		
-		select hsv_nkkhaithac_id,dongia, qty,product_id  
+		select hsv_nkkhaithac_id,line_documentno,dongia, qty,product_id  
 		from(
-			select 1 as id,nkktl.hsv_nkkhaithac_id,1018881 as product_id,hn.dateacct,  size_loai *QtyOther/100 as qty
+			select 1 as id,nkktl.hsv_nkkhaithac_id,nkktl.documentno as line_documentno,1018881 as product_id,hn.dateacct,  size_loai *QtyOther/100 as qty
 			from hsv_nkkhaithacline nkktl 
 			join hsv_nkkhaithac hn on hn.hsv_nkkhaithac_id = nkktl.hsv_nkkhaithac_id
 			where nkktl.ad_client_id = $P{AD_CLIENT_ID}
@@ -136,9 +137,9 @@ join (
 		where k.dateacct>=t.startdate and k.dateacct<=t.enddate
 		union all 
 		-----Amount_size15up
-		select hsv_nkkhaithac_id,dongia, qty,product_id  
+		select hsv_nkkhaithac_id,line_documentno,dongia, qty,product_id  
 		from(
-			select 1 as id,nkktl.hsv_nkkhaithac_id,1018914 as product_id, hn.dateacct, size_15up *QtyOther/100 as qty 
+			select 1 as id,nkktl.hsv_nkkhaithac_id,nkktl.documentno as line_documentno,1018914 as product_id, hn.dateacct, size_15up *QtyOther/100 as qty 
 			from hsv_nkkhaithacline nkktl 
 			join hsv_nkkhaithac hn on hn.hsv_nkkhaithac_id = nkktl.hsv_nkkhaithac_id
 			where nkktl.ad_client_id = $P{AD_CLIENT_ID}
@@ -151,9 +152,9 @@ join (
 		where k.dateacct>=t.startdate and k.dateacct<=t.enddate
 		union all 
 		---Amount_size915
-		select hsv_nkkhaithac_id,dongia, qty,product_id  
+		select hsv_nkkhaithac_id,line_documentno,dongia, qty,product_id  
 		from(
-			select 1 as id, nkktl.hsv_nkkhaithac_id,1018880 as product_id,hn.dateacct,  size_915 *QtyOther/100 as qty
+			select 1 as id, nkktl.hsv_nkkhaithac_id,nkktl.documentno as line_documentno,1018880 as product_id,hn.dateacct,  size_915 *QtyOther/100 as qty
 			from hsv_nkkhaithacline nkktl 
 			join hsv_nkkhaithac hn on hn.hsv_nkkhaithac_id = nkktl.hsv_nkkhaithac_id
 			where nkktl.ad_client_id = $P{AD_CLIENT_ID}
@@ -166,14 +167,13 @@ join (
 		where k.dateacct>=t.startdate and k.dateacct<=t.enddate
 	) as k on k.product_id = hh.m_product_id
 	join hsv_nkkhaithac nkkt on nkkt.hsv_nkkhaithac_id = k.hsv_nkkhaithac_id 
-	join C_Project proj on proj.c_project_id = nkkt.c_project_id 
-	join m_lot ml on ml.m_product_id  = hh.m_product_id 
+	join C_Project proj on proj.c_project_id = nkkt.c_project_id
+	join m_lot ml on ml.c_project_id = proj.c_project_id 
 	join c_bpartner cb on cb.c_bpartner_id = nkkt.c_bpartner_id 
 	join ad_org ao on ao.ad_org_id = nkkt.ad_org_id 
-	where nkkt.c_bpartner_id = $P{C_BPartner_ID} and nkkt.dateacct = $P{DateAcct} and proj.c_project_id =$P{C_Project_ID} 
-	group by  hh.value,nkkt.dateacct ,ml.name,cb.value,k.dongia,ao.name,nkkt.description,proj.value,nkkt.documentno 
+	where nkkt.c_bpartner_id = $P{C_BPartner_ID} and nkkt.dateacct = $P{DateAcct} and proj.c_project_id =$P{C_Project_ID}  and k.qty <>0
+	
 ) as t on k.id= k.id
-
 
 ]]>
 	</queryString>
@@ -249,11 +249,15 @@ join (
 		<property name="com.jaspersoft.studio.field.label" value="thuoctinh_name"/>
 		<property name="com.jaspersoft.studio.field.tree.path" value="m_lot"/>
 	</field>
+	<field name="line_description" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="line_description"/>
+		<property name="com.jaspersoft.studio.field.label" value="line_description"/>
+	</field>
 	<field name="qty" class="java.math.BigDecimal">
 		<property name="com.jaspersoft.studio.field.name" value="qty"/>
 		<property name="com.jaspersoft.studio.field.label" value="qty"/>
 	</field>
-	<field name="dongia" class="java.lang.Integer">
+	<field name="dongia" class="java.math.BigDecimal">
 		<property name="com.jaspersoft.studio.field.name" value="dongia"/>
 		<property name="com.jaspersoft.studio.field.label" value="dongia"/>
 	</field>
@@ -270,7 +274,7 @@ join (
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<box>
+				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
@@ -287,7 +291,7 @@ join (
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
-				<box>
+				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
@@ -304,7 +308,7 @@ join (
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
-				<box>
+				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
@@ -321,7 +325,7 @@ join (
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
-				<box>
+				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
@@ -338,7 +342,7 @@ join (
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
-				<box>
+				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
@@ -355,7 +359,7 @@ join (
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
-				<box>
+				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
@@ -373,7 +377,7 @@ join (
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<box>
+				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
@@ -390,7 +394,7 @@ join (
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
-				<box>
+				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
@@ -407,7 +411,7 @@ join (
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
-				<box>
+				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
@@ -424,7 +428,7 @@ join (
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
-				<box>
+				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
@@ -441,7 +445,7 @@ join (
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
-				<box>
+				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
@@ -458,7 +462,7 @@ join (
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
-				<box>
+				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
@@ -475,7 +479,7 @@ join (
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
-				<box>
+				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
@@ -492,7 +496,7 @@ join (
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
-				<box>
+				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
@@ -509,7 +513,7 @@ join (
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
-				<box>
+				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
@@ -526,7 +530,7 @@ join (
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
-				<box>
+				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
@@ -539,11 +543,11 @@ join (
 				<text><![CDATA[C_OrderLine>M_AttributeSetInstance_ID[Description]]]></text>
 			</staticText>
 			<staticText>
-				<reportElement stretchType="RelativeToBandHeight" x="1260" y="0" width="70" height="40" uuid="ce227d20-ec93-4751-9a25-5c8a7b7eb6ed">
+				<reportElement stretchType="RelativeToBandHeight" x="1330" y="0" width="70" height="40" uuid="ce227d20-ec93-4751-9a25-5c8a7b7eb6ed">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
-				<box>
+				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
@@ -556,11 +560,11 @@ join (
 				<text><![CDATA[C_OrderLine>QtyEntered]]></text>
 			</staticText>
 			<staticText>
-				<reportElement stretchType="RelativeToBandHeight" x="1330" y="0" width="70" height="40" uuid="b2cac83f-9056-4fd6-8041-4d2a632a07b7">
+				<reportElement stretchType="RelativeToBandHeight" x="1400" y="0" width="70" height="40" uuid="b2cac83f-9056-4fd6-8041-4d2a632a07b7">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
-				<box>
+				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
@@ -573,11 +577,11 @@ join (
 				<text><![CDATA[C_OrderLine>PriceEntered]]></text>
 			</staticText>
 			<staticText>
-				<reportElement stretchType="RelativeToBandHeight" x="1400" y="0" width="70" height="40" uuid="ba0c086f-6ef2-4eae-a18d-54a48574c89f">
+				<reportElement stretchType="RelativeToBandHeight" x="1470" y="0" width="70" height="40" uuid="ba0c086f-6ef2-4eae-a18d-54a48574c89f">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
-				<box>
+				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
@@ -594,7 +598,7 @@ join (
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
-				<box>
+				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
@@ -611,7 +615,7 @@ join (
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
-				<box>
+				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
@@ -623,347 +627,380 @@ join (
 				</textElement>
 				<text><![CDATA[C_OrderLine>C_Order_ID[DocumentNo]]]></text>
 			</staticText>
-		</band>
-	</title>
-	<detail>
-		<band height="30" splitType="Stretch">
-			<textField>
-				<reportElement stretchType="RelativeToBandHeight" x="0" y="0" width="70" height="30" uuid="7beda482-7670-4b83-8aa2-3155de953c4b">
+			<staticText>
+				<reportElement stretchType="RelativeToBandHeight" x="1260" y="0" width="70" height="40" uuid="447d48ab-6195-4ccf-ad3b-866acc9615cd">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
-				<box>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 				</box>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<text><![CDATA[C_OrderLine>Description]]></text>
+			</staticText>
+		</band>
+	</title>
+	<detail>
+		<band height="50" splitType="Stretch">
+			<textField isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="0" y="0" width="70" height="50" uuid="7beda482-7670-4b83-8aa2-3155de953c4b">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box topPadding="0" leftPadding="2" bottomPadding="0" rightPadding="2">
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Top">
 					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{org_name}]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement stretchType="RelativeToBandHeight" x="70" y="0" width="70" height="30" uuid="9fb08b00-b4e0-472b-9705-a6fee6e265e2">
+			<textField isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="70" y="0" width="70" height="50" uuid="9fb08b00-b4e0-472b-9705-a6fee6e265e2">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 				</reportElement>
-				<box>
+				<box topPadding="0" leftPadding="2" bottomPadding="0" rightPadding="2">
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 				</box>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
+				<textElement textAlignment="Left" verticalAlignment="Top">
 					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{documnetno}]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement stretchType="RelativeToBandHeight" x="210" y="0" width="70" height="30" uuid="584bdf97-25d6-4da2-83b3-20fb60a74adc">
+			<textField isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="210" y="0" width="70" height="50" uuid="584bdf97-25d6-4da2-83b3-20fb60a74adc">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<box>
+				<box topPadding="0" leftPadding="2" bottomPadding="0" rightPadding="2">
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 				</box>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
+				<textElement textAlignment="Left" verticalAlignment="Top">
 					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{doctype_name}]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement stretchType="RelativeToBandHeight" x="280" y="0" width="70" height="30" uuid="4a07110d-32b6-4c1c-a54d-e873283b1cef">
+			<textField pattern="yyyy-MM-dd" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="280" y="0" width="70" height="50" uuid="4a07110d-32b6-4c1c-a54d-e873283b1cef">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<box>
+				<box topPadding="0" leftPadding="2" bottomPadding="0" rightPadding="2">
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 				</box>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
+				<textElement textAlignment="Left" verticalAlignment="Top">
 					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{dateacct}]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement stretchType="RelativeToBandHeight" x="420" y="0" width="70" height="30" uuid="e785ffdf-e8de-4044-9cff-3af33834b025">
+			<textField isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="420" y="0" width="70" height="50" uuid="e785ffdf-e8de-4044-9cff-3af33834b025">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<box>
+				<box topPadding="0" leftPadding="2" bottomPadding="0" rightPadding="2">
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 				</box>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
+				<textElement textAlignment="Left" verticalAlignment="Top">
 					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{bpartner_value}]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement stretchType="RelativeToBandHeight" x="490" y="0" width="70" height="30" uuid="3067229b-97cb-40a1-99fb-7c74160960da">
+			<textField isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="490" y="0" width="70" height="50" uuid="3067229b-97cb-40a1-99fb-7c74160960da">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<box>
+				<box topPadding="0" leftPadding="2" bottomPadding="0" rightPadding="2">
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 				</box>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
+				<textElement textAlignment="Left" verticalAlignment="Top">
 					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{warehouse_value}]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement stretchType="RelativeToBandHeight" x="560" y="0" width="70" height="30" uuid="daad7cce-9353-4546-a9d7-9f4c77538638">
+			<textField isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="560" y="0" width="70" height="50" uuid="daad7cce-9353-4546-a9d7-9f4c77538638">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<box>
+				<box topPadding="0" leftPadding="2" bottomPadding="0" rightPadding="2">
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 				</box>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
+				<textElement textAlignment="Left" verticalAlignment="Top">
 					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{pricelist_name}]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement stretchType="RelativeToBandHeight" x="630" y="0" width="70" height="30" uuid="9220ec09-22a5-40e8-890f-690a63feac92">
+			<textField isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="630" y="0" width="70" height="50" uuid="9220ec09-22a5-40e8-890f-690a63feac92">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<box>
+				<box topPadding="0" leftPadding="2" bottomPadding="0" rightPadding="2">
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 				</box>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
+				<textElement textAlignment="Left" verticalAlignment="Top">
 					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{lienhe}]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement stretchType="RelativeToBandHeight" x="700" y="0" width="70" height="30" uuid="6e4676c8-3979-4047-b109-46b398a20243">
+			<textField isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="700" y="0" width="70" height="50" uuid="6e4676c8-3979-4047-b109-46b398a20243">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<box>
+				<box topPadding="0" leftPadding="2" bottomPadding="0" rightPadding="2">
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 				</box>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
+				<textElement textAlignment="Left" verticalAlignment="Top">
 					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{paymentterm_value}]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement stretchType="RelativeToBandHeight" x="770" y="0" width="70" height="30" uuid="4cc875f1-690a-407b-afa5-08bb650d553e">
+			<textField isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="770" y="0" width="70" height="50" uuid="4cc875f1-690a-407b-afa5-08bb650d553e">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<box>
+				<box topPadding="0" leftPadding="2" bottomPadding="0" rightPadding="2">
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 				</box>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
+				<textElement textAlignment="Left" verticalAlignment="Top">
 					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{activtiy_value}]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement stretchType="RelativeToBandHeight" x="1050" y="0" width="70" height="30" uuid="b469d968-b6db-46f6-a935-76c14c479f83">
+			<textField isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="1050" y="0" width="70" height="50" uuid="b469d968-b6db-46f6-a935-76c14c479f83">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<box>
+				<box topPadding="0" leftPadding="2" bottomPadding="0" rightPadding="2">
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 				</box>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
+				<textElement textAlignment="Center" verticalAlignment="Top">
 					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{c_line}]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement stretchType="RelativeToBandHeight" x="1120" y="0" width="70" height="30" uuid="b7a0808f-e6bb-409d-a1e0-bc11235de218">
+			<textField isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="1120" y="0" width="70" height="50" uuid="b7a0808f-e6bb-409d-a1e0-bc11235de218">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<box>
+				<box topPadding="0" leftPadding="2" bottomPadding="0" rightPadding="2">
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 				</box>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
+				<textElement textAlignment="Left" verticalAlignment="Top">
 					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{product_value}]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement stretchType="RelativeToBandHeight" x="1190" y="0" width="70" height="30" uuid="0766e97f-e89c-4a9a-adbd-3a7975e72554">
+			<textField isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="1190" y="0" width="70" height="50" uuid="0766e97f-e89c-4a9a-adbd-3a7975e72554">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<box>
+				<box topPadding="0" leftPadding="2" bottomPadding="0" rightPadding="2">
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 				</box>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
+				<textElement textAlignment="Left" verticalAlignment="Top">
 					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{thuoctinh_name}]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement stretchType="RelativeToBandHeight" x="1260" y="0" width="70" height="30" uuid="a050d945-f69d-4048-8721-e8aebe35e5a8">
+			<textField pattern="#,##0.##" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="1330" y="0" width="70" height="50" uuid="a050d945-f69d-4048-8721-e8aebe35e5a8">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<box>
+				<box topPadding="0" leftPadding="2" bottomPadding="0" rightPadding="2">
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 				</box>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
+				<textElement textAlignment="Right" verticalAlignment="Top">
 					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{qty}]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement stretchType="RelativeToBandHeight" x="1330" y="0" width="70" height="30" uuid="b7ae901b-7328-48c4-8215-1013f006323e">
+			<textField pattern="#,##0.##" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="1400" y="0" width="70" height="50" uuid="b7ae901b-7328-48c4-8215-1013f006323e">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<box>
+				<box topPadding="0" leftPadding="2" bottomPadding="0" rightPadding="2">
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 				</box>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
+				<textElement textAlignment="Right" verticalAlignment="Top">
 					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{dongia}]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement stretchType="RelativeToBandHeight" x="1400" y="0" width="70" height="30" uuid="836bab3e-b745-47f4-9c3c-e5542d7a17f5">
+			<textField isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="1470" y="0" width="70" height="50" uuid="836bab3e-b745-47f4-9c3c-e5542d7a17f5">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<box>
+				<box topPadding="0" leftPadding="2" bottomPadding="0" rightPadding="2">
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 				</box>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
+				<textElement textAlignment="Left" verticalAlignment="Top">
 					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{tax_name}]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement stretchType="RelativeToBandHeight" x="350" y="0" width="70" height="30" uuid="96ad8fc4-fca1-4ea0-93da-164154f5c46f">
+			<textField pattern="yyyy-MM-dd" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="350" y="0" width="70" height="50" uuid="96ad8fc4-fca1-4ea0-93da-164154f5c46f">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<box>
+				<box topPadding="0" leftPadding="2" bottomPadding="0" rightPadding="2">
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 				</box>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
+				<textElement textAlignment="Left" verticalAlignment="Top">
 					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{dateacct}]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement stretchType="RelativeToBandHeight" x="840" y="0" width="70" height="30" uuid="8423b5c7-89dd-461a-b80b-d5630c7780d4">
+			<textField isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="840" y="0" width="70" height="50" uuid="8423b5c7-89dd-461a-b80b-d5630c7780d4">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<box>
+				<box topPadding="0" leftPadding="2" bottomPadding="0" rightPadding="2">
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 				</box>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
+				<textElement textAlignment="Left" verticalAlignment="Top">
 					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{doctype_name}]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement stretchType="RelativeToBandHeight" x="140" y="0" width="70" height="30" uuid="7c84f9e7-0b01-4a92-aedc-25ef1c50dc0b">
+			<textField isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="140" y="0" width="70" height="50" uuid="7c84f9e7-0b01-4a92-aedc-25ef1c50dc0b">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<box>
+				<box topPadding="0" leftPadding="2" bottomPadding="0" rightPadding="2">
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 				</box>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
+				<textElement textAlignment="Left" verticalAlignment="Top">
 					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{description}]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement stretchType="RelativeToBandHeight" x="980" y="0" width="70" height="30" uuid="6d5e89eb-f76e-4141-bfd3-ad100f20008d">
+			<textField isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="980" y="0" width="70" height="50" uuid="6d5e89eb-f76e-4141-bfd3-ad100f20008d">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<box>
+				<box topPadding="0" leftPadding="2" bottomPadding="0" rightPadding="2">
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 				</box>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
+				<textElement textAlignment="Left" verticalAlignment="Top">
 					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{documentno}]]></textFieldExpression>
 			</textField>
-			<textField>
-				<reportElement stretchType="RelativeToBandHeight" x="910" y="0" width="70" height="30" uuid="ff843555-cc77-4640-9f4e-c9fdd20d648a">
+			<textField isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="910" y="0" width="70" height="50" uuid="ff843555-cc77-4640-9f4e-c9fdd20d648a">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
-				<box>
+				<box topPadding="0" leftPadding="2" bottomPadding="0" rightPadding="2">
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 				</box>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
+				<textElement textAlignment="Left" verticalAlignment="Top">
 					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{project_value}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="1260" y="0" width="70" height="50" uuid="39868d80-baa9-44ca-8afc-5e7c38d53e45">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box topPadding="0" leftPadding="2" bottomPadding="0" rightPadding="2">
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Top">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{line_description}]]></textFieldExpression>
 			</textField>
 		</band>
 	</detail>
