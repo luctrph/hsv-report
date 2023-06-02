@@ -14,7 +14,7 @@ from(
 select 'A. Doanh thu'  as dm,*
 from(
 -- size_915 
-select 'Keo cọc DK 9-15' as name,kh.size_915 as ks_sl,case when kh.committedqty <>0 then 100*kh.size_915/kh.committedqty else 0 end as ks_tyle,kh.amount_size915 as  ks_tt,
+select 'Keo cọc' as name,kh.size_915 as ks_sl,case when kh.committedqty <>0 then 100*kh.size_915/kh.committedqty else 0 end as ks_tyle,kh.amount_size915 as  ks_tt,
 k.qty  as kq_sl,case when k.sum_qty  <> 0 then 100*k.qty /k.sum_qty  end as kq_tyle ,k.tt as kq_tt 
 from C_Project proj
 join kh_duan kh on proj.c_project_id = kh.c_project_id 
@@ -32,14 +32,14 @@ join (
 		
 		union all
 		
-		select ml.c_project_id, co.dateacct,0 as qty, cov.qtyordered as sum_qty  ,cov.linenetamt as tt
+		select ml.c_project_id, co.dateacct,0 as qty, cov.qtyordered as sum_qty  ,0 as tt
 		from c_order co 
 		join c_orderline cov on co.c_order_id = cov.c_order_id 
 		join m_attributesetinstance ma on cov.m_attributesetinstance_id =ma.m_attributesetinstance_id 
 		join m_lot ml on ma.m_lot_id = ml.m_lot_id 
 		join c_project cp on cp.c_project_id = ml.c_project_id 
 		join m_product hh on hh.m_product_id = cov.m_product_id 
-		where co.issotrx = 'Y' and cov.m_product_id in (1018880 , 1018881 , 1018914,1018882) and co.docstatus in ('CL','CO') and co.ad_client_id = $P{AD_CLIENT_ID}
+		where co.issotrx = 'Y' and cov.m_product_id in (1018880 , 1018881 , 1018914,1018882, 1018883,1018915) and co.docstatus in ('CL','CO') and co.ad_client_id = $P{AD_CLIENT_ID}
 	) as k 
 	group by c_project_id 
 ) as k on proj.c_project_id = k.c_project_id
@@ -47,7 +47,7 @@ where proj.ad_client_id = $P{AD_CLIENT_ID} and proj.c_project_id = $P{C_Project_
 
 union all
 
-select 'Keo cọc DK >15' as name,kh.size_15up as ks_sl ,case when kh.committedqty <>0 then 100*kh.size_15up /kh.committedqty else 0 end as ks_tyle,kh.amount_size15up as ks_tt
+select 'Keo  giấy' as name,kh.size_5up as ks_sl ,case when kh.committedqty <>0 then 100*kh.size_5up /kh.committedqty else 0 end as ks_tyle,kh.amount_size5up as ks_tt
 ,k.qty  ,case when k.sum_qty  <> 0 then 100*k.qty /k.sum_qty  end as tyle ,k.tt 
 from C_Project proj
 join kh_duan kh on proj.c_project_id = kh.c_project_id 
@@ -61,18 +61,18 @@ join (
 	join m_lot ml on ma.m_lot_id = ml.m_lot_id 
 	join c_project cp on cp.c_project_id = ml.c_project_id 
 	join m_product hh on hh.m_product_id = cov.m_product_id 
-	where co.issotrx = 'Y' and cov.m_product_id in (1018882) and co.docstatus in ('CL','CO') and co.ad_client_id = $P{AD_CLIENT_ID}
+	where co.issotrx = 'Y' and cov.m_product_id in (1018882, 1018883,1018915) and co.docstatus in ('CL','CO') and co.ad_client_id = $P{AD_CLIENT_ID}
 	
 	union all
 	
-	select ml.c_project_id, co.dateacct,0 as qty, cov.qtyordered as sum_qty  ,cov.linenetamt as tt
+	select ml.c_project_id, co.dateacct,0 as qty, cov.qtyordered as sum_qty  ,0 as tt
 	from c_order co 
 	join c_orderline cov on co.c_order_id = cov.c_order_id 
 	join m_attributesetinstance ma on cov.m_attributesetinstance_id =ma.m_attributesetinstance_id 
 	join m_lot ml on ma.m_lot_id = ml.m_lot_id 
 	join c_project cp on cp.c_project_id = ml.c_project_id 
 	join m_product hh on hh.m_product_id = cov.m_product_id 
-	where co.issotrx = 'Y' and cov.m_product_id in (1018880 , 1018881 , 1018914,1018882) and co.docstatus in ('CL','CO') and co.ad_client_id = $P{AD_CLIENT_ID}
+	where co.issotrx = 'Y' and cov.m_product_id in (1018880 , 1018881 , 1018914,1018882, 1018883,1018915) and co.docstatus in ('CL','CO') and co.ad_client_id = $P{AD_CLIENT_ID}
 	) as k 
 	group by c_project_id
 ) as k on proj.c_project_id = k.c_project_id
@@ -93,17 +93,19 @@ select 'Chi phí khai thác' as name, kh.committedqty as ks_sl,null::int4 as ks_
   t.sl as kq_sl,null::int4   as kq_tyle ,t.tt  as kq_tt 
 from  kh_duan kh  
 join (
-	select nk.c_project_id,sum(nkkt.qtyother) as sl,sum(nkkt.qtyother*k.gia) as tt
-	from hsv_nkkhaithac nk 
-	join hsv_nkkhaithacline nkkt on nk.hsv_nkkhaithac_id = nkkt.hsv_nkkhaithac_id
-	 join (	
-		select dgl.amount as gia, dg.c_period_id,dgl.hr_job_id,dg.startdate ,dg.enddate 
-		from hsv_dgngaomau dg
-		join hsv_dgngaomline dgl on dg.hsv_dgngaomau_id =dgl.hsv_dgngaomau_id  
-		where dg.ad_client_id = $P{AD_CLIENT_ID}  and dg.isactive ='Y'  and dgl.isactive ='Y'
-	) as k on nkkt.hr_job_id = k.hr_job_id
-	where  nk.dateacct >=k.startdate and nk.dateacct <= k.enddate
-	group by nk.c_project_id 
+			select nk.c_project_id , sum(nkkt.qtyother) as sl, sum(nkkt.qtyother * k.gia) as tt
+			from   hsv_nkkhaithac nk 
+			join hsv_nkkhaithacline nkkt on nk.hsv_nkkhaithac_id = nkkt.hsv_nkkhaithac_id 
+			left join (	----don gia---
+					select dgl.amount as gia, dg.c_period_id,dgl.hr_job_id,dg.startdate ,dg.enddate 
+					from hsv_dgngaomau dg
+					join hsv_dgngaomline dgl on dg.hsv_dgngaomau_id =dgl.hsv_dgngaomau_id  
+					where dg.ad_client_id = $P{AD_CLIENT_ID} and (dgl.c_project_id =$P{C_Project_ID} or $P{C_Project_ID} is null) and dg.isactive ='Y'  and dgl.isactive ='Y'
+			) as k on nkkt.hr_job_id = k.hr_job_id
+			where nk.dateacct >=k.startdate and nk.dateacct <= k.enddate
+			and (nk.c_project_id = $P{C_Project_ID} or $P{C_Project_ID} is null)
+			group by c_project_id
+			
 ) as t on t.c_project_id = kh.c_project_id 
 where kh.ad_client_id = $P{AD_CLIENT_ID} and kh.c_project_id = $P{C_Project_ID}
 
@@ -115,16 +117,18 @@ select 'Chi phí bóc lên xe' as name, kh.committedqty as ks_sl,null::int4 as k
 from  kh_duan kh  
 join (
 	select nk.c_project_id,sum(nkkt.qtyother) as sl,sum(nkkt.qtyother*k.gia) as tt
-	from hsv_nkkhaithac nk 
-	join hsv_nkkhaithacline nkkt on nk.hsv_nkkhaithac_id = nkkt.hsv_nkkhaithac_id
-	left join (	----don gia---
+
+			from   hsv_nkkhaithac nk 
+			join hsv_nkkhaithacline nkkt on nk.hsv_nkkhaithac_id = nkkt.hsv_nkkhaithac_id 
+			left join (	----don gia---
 					select dgl.amount as gia, dg.c_period_id,dgl.HR_ListType_ID,dg.startdate ,dg.enddate 
 					from hsv_dgngaomau dg
 					join hsv_dgngaomline dgl on dg.hsv_dgngaomau_id =dgl.hsv_dgngaomau_id  
-					where dg.ad_client_id = $P{AD_CLIENT_ID} and  dg.isactive ='Y'  and dgl.isactive ='Y'
+					where dg.ad_client_id = $P{AD_CLIENT_ID} and (dgl.c_project_id =$P{C_Project_ID} or $P{C_Project_ID} is null) and dg.isactive ='Y'  and dgl.isactive ='Y'
 			) as k on nkkt.HR_ListType_ID = k.HR_ListType_ID
 			where  nk.dateacct >=k.startdate and nk.dateacct <= k.enddate
-	group by nk.c_project_id 
+			and (nk.c_project_id = $P{C_Project_ID} or $P{C_Project_ID} is null)	
+			group by nk.c_project_id 
 ) as t on t.c_project_id = kh.c_project_id 
 where kh.ad_client_id = $P{AD_CLIENT_ID} and kh.c_project_id = $P{C_Project_ID}
 union all 
@@ -134,15 +138,17 @@ select 'Chi phí vận chuyển' as name, kh.committedqty as ks_sl,null::int4 as
 from  kh_duan kh  
 join (
 	select nk.c_project_id,sum(nkkt.qtyother) as sl,sum(nkkt.qtyother*k.gia) as tt
-	from hsv_nkkhaithac nk 
-	join hsv_nkkhaithacline nkkt on nk.hsv_nkkhaithac_id = nkkt.hsv_nkkhaithac_id
-	join (	----don gia---
+	from   hsv_nkkhaithac nk 
+			join hsv_nkkhaithacline nkkt on nk.hsv_nkkhaithac_id = nkkt.hsv_nkkhaithac_id 
+			left join (	----don gia---
 					select dgl.amount as gia, dg.c_period_id,dgl.hr_contract_id,dgl.c_bpartner_id , dg.startdate , dg.enddate 
 					from hsv_dgngaomau dg
 					join hsv_dgngaomline dgl on dg.hsv_dgngaomau_id =dgl.hsv_dgngaomau_id  
-					where dg.ad_client_id = $P{AD_CLIENT_ID}  and dg.isactive ='Y'  and dgl.isactive ='Y'
+					where dg.ad_client_id = $P{AD_CLIENT_ID} and (dgl.c_project_id =$P{C_Project_ID} or $P{C_Project_ID} is null) and dg.isactive ='Y'  and dgl.isactive ='Y'
 			) as k on nkkt.hr_contract_id = k.hr_contract_id and nk.c_bpartner_id = k.c_bpartner_id
-			where nk.dateacct >=k.startdate and nk.dateacct <= k.enddate
+			where  nk.dateacct >=k.startdate and nk.dateacct <= k.enddate
+
+			and (nk.c_project_id = $P{C_Project_ID} or $P{C_Project_ID} is null)
 		group by nk.c_project_id 
 ) as t on t.c_project_id = kh.c_project_id 
 where kh.ad_client_id = $P{AD_CLIENT_ID} and kh.c_project_id = $P{C_Project_ID}
