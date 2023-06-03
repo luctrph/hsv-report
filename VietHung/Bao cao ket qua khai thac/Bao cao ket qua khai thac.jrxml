@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Created with Jaspersoft Studio version 6.20.0.final using JasperReports Library version 6.20.0-2bc7ab61c56f459e8176eb05c7705e145cd400ad  -->
+<!-- Created with Jaspersoft Studio version 6.20.1.final using JasperReports Library version 6.20.1-7584acb244139816654f64e2fd57a00d3e31921e  -->
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Nhat ky khai thac go" pageWidth="842" pageHeight="595" orientation="Landscape" columnWidth="802" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="05b438f7-272b-4682-8c75-17614453b106">
-	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="psql"/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="Data Adapter"/>
 	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
 	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
 	<parameter name="C_Project_ID" class="java.lang.Integer"/>
@@ -146,7 +146,7 @@ join (
 					join hsv_dgngaomline dgl on dg.hsv_dgngaomau_id =dgl.hsv_dgngaomau_id  
 					where dg.ad_client_id = $P{AD_CLIENT_ID} and (dgl.c_project_id =$P{C_Project_ID} or $P{C_Project_ID} is null) and dg.isactive ='Y'  and dgl.isactive ='Y'
 			) as k on nkkt.hr_contract_id = k.hr_contract_id and nk.c_bpartner_id = k.c_bpartner_id
-			where  nk.dateacct >=k.startdate and nk.dateacct <= k.enddate
+			where nk.dateacct >=k.startdate and nk.dateacct <= k.enddate
 
 			and (nk.c_project_id = $P{C_Project_ID} or $P{C_Project_ID} is null)
 		group by nk.c_project_id 
@@ -174,6 +174,22 @@ join (
 	where  pgv.c_project_id =$P{C_Project_ID} and pgv.ad_client_id = $P{AD_CLIENT_ID} and pgv.HR_Department_ID=1000303 and pgv.isactive ='Y'
 	group by pgv.c_project_id 
 ) as k on k.c_project_id = kh.c_project_id 
+
+union all
+
+select 'Chi phí làm đường (tự làm)' as name, null::int4 as ks_sl,null::int4 as ks_tyle,kh.chiphi_lamduong   as  ks_tt,
+ null::int4 as kq_sl,null::int4   as kq_tyle , kh.chiphi_lamduong as kq_tt 
+from  kh_duan kh  
+where c_project_id =$P{C_Project_ID} and ad_client_id = $P{AD_CLIENT_ID}
+
+union all
+
+select 'Chi phí quản lý (DM)' as name, null::int4 as ks_sl,null::int4 as ks_tyle,kh.chiphi_quanly   as  ks_tt,
+ null::int4 as kq_sl,null::int4   as kq_tyle , kh.chiphi_quanly  as kq_tt 
+from  kh_duan kh  
+where c_project_id =$P{C_Project_ID} and ad_client_id = $P{AD_CLIENT_ID}
+
+
 ) as chiphi
 ) as k]]>
 	</queryString>
@@ -214,7 +230,7 @@ join (
 		<property name="com.jaspersoft.studio.field.label" value="kq_tt"/>
 	</field>
 	<variable name="sum_ks_sl" class="java.lang.Double" resetType="Group" resetGroup="Group1" calculation="Sum">
-		<variableExpression><![CDATA[$F{ks_sl}]]></variableExpression>
+		<variableExpression><![CDATA[$F{dm}.equals("A. Doanh thu")?$F{ks_sl}:0]]></variableExpression>
 	</variable>
 	<variable name="sum_ks_tt" class="java.lang.Double" resetType="Group" resetGroup="Group1" calculation="Sum">
 		<variableExpression><![CDATA[$F{ks_tt}]]></variableExpression>
@@ -223,7 +239,7 @@ join (
 		<variableExpression><![CDATA[$F{kq_tt}]]></variableExpression>
 	</variable>
 	<variable name="sum_sl" class="java.lang.Double" resetType="Group" resetGroup="Group1" calculation="Sum">
-		<variableExpression><![CDATA[$F{kq_sl}]]></variableExpression>
+		<variableExpression><![CDATA[$F{dm}.equals("A. Doanh thu")?$F{kq_sl}:0]]></variableExpression>
 	</variable>
 	<variable name="sum_doanhthu" class="java.lang.Double" calculation="Sum">
 		<variableExpression><![CDATA[$F{dm}.equals("A. Doanh thu")?$F{kq_tt}:0]]></variableExpression>
