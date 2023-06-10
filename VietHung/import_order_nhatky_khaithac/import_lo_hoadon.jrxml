@@ -29,24 +29,22 @@
 	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.report.3" value="ProductReport"/>
 	<property name="net.sf.jasperreports.export.xlsx.ignore.cell.border" value="false"/>
 	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
-	<parameter name="C_BPartner_ID" class="java.lang.Integer"/>
 	<parameter name="StartDate" class="java.util.Date"/>
-	<parameter name="EndDate" class="java.util.Date"/>
 	<parameter name="C_Project_ID" class="java.lang.Integer"/>
+	<parameter name="EndDate" class="java.util.Date"/>
 	<queryString language="SQL">
-		<![CDATA[		
-select case when stt=10 then t.org_name end as  org_name,
+		<![CDATA[select case when stt=10 then k.org_name end as  org_name,
 case when stt=10 then concat('CP khai thác từ ngày: ',to_char($P{StartDate}::Date,'DD/MM/YYYY'),' đến : ', to_char($P{EndDate}::Date,'DD/MM/YYYY'),' rừng: ',project_value) end as da 
 ,case when stt=10 then to_char($P{EndDate}::Date,'YYYY-MM-DD') end as datedoc,
 case when stt=10 then k.lienhe end as lienhe ,
 case when stt=10 then k.c_currency_id end as currency,
-t.org_name as detail_org,
+k.org_name as detail_org,
 t.stt as detail_line,
 k.doctype_name,
 t.nd as detail_description
 ,to_char($P{EndDate}::Date,'YYYY-MM-DD') as detail_dateinvoice
 , to_char($P{EndDate}::Date,'YYYY-MM-DD') as detail_dateacct,
-b.bpartner_value as detail_cbpartner,
+t.bpartner_value as detail_cbpartner,
 t.sl as detail_sl,
 t.charge_name as detail_charge_name,
 t.dg as detail_gia,
@@ -55,7 +53,7 @@ a.project_value as detail_project_value,
 k.activtiy_value as detal_activi
 from 
 (
-	select 1 as id,  ca.value as activtiy_value,cd.name  as doctype_name,
+	select 1 as id,  ca.value as activtiy_value,cd.name  as doctype_name,ao.name as org_name,
 	ct.name as tax_name, 	
 	adu.name as lienhe,
 	lb.c_currency_id 
@@ -64,78 +62,88 @@ from
 	join c_doctype cd on cd.c_doctype_id =lb.c_doctype_id 
 	join c_tax ct on ct.c_tax_id = lb.c_tax_id 
 	join AD_User adu on adu.ad_user_id  = lb.salesrep_id
+	join ad_org ao on ao.ad_org_id = lb.ad_org_id 
 	where lb.ad_client_id = $P{AD_CLIENT_ID} and lb.hsv_cotluong = 'HD_CP KTVC'	
 ) as k 
 join (select 1 as id, value as project_value, name as project_name from  c_project  where c_project_id =$P{C_Project_ID}) as a on a.id = k.id
-join (select 1 as id, value  as bpartner_value from c_bpartner cb where cb.c_bpartner_id =$P{C_BPartner_ID}) as b on b.id= k.id
 join(
 
-
-	select 1 as id,row_number() over() *10 as stt,nd,sl, dg,t.org_name as org_name,t.charge_name as charge_name
+	select 1 as id,row_number() over() *10 as stt,nd,bpartner_value,sl, dg,t.charge_name as charge_name
 	from(
-		select id,nd, sum(sl) as sl, case when sum(sl) <>0 then sum(tt)/sum(sl) end as dg
+	---A. Nhân công khai thác----		
+		select 1 as id , 'Chi phí nhân công' as nd, cb.value  as bpartner_value, sum(sl) as sl, case when sum(sl) <> 0 then sum(tt)/sum(sl) end  as dg
 		from(
-			---A. Nhân công khai thác----
-			select 1 as id, 'Chi phí nhân công' as nd, sum(nkkt.qtyother) as sl,  k.gia*  sum(nkkt.qtyother) as tt
+			select nkkt.hr_job_id, nkkt.qtyother as sl, nkkt.qtyother * k.gia as tt
 			from   hsv_nkkhaithac nk 
 			join hsv_nkkhaithacline nkkt on nk.hsv_nkkhaithac_id = nkkt.hsv_nkkhaithac_id 
-			left join (	----don gia---
-					select dgl.amount as gia, dg.c_period_id,dgl.hr_job_id,dg.startdate ,dg.enddate 
-					from hsv_dgngaomau dg
-					join hsv_dgngaomline dgl on dg.hsv_dgngaomau_id =dgl.hsv_dgngaomau_id  
-					where dg.ad_client_id = $P{AD_CLIENT_ID} and (dgl.c_project_id =$P{C_Project_ID} or $P{C_Project_ID} is null) and dg.isactive ='Y'  and dgl.isactive ='Y'
-			) as k on nkkt.hr_job_id = k.hr_job_id
-			where nk.dateacct >= $P{StartDate} and nk.dateacct <= $P{EndDate} and nk.dateacct >=k.startdate and nk.dateacct <= k.enddate
-			and (nk.c_project_id = $P{C_Project_ID} or $P{C_Project_ID} is null)
-			group by k.gia
+			 join (	----don gia---
+						select dgl.amount as gia, c_bpartner_id,dgl.hr_job_id,dg.startdate ,dg.enddate 
+						from hsv_dgngaomau dg
+						join hsv_dgngaomline dgl on dg.hsv_dgngaomau_id =dgl.hsv_dgngaomau_id  
+						where dg.ad_client_id = $P{AD_CLIENT_ID} and dg.isactive ='Y'  and dgl.isactive ='Y'
+					) as k on nkkt.hr_job_id = k.hr_job_id 
+					where nk.dateacct >= $P{StartDate} and nk.dateacct <= $P{EndDate} and nk.dateacct >=k.startdate and nk.dateacct <= k.enddate
+					and  nk.c_project_id = $P{C_Project_ID} 
+			) as t join hr_job hj on hj.hr_job_id = t.hr_job_id
+			join c_bpartner cb on cb.c_bpartner_id = hj.c_bpartner_id 
+			group by cb.value
 		
-			union all
-			--			select 'B. Chi phí bốc lên xe' as dm---
-			select 2 as id, 'Chi phí phục vụ khai thác' as nd, sum(nkkt.qtyother) as sl,  k.gia*  sum(nkkt.qtyother) as tt 
+		union all
+		------------------------
+			
+		select 2 as id , 'Chi phí phục vụ khai thác' as nd, cb.value  as bpartner_value, sum(sl) as sl, case when sum(sl) <> 0 then sum(tt)/sum(sl) end  as dg
+		from(
+			select nkkt.HR_ListType_ID, nkkt.qtyother as sl, nkkt.qtyother * k.gia as tt
 			from   hsv_nkkhaithac nk 
 			join hsv_nkkhaithacline nkkt on nk.hsv_nkkhaithac_id = nkkt.hsv_nkkhaithac_id 
-			left join (	----don gia---
-					select dgl.amount as gia, dg.c_period_id,dgl.HR_ListType_ID,dg.startdate ,dg.enddate 
-					from hsv_dgngaomau dg
-					join hsv_dgngaomline dgl on dg.hsv_dgngaomau_id =dgl.hsv_dgngaomau_id  
-					where dg.ad_client_id = $P{AD_CLIENT_ID} and (dgl.c_project_id =$P{C_Project_ID} or $P{C_Project_ID} is null) and dg.isactive ='Y'  and dgl.isactive ='Y'
-			) as k on nkkt.HR_ListType_ID = k.HR_ListType_ID
-			where nk.dateacct >= $P{StartDate} and nk.dateacct <= $P{EndDate} and nk.dateacct >=k.startdate and nk.dateacct <= k.enddate
-
-			and (nk.c_project_id = $P{C_Project_ID} or $P{C_Project_ID} is null)
-			group by k.gia
+			 join (	----don gia---
+						select dgl.amount as gia, dgl.c_project_id,dgl.c_bpartner_id,dgl.HR_ListType_ID,dg.startdate ,dg.enddate 
+						from hsv_dgngaomau dg
+						join hsv_dgngaomline dgl on dg.hsv_dgngaomau_id =dgl.hsv_dgngaomau_id  
+						where dg.ad_client_id = $P{AD_CLIENT_ID} and  dg.isactive ='Y'  and dgl.isactive ='Y'
+					) as k on nkkt.HR_ListType_ID = k.HR_ListType_ID   and k.c_project_id = nk.c_project_id
+					where nk.dateacct >= $P{StartDate} and nk.dateacct <= $P{EndDate} and nk.dateacct >=k.startdate and nk.dateacct <= k.enddate
+					and  nk.c_project_id = $P{C_Project_ID} 
+			) as t join HR_ListType hj on hj.HR_ListType_ID = t.HR_ListType_ID
+			join c_bpartner cb on cb.c_bpartner_id = hj.c_bpartner_id 
+			group by cb.value
 			
 			union all
+					
 			----- Chi phí vận chuyển---
-			select 3 as id, 'Chi phí vận chuyển' as nd,  sum(nkkt.qtyother) as sl,  k.gia*  sum(nkkt.qtyother) as tt
-			from   hsv_nkkhaithac nk 
+		select 55 as id , 'Chi phí vận chuyển' as nd,cb.value  as bpartner_value,sum(sl) as sl, case when sum(sl) <> 0 then sum(tt)/sum(sl) end  as dg
+		from(
+			select nkkt.hr_contract_id, nkkt.qtyother as sl, nkkt.qtyother * k.gia as tt
+			from  hsv_nkkhaithac nk 
 			join hsv_nkkhaithacline nkkt on nk.hsv_nkkhaithac_id = nkkt.hsv_nkkhaithac_id 
-			left join (	----don gia---
-					select dgl.amount as gia, dg.c_period_id,dgl.hr_contract_id,dgl.c_bpartner_id , dg.startdate , dg.enddate 
-					from hsv_dgngaomau dg
-					join hsv_dgngaomline dgl on dg.hsv_dgngaomau_id =dgl.hsv_dgngaomau_id  
-					where dg.ad_client_id = $P{AD_CLIENT_ID} and (dgl.c_project_id =$P{C_Project_ID} or $P{C_Project_ID} is null) and dg.isactive ='Y'  and dgl.isactive ='Y'
-			) as k on nkkt.hr_contract_id = k.hr_contract_id and nk.c_bpartner_id = k.c_bpartner_id
-			where nk.dateacct >= $P{StartDate} and nk.dateacct <= $P{EndDate} and nk.dateacct >=k.startdate and nk.dateacct <= k.enddate
-			and (nk.c_project_id = $P{C_Project_ID} or $P{C_Project_ID} is null)
-			group by k.gia 
-		) as k group by id ,nd
+			join (	----don gia---
+						select dgl.amount as gia, dgl.C_Project_ID ,dgl.c_bpartner_id,dgl.hr_contract_id,dg.startdate ,dg.enddate 
+						from hsv_dgngaomau dg
+						join hsv_dgngaomline dgl on dg.hsv_dgngaomau_id =dgl.hsv_dgngaomau_id  
+						where dg.ad_client_id = $P{AD_CLIENT_ID} and dg.isactive ='Y'  and dgl.isactive ='Y'
+					) as k on nkkt.hr_contract_id = k.hr_contract_id and k.C_Project_ID= nk.C_Project_ID and k.c_bpartner_id=nk.c_bpartner_id
+					where nk.dateacct >= $P{StartDate} and nk.dateacct <= $P{EndDate} and nk.dateacct >=k.startdate and nk.dateacct <= k.enddate
+					and  nk.c_project_id = $P{C_Project_ID} 
+			) as t join HR_Contract hj on hj.hr_contract_id = t.hr_contract_id 
+			join c_bpartner cb on cb.c_bpartner_id = hj.c_bpartner_id 
+			group by cb.value
+			
 	) as k
 	join(
-		select 3 as id, c.name as charge_name  ,org.name as org_name   
+		select 55 as id, c.name as charge_name   
 		from c_charge c
 		join ad_org org on org.ad_org_id = c.ad_org_id 
-		where  C_Charge_ID=1001354
+		where  C_Charge_ID=1001354 and c.ad_client_id = $P{AD_CLIENT_ID}
 		union all
-		select 1 as id, c.name as charge_name  ,org.name as org_name   
+		select 1 as id, c.name as charge_name 
 		from c_charge c
 		join ad_org org on org.ad_org_id = c.ad_org_id 		
-		where  C_Charge_ID=1001353
+		where  C_Charge_ID=1001353 and c.ad_client_id = $P{AD_CLIENT_ID}
 		union all
-		select 2 as id,  c.name as charge_name  ,org.name as org_name   
+		select 2 as id,  c.name as charge_name  
 		from c_charge c
 		join ad_org org on org.ad_org_id = c.ad_org_id 		
-		where  C_Charge_ID=1001355			
+		where  C_Charge_ID=1001355	and c.ad_client_id = $P{AD_CLIENT_ID}		
 	) as t on k.id =t.id
 	) as t on k.id =t.id]]>
 	</queryString>
@@ -162,6 +170,7 @@ join(
 	<field name="detail_org" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="detail_org"/>
 		<property name="com.jaspersoft.studio.field.label" value="detail_org"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="ad_org"/>
 	</field>
 	<field name="detail_line" class="java.lang.Long">
 		<property name="com.jaspersoft.studio.field.name" value="detail_line"/>
@@ -192,6 +201,7 @@ join(
 	<field name="detail_sl" class="java.math.BigDecimal">
 		<property name="com.jaspersoft.studio.field.name" value="detail_sl"/>
 		<property name="com.jaspersoft.studio.field.label" value="detail_sl"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="hsv_nkkhaithacline"/>
 	</field>
 	<field name="detail_charge_name" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="detail_charge_name"/>
@@ -200,6 +210,7 @@ join(
 	<field name="detail_gia" class="java.math.BigDecimal">
 		<property name="com.jaspersoft.studio.field.name" value="detail_gia"/>
 		<property name="com.jaspersoft.studio.field.label" value="detail_gia"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="hsv_dgngaomline"/>
 	</field>
 	<field name="detail_tax" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="detail_tax"/>
@@ -722,7 +733,7 @@ join(
 				</textElement>
 				<textFieldExpression><![CDATA[$F{detail_org}]]></textFieldExpression>
 			</textField>
-			<textField isBlankWhenNull="true">
+			<textField pattern="#,##0.##" isBlankWhenNull="true">
 				<reportElement stretchType="RelativeToBandHeight" x="840" y="0" width="70" height="50" uuid="8423b5c7-89dd-461a-b80b-d5630c7780d4">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
