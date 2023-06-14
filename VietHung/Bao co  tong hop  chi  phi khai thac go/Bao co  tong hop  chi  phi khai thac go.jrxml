@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Created with Jaspersoft Studio version 6.20.1.final using JasperReports Library version 6.20.1-7584acb244139816654f64e2fd57a00d3e31921e  -->
+<!-- Created with Jaspersoft Studio version 6.20.0.final using JasperReports Library version 6.20.0-2bc7ab61c56f459e8176eb05c7705e145cd400ad  -->
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Bao cao nhan cong khai thac" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="cee3b8e8-237c-4ca5-b17c-7a9def5b6405">
-	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="Data Adapter"/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="psql"/>
 	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
 	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
 	<parameter name="C_Project_ID" class="java.lang.Integer"/>
@@ -12,195 +12,125 @@
 		<defaultValueExpression><![CDATA["dev/"]]></defaultValueExpression>
 	</parameter>
 	<queryString>
-		<![CDATA[select case when stt=10 then t.org_name end as  org_name,
-case when stt=10 then concat('CP khai thác từ ngày: ',to_char($P{StartDate}::Date,'DD/MM/YYYY'),' đến : ', to_char($P{EndDate}::Date,'DD/MM/YYYY'),' rừng: ',project_value) end as da 
-,case when stt=10 then to_char($P{EndDate}::Date,'YYYY-MM-DD') end as datedoc,
-case when stt=10 then k.lienhe end as lienhe ,
-case when stt=10 then k.c_currency_id end as currency,
-t.org_name as detail_org,
-t.stt as detail_line,
-k.doctype_name,
-t.nd as detail_description
-,to_char($P{EndDate}::Date,'YYYY-MM-DD') as detail_dateinvoice
-, to_char($P{EndDate}::Date,'YYYY-MM-DD') as detail_dateacct,
-t.bpartner_value as detail_cbpartner,
-t.sl as detail_sl,
-t.charge_name as detail_charge_name,
-t.dg as detail_gia,
-k.tax_name as detail_tax,
-a.project_value as detail_project_value,
-k.activtiy_value as detal_activi
-from 
-(
-	select 1 as id,  ca.value as activtiy_value,cd.name  as doctype_name,
-	ct.name as tax_name, 	
-	adu.name as lienhe,
-	lb.c_currency_id 
-	from hsv_luongbep lb
-	join c_activity ca on ca.c_activity_id = lb.c_activity_id 
-	join c_doctype cd on cd.c_doctype_id =lb.c_doctype_id 
-	join c_tax ct on ct.c_tax_id = lb.c_tax_id 
-	join AD_User adu on adu.ad_user_id  = lb.salesrep_id
-	where lb.ad_client_id = $P{AD_CLIENT_ID} and lb.hsv_cotluong = 'HD_CP KTVC'	
-) as k 
-join (select 1 as id, value as project_value, name as project_name from  c_project  where c_project_id =$P{C_Project_ID}) as a on a.id = k.id
-join(
-
-
-	select 1 as id,row_number() over() *10 as stt,nd,bpartner_value,sl, dg,t.org_name as org_name,t.charge_name as charge_name
+		<![CDATA[select row_number() over(PARTITION BY dm ORDER BY name) as stt,dm, name, sl, dg,tt, tienkhac, ketqua
+from(
+select 'A. Nhân công khai thác' as dm,   name, sl, case when sl<>0 then tt/sl else 0 end  dg, tienkhac ,tt,tt+tienkhac as ketqua
+from(
+	select hj.name, sum(sl) as sl, sum(tt) as tt, sum(tienkhac) as tienkhac
 	from(
-	---A. Nhân công khai thác----		
-		select 1 as id , 'Chi phí nhân công' as nd, cb.name  as bpartner_value, sum(sl) as sl, case when sum(sl) <> 0 then sum(tt)/sum(sl) end  as dg
-		from(
-			select nkkt.hr_job_id, nkkt.qtyother as sl, nkkt.qtyother * k.gia as tt
+			select nkkt.hr_job_id, nkkt.qtyother as sl, nkkt.qtyother * k.gia as tt, 0 as tienkhac 
 			from   hsv_nkkhaithac nk 
 			join hsv_nkkhaithacline nkkt on nk.hsv_nkkhaithac_id = nkkt.hsv_nkkhaithac_id 
-			 join (	----don gia---
-						select dgl.amount as gia, dg.c_period_id,c_bpartner_id,dgl.hr_job_id,dg.startdate ,dg.enddate 
-						from hsv_dgngaomau dg
-						join hsv_dgngaomline dgl on dg.hsv_dgngaomau_id =dgl.hsv_dgngaomau_id  
-						where dg.ad_client_id = $P{AD_CLIENT_ID} and (dgl.c_project_id =$P{C_Project_ID} or $P{C_Project_ID} is null) and dg.isactive ='Y'  and dgl.isactive ='Y'
-					) as k on nkkt.hr_job_id = k.hr_job_id  
-					where nk.dateacct >= $P{StartDate} and nk.dateacct <= $P{EndDate} and nk.dateacct >=k.startdate and nk.dateacct <= k.enddate
-			) as t join hr_job hj on hj.hr_job_id = t.hr_job_id
-			join c_bpartner cb on cb.c_bpartner_id = hj.c_bpartner_id 
-			group by cb.name
+			left join (	----don gia---
+					select dgl.amount as gia, dg.c_period_id,dgl.hr_job_id,dg.startdate ,dg.enddate 
+					from hsv_dgngaomau dg
+					join hsv_dgngaomline dgl on dg.hsv_dgngaomau_id =dgl.hsv_dgngaomau_id  
+					where dg.ad_client_id = $P{AD_CLIENT_ID} and (dgl.c_project_id =$P{C_Project_ID} or $P{C_Project_ID} is null) and dg.isactive ='Y'  and dgl.isactive ='Y'
+			) as k on nkkt.hr_job_id = k.hr_job_id
+			where nk.dateacct >= $P{StartDate} and nk.dateacct <= $P{EndDate} and nk.dateacct >=k.startdate and nk.dateacct <= k.enddate
+
+			and (nk.c_project_id = $P{C_Project_ID} or $P{C_Project_ID} is null)
+			union all 
+			
+			select gvl.hr_job_id, 0 as sl, 0 as tt,gvl.Amount as tienkhac
+			from hsv_giaoviec gv 
+			join hsv_pgvLine gvl on gv.hsv_giaoviec_id = gvl.hsv_giaoviec_id
+			where gv.ad_client_id = $P{AD_CLIENT_ID} and (gvl.c_project_id = $P{C_Project_ID} or $P{C_Project_ID} is null)
+			and gv.dateacct  >= $P{StartDate} and gv.dateacct <= $P{EndDate}	
+		) as t join hr_job hj on hj.hr_job_id = t.hr_job_id
+		group by hj.name
 		
-		union all
-		------------------------
-			
-		select 2 as id , 'Chi phí phục vụ khai thác' as nd, cb.name  as bpartner_value, sum(sl) as sl, case when sum(sl) <> 0 then sum(tt)/sum(sl) end  as dg
-		from(
-			select nkkt.HR_ListType_ID, nkkt.qtyother as sl, nkkt.qtyother * k.gia as tt
+) as t
+union all
+select 'B. Chi phí bốc lên xe' as dm, name, sl, case when sl<>0 then tt/sl else 0 end  dg, tienkhac ,tt,tt+tienkhac as ketqua
+from(
+	select hj.name, sum(sl) as sl, sum(tt) as tt, sum(tienkhac) as tienkhac
+	from(
+			select nkkt.HR_ListType_ID, nkkt.qtyother as sl, nkkt.qtyother * k.gia as tt, 0 as tienkhac 
 			from   hsv_nkkhaithac nk 
 			join hsv_nkkhaithacline nkkt on nk.hsv_nkkhaithac_id = nkkt.hsv_nkkhaithac_id 
-			 join (	----don gia---
-						select dgl.amount as gia, dg.c_period_id,dgl.c_bpartner_id,dgl.HR_ListType_ID,dg.startdate ,dg.enddate 
-						from hsv_dgngaomau dg
-						join hsv_dgngaomline dgl on dg.hsv_dgngaomau_id =dgl.hsv_dgngaomau_id  
-						where dg.ad_client_id = $P{AD_CLIENT_ID} and (dgl.c_project_id =$P{C_Project_ID} or $P{C_Project_ID} is null) and dg.isactive ='Y'  and dgl.isactive ='Y'
-					) as k on nkkt.HR_ListType_ID = k.HR_ListType_ID 
-					where nk.dateacct >= $P{StartDate} and nk.dateacct <= $P{EndDate} and nk.dateacct >=k.startdate and nk.dateacct <= k.enddate
-			) as t join HR_ListType hj on hj.HR_ListType_ID = t.HR_ListType_ID 
-			join c_bpartner cb on cb.c_bpartner_id = hj.c_bpartner_id 
-			group by cb.name
+			left join (	----don gia---
+					select dgl.amount as gia, dg.c_period_id,dgl.HR_ListType_ID,dg.startdate ,dg.enddate 
+					from hsv_dgngaomau dg
+					join hsv_dgngaomline dgl on dg.hsv_dgngaomau_id =dgl.hsv_dgngaomau_id  
+					where dg.ad_client_id = $P{AD_CLIENT_ID} and (dgl.c_project_id =$P{C_Project_ID} or $P{C_Project_ID} is null) and dg.isactive ='Y'  and dgl.isactive ='Y'
+			) as k on nkkt.HR_ListType_ID = k.HR_ListType_ID
+			where nk.dateacct >= $P{StartDate} and nk.dateacct <= $P{EndDate} and nk.dateacct >=k.startdate and nk.dateacct <= k.enddate
+
+			and (nk.c_project_id = $P{C_Project_ID} or $P{C_Project_ID} is null)
+			union all 
 			
-			
-			
-			union all
-					
-			----- Chi phí vận chuyển---
-		select 3 as id , 'Chi phí vận chuyển' as nd, cb.name  as bpartner_value, sum(sl) as sl, case when sum(sl) <> 0 then sum(tt)/sum(sl) end  as dg
-		from(
-			select nkkt.hr_contract_id, nkkt.qtyother as sl, nkkt.qtyother * k.gia as tt
+			select gvl.HR_ListType_ID, 0 as sl, 0 as tt,gvl.Amount as tienkhac
+			from hsv_giaoviec gv 
+			join hsv_pgvLine gvl on gv.hsv_giaoviec_id = gvl.hsv_giaoviec_id
+			where gv.ad_client_id = $P{AD_CLIENT_ID} and (gvl.c_project_id = $P{C_Project_ID} or $P{C_Project_ID} is null)
+			and gv.dateacct  >= $P{StartDate} and gv.dateacct <= $P{EndDate}	
+		) as t join HR_ListType hj on hj.HR_ListType_ID = t.HR_ListType_ID
+		group by hj.name
+		
+) as t
+union all 
+select 'C. Chi phí vận chuyển' as dm, name, sl, case when sl<>0 then tt/sl else 0 end  dg, tienkhac ,tt,tt+tienkhac as ketqua
+from(
+	select hj.name, sum(sl) as sl, sum(tt) as tt, sum(tienkhac) as tienkhac
+	from(
+			select nkkt.hr_contract_id, nkkt.qtyother as sl, nkkt.qtyother * k.gia as tt, 0 as tienkhac 
 			from   hsv_nkkhaithac nk 
 			join hsv_nkkhaithacline nkkt on nk.hsv_nkkhaithac_id = nkkt.hsv_nkkhaithac_id 
-			 join (	----don gia---
-						select dgl.amount as gia, dg.c_period_id,dgl.c_bpartner_id,dgl.hr_contract_id,dg.startdate ,dg.enddate 
-						from hsv_dgngaomau dg
-						join hsv_dgngaomline dgl on dg.hsv_dgngaomau_id =dgl.hsv_dgngaomau_id  
-						where dg.ad_client_id = $P{AD_CLIENT_ID} and (dgl.c_project_id =$P{C_Project_ID} or $P{C_Project_ID} is null) and dg.isactive ='Y'  and dgl.isactive ='Y'
-					) as k on nkkt.hr_contract_id = k.hr_contract_id and nk.c_bpartner_id = k.c_bpartner_id
-					where nk.dateacct >= $P{StartDate} and nk.dateacct <= $P{EndDate} and nk.dateacct >=k.startdate and nk.dateacct <= k.enddate
-			) as t join hr_contract hj on hj.hr_contract_id = t.hr_contract_id 
-			join c_bpartner cb on cb.c_bpartner_id = hj.c_bpartner_id 
-			group by cb.name
-	
+			left join (	----don gia---
+					select dgl.amount as gia, dg.c_period_id,dgl.hr_contract_id,dgl.c_bpartner_id , dg.startdate , dg.enddate 
+					from hsv_dgngaomau dg
+					join hsv_dgngaomline dgl on dg.hsv_dgngaomau_id =dgl.hsv_dgngaomau_id  
+					where dg.ad_client_id = $P{AD_CLIENT_ID} and (dgl.c_project_id =$P{C_Project_ID} or $P{C_Project_ID} is null) and dg.isactive ='Y'  and dgl.isactive ='Y'
+			) as k on nkkt.hr_contract_id = k.hr_contract_id and nk.c_bpartner_id = k.c_bpartner_id
+			where nk.dateacct >= $P{StartDate} and nk.dateacct <= $P{EndDate} and nk.dateacct >=k.startdate and nk.dateacct <= k.enddate
+
+			and (nk.c_project_id = $P{C_Project_ID} or $P{C_Project_ID} is null)
+			union all 
 			
-	) as k
-	join(
-		select 3 as id, c.name as charge_name  ,org.name as org_name   
-		from c_charge c
-		join ad_org org on org.ad_org_id = c.ad_org_id 
-		where  C_Charge_ID=1001354
-		union all
-		select 1 as id, c.name as charge_name  ,org.name as org_name   
-		from c_charge c
-		join ad_org org on org.ad_org_id = c.ad_org_id 		
-		where  C_Charge_ID=1001353
-		union all
-		select 2 as id,  c.name as charge_name  ,org.name as org_name   
-		from c_charge c
-		join ad_org org on org.ad_org_id = c.ad_org_id 		
-		where  C_Charge_ID=1001355			
-	) as t on k.id =t.id
-	) as t on k.id =t.id]]>
+			select gvl.hr_contract_id, 0 as sl, 0 as tt,gvl.Amount as tienkhac
+			from hsv_giaoviec gv 
+			join hsv_pgvLine gvl on gv.hsv_giaoviec_id = gvl.hsv_giaoviec_id
+			where gv.ad_client_id = $P{AD_CLIENT_ID} and (gvl.c_project_id = $P{C_Project_ID} or $P{C_Project_ID} is null)
+			and gv.dateacct  >= $P{StartDate} and gv.dateacct <= $P{EndDate}	
+		) as t join hr_contract  hj on hj.hr_contract_id  = t.hr_contract_id
+		group by hj.name
+		
+) as t
+) as k]]>
 	</queryString>
-	<field name="org_name" class="java.lang.String">
-		<property name="com.jaspersoft.studio.field.name" value="org_name"/>
-		<property name="com.jaspersoft.studio.field.label" value="org_name"/>
+	<field name="stt" class="java.lang.Long">
+		<property name="com.jaspersoft.studio.field.name" value="stt"/>
+		<property name="com.jaspersoft.studio.field.label" value="stt"/>
 	</field>
-	<field name="da" class="java.lang.String">
-		<property name="com.jaspersoft.studio.field.name" value="da"/>
-		<property name="com.jaspersoft.studio.field.label" value="da"/>
+	<field name="dm" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="dm"/>
+		<property name="com.jaspersoft.studio.field.label" value="dm"/>
 	</field>
-	<field name="datedoc" class="java.lang.String">
-		<property name="com.jaspersoft.studio.field.name" value="datedoc"/>
-		<property name="com.jaspersoft.studio.field.label" value="datedoc"/>
+	<field name="name" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="name"/>
+		<property name="com.jaspersoft.studio.field.label" value="name"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="hr_contract"/>
 	</field>
-	<field name="lienhe" class="java.lang.String">
-		<property name="com.jaspersoft.studio.field.name" value="lienhe"/>
-		<property name="com.jaspersoft.studio.field.label" value="lienhe"/>
+	<field name="sl" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="sl"/>
+		<property name="com.jaspersoft.studio.field.label" value="sl"/>
 	</field>
-	<field name="currency" class="java.math.BigDecimal">
-		<property name="com.jaspersoft.studio.field.name" value="currency"/>
-		<property name="com.jaspersoft.studio.field.label" value="currency"/>
+	<field name="dg" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="dg"/>
+		<property name="com.jaspersoft.studio.field.label" value="dg"/>
 	</field>
-	<field name="detail_org" class="java.lang.String">
-		<property name="com.jaspersoft.studio.field.name" value="detail_org"/>
-		<property name="com.jaspersoft.studio.field.label" value="detail_org"/>
+	<field name="tt" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="tt"/>
+		<property name="com.jaspersoft.studio.field.label" value="tt"/>
 	</field>
-	<field name="detail_line" class="java.lang.Long">
-		<property name="com.jaspersoft.studio.field.name" value="detail_line"/>
-		<property name="com.jaspersoft.studio.field.label" value="detail_line"/>
+	<field name="tienkhac" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="tienkhac"/>
+		<property name="com.jaspersoft.studio.field.label" value="tienkhac"/>
 	</field>
-	<field name="doctype_name" class="java.lang.String">
-		<property name="com.jaspersoft.studio.field.name" value="doctype_name"/>
-		<property name="com.jaspersoft.studio.field.label" value="doctype_name"/>
-		<property name="com.jaspersoft.studio.field.tree.path" value="c_doctype"/>
-	</field>
-	<field name="detail_description" class="java.lang.String">
-		<property name="com.jaspersoft.studio.field.name" value="detail_description"/>
-		<property name="com.jaspersoft.studio.field.label" value="detail_description"/>
-	</field>
-	<field name="detail_dateinvoice" class="java.lang.String">
-		<property name="com.jaspersoft.studio.field.name" value="detail_dateinvoice"/>
-		<property name="com.jaspersoft.studio.field.label" value="detail_dateinvoice"/>
-	</field>
-	<field name="detail_dateacct" class="java.lang.String">
-		<property name="com.jaspersoft.studio.field.name" value="detail_dateacct"/>
-		<property name="com.jaspersoft.studio.field.label" value="detail_dateacct"/>
-	</field>
-	<field name="detail_cbpartner" class="java.lang.String">
-		<property name="com.jaspersoft.studio.field.name" value="detail_cbpartner"/>
-		<property name="com.jaspersoft.studio.field.label" value="detail_cbpartner"/>
-	</field>
-	<field name="detail_sl" class="java.math.BigDecimal">
-		<property name="com.jaspersoft.studio.field.name" value="detail_sl"/>
-		<property name="com.jaspersoft.studio.field.label" value="detail_sl"/>
-	</field>
-	<field name="detail_charge_name" class="java.lang.String">
-		<property name="com.jaspersoft.studio.field.name" value="detail_charge_name"/>
-		<property name="com.jaspersoft.studio.field.label" value="detail_charge_name"/>
-	</field>
-	<field name="detail_gia" class="java.math.BigDecimal">
-		<property name="com.jaspersoft.studio.field.name" value="detail_gia"/>
-		<property name="com.jaspersoft.studio.field.label" value="detail_gia"/>
-	</field>
-	<field name="detail_tax" class="java.lang.String">
-		<property name="com.jaspersoft.studio.field.name" value="detail_tax"/>
-		<property name="com.jaspersoft.studio.field.label" value="detail_tax"/>
-		<property name="com.jaspersoft.studio.field.tree.path" value="c_tax"/>
-	</field>
-	<field name="detail_project_value" class="java.lang.String">
-		<property name="com.jaspersoft.studio.field.name" value="detail_project_value"/>
-		<property name="com.jaspersoft.studio.field.label" value="detail_project_value"/>
-		<property name="com.jaspersoft.studio.field.tree.path" value="c_project"/>
-	</field>
-	<field name="detal_activi" class="java.lang.String">
-		<property name="com.jaspersoft.studio.field.name" value="detal_activi"/>
-		<property name="com.jaspersoft.studio.field.label" value="detal_activi"/>
-		<property name="com.jaspersoft.studio.field.tree.path" value="c_activity"/>
+	<field name="ketqua" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="ketqua"/>
+		<property name="com.jaspersoft.studio.field.label" value="ketqua"/>
 	</field>
 	<variable name="sum_sl" class="java.lang.Double" calculation="Sum">
 		<variableExpression><![CDATA[$F{sl}]]></variableExpression>
