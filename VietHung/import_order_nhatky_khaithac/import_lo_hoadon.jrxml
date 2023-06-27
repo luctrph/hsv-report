@@ -77,11 +77,11 @@ join(
 			from   hsv_nkkhaithac nk 
 			join hsv_nkkhaithacline nkkt on nk.hsv_nkkhaithac_id = nkkt.hsv_nkkhaithac_id 
 			 join (	----don gia---
-						select dgl.amount as gia, c_bpartner_id,dgl.hr_job_id,dg.startdate ,dg.enddate 
+						select dgl.amount as gia, dgl.c_project_id,c_bpartner_id,dgl.hr_job_id,dg.startdate ,dg.enddate 
 						from hsv_dgngaomau dg
 						join hsv_dgngaomline dgl on dg.hsv_dgngaomau_id =dgl.hsv_dgngaomau_id  
 						where dg.ad_client_id = $P{AD_CLIENT_ID} and dg.isactive ='Y'  and dgl.isactive ='Y'
-					) as k on nkkt.hr_job_id = k.hr_job_id 
+					) as k on nkkt.hr_job_id = k.hr_job_id and k.c_project_id = nk.c_project_id
 					where nk.dateacct >= $P{StartDate} and nk.dateacct <= $P{EndDate} and nk.dateacct >=k.startdate and nk.dateacct <= k.enddate
 					and  nk.c_project_id = $P{C_Project_ID} 
 			) as t join hr_job hj on hj.hr_job_id = t.hr_job_id
@@ -111,7 +111,7 @@ join(
 			union all
 					
 			----- Chi phí vận chuyển---
-		select 55 as id , 'Chi phí vận chuyển' as nd,cb.value  as bpartner_value,sum(sl) as sl, case when sum(sl) <> 0 then sum(tt)/sum(sl) end  as dg
+		select 3 as id , 'Chi phí vận chuyển' as nd,cb.value  as bpartner_value,sum(sl) as sl, case when sum(sl) <> 0 then sum(tt)/sum(sl) end  as dg
 		from(
 			select nkkt.hr_contract_id, nkkt.qtyother as sl, nkkt.qtyother * k.gia as tt
 			from  hsv_nkkhaithac nk 
@@ -127,13 +127,32 @@ join(
 			) as t join HR_Contract hj on hj.hr_contract_id = t.hr_contract_id 
 			join c_bpartner cb on cb.c_bpartner_id = hj.c_bpartner_id 
 			group by cb.value
-			
+		union all
+		
+	---D. chi phi chuyen tiep----		
+		select 4 as id , 'Chi phí vận chuyển chuyển tải từ rừng ra bải tập kết' as nd, cb.value  as bpartner_value, sum(sl) as sl, case when sum(sl) <> 0 then sum(tt)/sum(sl) end  as dg
+		from(
+			select nkkt.hsv_vcct_id, nkkt.qtyother as sl, nkkt.qtyother * k.gia as tt
+			from   hsv_nkkhaithac nk 
+			join hsv_nkkhaithacline nkkt on nk.hsv_nkkhaithac_id = nkkt.hsv_nkkhaithac_id 
+			join (	----don gia---
+						select dgl.amount as gia, dgl.c_project_id,c_bpartner_id,dgl.hsv_vcct_id,dg.startdate ,dg.enddate 
+						from hsv_dgngaomau dg
+						join hsv_dgngaomline dgl on dg.hsv_dgngaomau_id =dgl.hsv_dgngaomau_id  
+						where dg.ad_client_id = $P{AD_CLIENT_ID} and dg.isactive ='Y'  and dgl.isactive ='Y'
+				) as k on nkkt.hsv_vcct_id = k.hsv_vcct_id  and k.c_project_id = nk.c_project_id 
+			where nk.dateacct >= $P{StartDate} and nk.dateacct <= $P{EndDate} and nk.dateacct >=k.startdate and nk.dateacct <= k.enddate
+					and  nk.c_project_id = $P{C_Project_ID} 
+			) as t join hsv_vcct hj on hj.hsv_vcct_id = t.hsv_vcct_id
+			join c_bpartner cb on cb.c_bpartner_id = hj.c_bpartner_id 
+			group by cb.value
 	) as k
 	join(
-		select 55 as id, c.name as charge_name   
+		select 3 as id, c.name as charge_name   
 		from c_charge c
 		join ad_org org on org.ad_org_id = c.ad_org_id 
 		where  C_Charge_ID=1001354 and c.ad_client_id = $P{AD_CLIENT_ID}
+							
 		union all
 		select 1 as id, c.name as charge_name 
 		from c_charge c
@@ -143,7 +162,12 @@ join(
 		select 2 as id,  c.name as charge_name  
 		from c_charge c
 		join ad_org org on org.ad_org_id = c.ad_org_id 		
-		where  C_Charge_ID=1001362	and c.ad_client_id = $P{AD_CLIENT_ID}		
+		where  C_Charge_ID=1001362	and c.ad_client_id = $P{AD_CLIENT_ID}	
+		union all 
+		select 4 as id,  c.name as charge_name  
+		from c_charge c
+		join ad_org org on org.ad_org_id = c.ad_org_id 		
+		where  C_Charge_ID=1001354	and c.ad_client_id = $P{AD_CLIENT_ID}
 	) as t on k.id =t.id
 	) as t on k.id =t.id]]>
 	</queryString>

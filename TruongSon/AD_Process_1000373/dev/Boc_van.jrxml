@@ -1,34 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Created with Jaspersoft Studio version 6.20.0.final using JasperReports Library version 6.20.0-2bc7ab61c56f459e8176eb05c7705e145cd400ad  -->
+<!-- Created with Jaspersoft Studio version 6.20.1.final using JasperReports Library version 6.20.1-7584acb244139816654f64e2fd57a00d3e31921e  -->
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Boc_van" pageWidth="555" pageHeight="842" columnWidth="555" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="345fb16a-d8eb-4d97-8bc7-178a87bb4854">
 	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
-	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="psql"/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="Data Adapter"/>
 	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
 	<parameter name="StartDate" class="java.util.Date"/>
 	<parameter name="EndDate" class="java.util.Date"/>
 	<queryString language="SQL">
 		<![CDATA[select row_number() over() as stt, noidung ,sum(sl) as sl, sum(sl2) as sl2
 	from(
-	select 'Nguyên liệu xuất bóc vỏ, băm chip' as noidung,lot,dateacct,sl,sl*0.17 as sl2
-	from(
+		select 'SL nguyên liệu gỗ xuất bóc ván(kg)' as noidung,lot,dateacct,sl,0.94*sl as sl2
+		from(
 			select att.lot,ci.movementdate  as dateacct , civ.qtyinternaluse  as sl
 			from m_inventory  ci
 			join m_inventoryline civ  on ci.m_inventory_id  = civ.m_inventory_id  
-			join m_product hh on hh.m_product_id = civ.m_product_id and (hh.m_product_category_id in(1000084,1000562)  )			
+			join m_product hh on hh.m_product_id = civ.m_product_id and (hh.m_product_category_id in (1000562,1000084) )			
 			join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
 			where civ.ad_client_id = $P{AD_CLIENT_ID} and ci.docstatus in ('CL','CO')		 			
 		) as k 
 		union all 
-		select 'Thành phẩm nhập kho' as noidung,lot,dateacct ,sl,0 as sl2
+		select 'SL Phụ phẩm lõi thu được(kg)' as noidung,lot,dateacct ,sl,-1*sl2 as sl2
 		from(
-			select  att.lot,ci.movementdate as dateacct, civ.productionqty as sl,0 as sl2 
+			select  att.lot,ci.movementdate as dateacct, civ.productionqty as sl,civ.productionqty as sl2 
 			from m_production ci  
 			join m_productionplan civ on ci.m_production_id = civ.m_production_id
-			join m_product hh on hh.m_product_id = civ.m_product_id and hh.M_Product_ID in (1018219,1018826,1018340,1018827)					
+			join m_product hh on hh.m_product_id = civ.m_product_id and ( hh.m_product_id  in (1018344,1008358) )						
 			join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
-			where ci.ad_client_id =$P{AD_CLIENT_ID}   and  ci.docstatus in ('CL','CO')										
+			where ci.ad_client_id =$P{AD_CLIENT_ID}  and   ci.docstatus in ('CL','CO')										
 		) as k 
-	) as k join m_lot lo on lo.name = k.lot and  lo.m_lotctl_id in (1000038,1000048) and k.dateacct >= lo.datefrom 
+		union all 
+		select 'SL ván bóc thu được(m3)' as noidung , lot,  dateacct, sl, -1 * sl2  as sl2
+		from (
+			select  att.lot,ci.movementdate as dateacct, civ.productionqty as sl,civ.productionqty*k.amountdg1 as sl2 
+			from m_production ci  
+			join m_productionplan civ on ci.m_production_id = civ.m_production_id
+			join m_product hh on hh.m_product_id = civ.m_product_id and (hh.m_product_category_id in (1000085,1000569) and hh.m_attributeset_id in (1000160,1000065))						
+			join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
+			join (
+				select hsv_dg.startdate , hsv_dg.enddate, dgl.m_product_id,coalesce(hsv_dinhmuc,0) as hsv_dinhmuc,coalesce(amountdg1,0) as amountdg1
+				from hsv_nkdongialine dgl  
+				join hsv_dongia hsv_dg on hsv_dg.hsv_dongia_id = dgl.hsv_dongia_id and hsv_dg.hsv_loaidongia_id  in (1000000,1000042)
+				where hsv_dg.ad_client_id = $P{AD_CLIENT_ID}				
+			) as k on k.m_product_id = civ.m_product_id 
+			where ci.ad_client_id =$P{AD_CLIENT_ID}  and ci.movementdate >= k.startdate and ci.movementdate <= k.enddate and  ci.docstatus in ('CL','CO')										
+		) as k where sl2 <>0
+	) as k join m_lot lo on lo.name = k.lot and  lo.m_lotctl_id in (1000022,1000037) 
 	and k.dateacct >= $P{StartDate} and k.dateacct <=$P{EndDate}
 	group by noidung]]>
 	</queryString>
@@ -49,10 +65,8 @@
 		<property name="com.jaspersoft.studio.field.label" value="sl2"/>
 	</field>
 	<variable name="sl2" class="java.lang.Double" calculation="Sum">
-		<variableExpression><![CDATA[$F{sl2}==null?0:$F{sl2}]]></variableExpression>
-	</variable>
-	<variable name="3b" class="java.lang.Double">
-		<variableExpression><![CDATA[$V{sl2}==null?0:$V{sl2}]]></variableExpression>
+		<variableExpression><![CDATA[$F{sl2}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
 	</variable>
 	<background>
 		<band splitType="Stretch"/>
@@ -73,7 +87,7 @@
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font fontName="Arial" size="11" isBold="true"/>
 				</textElement>
-				<text><![CDATA[B]]></text>
+				<text><![CDATA[A]]></text>
 			</staticText>
 			<staticText>
 				<reportElement x="40" y="0" width="515" height="30" uuid="474c94f9-9f10-4f62-bb28-883e418b6c23">
@@ -89,7 +103,7 @@
 				<textElement verticalAlignment="Middle">
 					<font fontName="Arial" size="11" isBold="true"/>
 				</textElement>
-				<text><![CDATA[Phần băm chip , bóc vỏ]]></text>
+				<text><![CDATA[Phần bóc ván]]></text>
 			</staticText>
 		</band>
 	</columnHeader>
@@ -130,7 +144,7 @@
 				</textElement>
 				<textFieldExpression><![CDATA[$F{noidung}]]></textFieldExpression>
 			</textField>
-			<textField pattern="#,##0.##" isBlankWhenNull="true">
+			<textField pattern="#,##0" isBlankWhenNull="true">
 				<reportElement x="270" y="0" width="90" height="26" uuid="32b65d07-3d32-423a-bc34-12ae49b6c399">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c247f36e-d821-46aa-b2af-73d59b16b2c4"/>
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
@@ -200,7 +214,7 @@
 				<textElement textAlignment="Right" verticalAlignment="Middle">
 					<font fontName="Arial" size="11"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$V{sl2}*500]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$V{sl2}*600]]></textFieldExpression>
 			</textField>
 			<textField>
 				<reportElement x="0" y="0" width="40" height="26" uuid="7647db4e-a8e4-45c3-85f3-ef41da5c17e1">
@@ -234,7 +248,7 @@
 				<textElement textAlignment="Right" verticalAlignment="Middle">
 					<font fontName="Arial" size="11"/>
 				</textElement>
-				<textFieldExpression><![CDATA[500]]></textFieldExpression>
+				<textFieldExpression><![CDATA[600]]></textFieldExpression>
 			</textField>
 			<textField pattern="#,##0" isBlankWhenNull="true">
 				<reportElement x="270" y="0" width="90" height="26" uuid="2c4f942a-f280-4fcc-83ba-296664a67aca">
@@ -269,7 +283,7 @@
 				<textElement verticalAlignment="Middle">
 					<font fontName="Arial" size="11"/>
 				</textElement>
-				<textFieldExpression><![CDATA["M Rác thu được (17 %  N liệu băm)"]]></textFieldExpression>
+				<textFieldExpression><![CDATA["Rác thu được (DM: 94%* NL - Lõi - Ván bóc QĐ) (kg)"]]></textFieldExpression>
 			</textField>
 		</band>
 	</summary>
