@@ -7,19 +7,20 @@
 	<parameter name="StartDate" class="java.util.Date"/>
 	<parameter name="EndDate" class="java.util.Date"/>
 	<queryString language="SQL">
-		<![CDATA[select row_number() over() as stt, noidung ,sum(sl) as sl, sum(sl2) as sl2
+		<![CDATA[select row_number() over() as stt, noidung ,sum(sl) as sl, sum(sl2) as sl2, sum(a1) as a1, sum(a2) as a2
 	from(
-	select 'Nguyên liệu xuất bóc vỏ, băm chip' as noidung,lot,dateacct,sl,sl*0.17 as sl2
+	select 'Nguyên liệu xuất bóc vỏ, băm chip' as noidung,lot,dateacct,sl,sl*0.17 as sl2,sl as a1, 0 as a2
 	from(
 			select att.lot,ci.movementdate  as dateacct , civ.qtyinternaluse  as sl
 			from m_inventory  ci
 			join m_inventoryline civ  on ci.m_inventory_id  = civ.m_inventory_id  
 			join m_product hh on hh.m_product_id = civ.m_product_id and (hh.m_product_category_id in(1000084,1000562)  )			
-			join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
-			where civ.ad_client_id = $P{AD_CLIENT_ID} and ci.docstatus in ('CL','CO')		 			
+			join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id
+			join m_lot lot on lot.m_lot_id = att.m_lot_id and lot.m_lotctl_id in (1000038,1000048)
+			where civ.ad_client_id = $P{AD_CLIENT_ID} and ci.docstatus in ('CL','CO') and ci.c_campaign_id not in (1000090,1000088) 		 			
 		) as k 
 		union all 
-		select 'Thành phẩm nhập kho' as noidung,lot,dateacct ,sl,0 as sl2
+		select 'Thành phẩm nhập kho' as noidung,lot,dateacct ,sl,0 as sl2, 0 as a1, sl as a2
 		from(
 			select  att.lot,ci.movementdate as dateacct, civ.productionqty as sl,0 as sl2 
 			from m_production ci  
@@ -28,7 +29,7 @@
 			join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
 			where ci.ad_client_id =$P{AD_CLIENT_ID}   and  ci.docstatus in ('CL','CO')										
 		) as k 
-	) as k join m_lot lo on lo.name = k.lot and  lo.m_lotctl_id in (1000038,1000048) and k.dateacct >= lo.datefrom 
+	) as k join m_lot lo on lo.name = k.lot 
 	and k.dateacct >= $P{StartDate} and k.dateacct <=$P{EndDate}
 	group by noidung]]>
 	</queryString>
@@ -48,11 +49,25 @@
 		<property name="com.jaspersoft.studio.field.name" value="sl2"/>
 		<property name="com.jaspersoft.studio.field.label" value="sl2"/>
 	</field>
+	<field name="a1" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="a1"/>
+		<property name="com.jaspersoft.studio.field.label" value="a1"/>
+	</field>
+	<field name="a2" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="a2"/>
+		<property name="com.jaspersoft.studio.field.label" value="a2"/>
+	</field>
 	<variable name="sl2" class="java.lang.Double" calculation="Sum">
 		<variableExpression><![CDATA[$F{sl2}==null?0:$F{sl2}]]></variableExpression>
 	</variable>
 	<variable name="3b" class="java.lang.Double">
 		<variableExpression><![CDATA[$V{sl2}==null?0:$V{sl2}]]></variableExpression>
+	</variable>
+	<variable name="a1" class="java.lang.Double" calculation="Sum">
+		<variableExpression><![CDATA[$F{a1}]]></variableExpression>
+	</variable>
+	<variable name="a2" class="java.lang.Double" calculation="Sum">
+		<variableExpression><![CDATA[$F{a2}]]></variableExpression>
 	</variable>
 	<background>
 		<band splitType="Stretch"/>
@@ -183,7 +198,8 @@
 		</band>
 	</detail>
 	<summary>
-		<band height="26" splitType="Stretch">
+		<band height="52" splitType="Stretch">
+			<property name="com.jaspersoft.studio.unit.height" value="px"/>
 			<textField pattern="#,##0" isBlankWhenNull="true">
 				<reportElement x="440" y="0" width="115" height="26" uuid="485f4196-4b09-4528-ba00-88cab9fc6453">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c247f36e-d821-46aa-b2af-73d59b16b2c4"/>
@@ -269,7 +285,92 @@
 				<textElement verticalAlignment="Middle">
 					<font fontName="Arial" size="11"/>
 				</textElement>
-				<textFieldExpression><![CDATA["M Rác thu được (17 %  N liệu băm)"]]></textFieldExpression>
+				<textFieldExpression><![CDATA["Rác thu được (17 %  N liệu băm)"]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.##" isBlankWhenNull="true">
+				<reportElement x="270" y="26" width="90" height="26" uuid="57b4090f-d5bc-4cc1-964f-57a425cbbc68">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c247f36e-d821-46aa-b2af-73d59b16b2c4"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{a2}==0?0:$V{a1}/$V{a2}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.##" isBlankWhenNull="true">
+				<reportElement x="360" y="26" width="80" height="26" uuid="010ca7af-b025-4487-b526-3733c23f827a">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c247f36e-d821-46aa-b2af-73d59b16b2c4"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="440" y="26" width="115" height="26" uuid="d055172e-0ede-40b0-bd22-043500f11267">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c247f36e-d821-46aa-b2af-73d59b16b2c4"/>
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+			</textField>
+			<textField>
+				<reportElement x="40" y="26" width="230" height="26" uuid="f7f9c7f0-9a1c-4594-9ecc-52168948b830">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="d29b2e3a-2010-4cb6-aa14-04ab9e9bd963"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Tỷ lệ thu hồi keo giấy (NL/TP)"]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="0" y="26" width="40" height="26" uuid="0fb57243-918d-4f9b-9282-b514fb6fc420">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="dfd9557f-0c07-4638-a6eb-f56e22e127bd"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{stt}+2]]></textFieldExpression>
 			</textField>
 		</band>
 	</summary>
