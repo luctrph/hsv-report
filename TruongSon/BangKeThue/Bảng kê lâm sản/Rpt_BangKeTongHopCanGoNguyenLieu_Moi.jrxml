@@ -71,19 +71,32 @@
 	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
 	<parameter name="C_Project_ID" class="java.lang.Integer"/>
 	<queryString language="SQL">
-		<![CDATA[select 	row_number() over() as stt,t.tenhh,t.sl,t.dai,t.kt
+		<![CDATA[select 	row_number() over(order by ngay asc) as stt,t.tenhh,t.sl,t.dai,t.kt
 from(
-			select 1 as id,  od.dateacct as ngay,hh."name" as tenhh,hh.c_uom_id as dvt,odl.qtyinvoiced as sl --,odl.priceactual as gia
+			select 1 as id ,od.dateacct as ngay,hh."name" as tenhh,hh.c_uom_id as dvt,odl.qtyinvoiced as sl --,odl.priceactual as gia
 				,hh.group1 as dai,hh.group2 as kt
 	
 			from c_invoiceline odl
 			join c_invoice od on od.c_invoice_id =odl.c_invoice_id and od.issotrx='N' and (od.c_bpartner_id =$P{C_BPartner_ID} or $P{C_BPartner_ID} is null) 
 			join m_product hh on hh.m_product_id =odl.m_product_id and (hh.m_product_category_id =$P{M_Product_Category_ID} or $P{M_Product_Category_ID} is null )
 			join M_AttributeSetInstance att on att.m_attributesetinstance_id = odl.m_attributesetinstance_id 
-			join m_lot ml on ml.m_lot_id = att.m_lot_id and (ml.c_project_id =$P{C_Project_ID} or $P{C_Project_ID} is null)
+			join m_lot ml on ml.m_lot_id = att.m_lot_id and ml.c_project_id =$P{C_Project_ID} and ml.isactive = 'Y'
 			where odl.ad_client_id =$P{AD_CLIENT_ID} and odl.ad_org_id =$P{AD_Org_ID}  and odl.qtyinvoiced<>0 and od.docstatus in ('CL','CO') 	and od.dateacct>=$P{StartDate} and od.dateacct<=$P{EndDate} 
-			order by od.dateacct desc
-	) as t]]>
+
+		
+			
+			union all 
+			
+			select 1 as id,  od.dateacct as ngay,hh."name" as tenhh,hh.c_uom_id as dvt,odl.qtyinvoiced as sl --,odl.priceactual as gia
+				,hh.group1 as dai,hh.group2 as kt
+	
+			from c_invoiceline odl
+			join c_invoice od on od.c_invoice_id =odl.c_invoice_id and od.issotrx='N' and (od.c_bpartner_id =$P{C_BPartner_ID} or $P{C_BPartner_ID} is null) 
+			join m_product hh on hh.m_product_id =odl.m_product_id and (hh.m_product_category_id =$P{M_Product_Category_ID} or $P{M_Product_Category_ID} is null )
+			where odl.ad_client_id =$P{AD_CLIENT_ID} and odl.ad_org_id =$P{AD_Org_ID}  and odl.qtyinvoiced<>0 and od.docstatus in ('CL','CO') 	and od.dateacct>=$P{StartDate} and od.dateacct<=$P{EndDate} 
+			and $P{C_Project_ID} is null
+		
+	) as t ]]>
 	</queryString>
 	<field name="stt" class="java.lang.Long">
 		<property name="com.jaspersoft.studio.field.name" value="stt"/>

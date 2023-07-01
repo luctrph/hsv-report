@@ -51,14 +51,15 @@ from(
 
 ) as k  join 
 (
-	select 1 as danhmuc, name,sum(qty) as qty, sum(k.amtacctdr-k.amtacctcr) as tt, 0 as sl_thanhpham,0 as tong_van, sum(sl_gonl) as sl_gonl 
+	select 1 as danhmuc, name,sum(qty) as qty, sum(tt) as tt, 0 as sl_thanhpham,0 as tong_van, sum(sl_gonl) as sl_gonl 
 	from(
-		select   hh.name, fa.qty as qty, fa.amtacctdr ,fa.amtacctcr , fa.qty as sl_gonl
+		select   hh.name, fa.qty as qty, case when qty >0 then fa.amtacctdr else -1 * fa.amtacctcr end as tt, fa.qty as sl_gonl
 		from fact_acct fa 
 		join m_product hh on hh.m_product_id = fa.m_product_id and (hh.m_product_category_id in (1000562,1000084) or hh.m_product_id in (1008358,1018344))
 		join m_productionline  civ on fa.line_id = civ.m_productionline_id 
-		join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id and  (att.m_lot_id = $P{M_Lot_ID} )
-		where fa.ad_table_id = 325 and fa.ad_client_id = $P{AD_CLIENT_ID} 		
+		join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id  and  (att.m_lot_id = $P{M_Lot_ID} )
+		join c_elementvalue acct on fa.account_id = acct.c_elementvalue_id and (LEFT(acct.value, 2) in ('15'))
+		where fa.ad_table_id = 325 and fa.ad_client_id = $P{AD_CLIENT_ID} 
 	) as k 
 	group by name
 	
@@ -156,15 +157,15 @@ from(
 		
 	
 			
-		select 5 as danhmuc, hh.name , sum(fa.qty) as qty , sum(fa.amtacctdr) as tt, 0 as sl_thanhpham,0 as tong_van, sum(fa.qty) as sl_gonl  
+		select 5 as danhmuc, hh.name , sum(-1*fa.qty) as qty , sum(case when fa.qty  > 0 then -1*fa.amtacctdr else  fa.amtacctcr end) as tt, 0 as sl_thanhpham,0 as tong_van, sum(-1*fa.qty) as sl_gonl  
 		from m_inventory mi
 		join m_inventoryline miv on mi.m_inventory_id  = miv.m_inventory_id  
 		join m_attributesetinstance att on att.m_attributesetinstance_id = miv.m_attributesetinstance_id  and  (att.m_lot_id = $P{M_Lot_ID} )
 		join m_product hh on miv.m_product_id = hh.m_product_id and hh.m_product_category_id in (1000562,1000084)
 		join fact_acct fa on fa.record_id = miv.m_inventory_id and fa.line_id = miv.m_inventoryline_id and fa.ad_table_id = 321
-		where  fa.ad_client_id = $P{AD_CLIENT_ID}  and fa.c_campaign_id in (1000088,1000090)
-		and fa.amtacctcr =0
-		group by name
+		join c_elementvalue acct on fa.account_id = acct.c_elementvalue_id and (LEFT(acct.value, 2) in ('15'))
+		where  fa.ad_client_id = $P{AD_CLIENT_ID}  and fa.c_campaign_id in (1000088,1000090)	
+		group by hh.name
 	
 
 	

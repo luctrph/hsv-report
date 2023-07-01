@@ -79,7 +79,7 @@ FROM (
 	
 		union all
 		
-		select fa.dateacct ,att.lot,0 as b1,0 as b2,0 as b3, sum(fa.qty) as b4,0 as b55,0 as sl_rac,0 as tong_tp,0 as sl_van, -1* sum(fa.amtacctdr)   as ztt 
+		select fa.dateacct ,att.lot,0 as b1,0 as b2,0 as b3, sum(fa.qty) as b4,0 as b55,0 as sl_rac,0 as tong_tp,0 as sl_van, -1* sum(fa.amtsourcedr)   as ztt 
 		from fact_acct fa 
 		join m_product hh on hh.m_product_id = fa.m_product_id and hh.m_product_category_id in (1000562,1000084) 
 		join m_productionline  civ on fa.line_id = civ.m_productionline_id 
@@ -165,26 +165,26 @@ FROM (
 			union all	
 			---keo boc chuyen bam chip
 				
-			select att.lot ,mi.movementdate as dateacct ,-1* sum(fa.qty) as qty ,sum(fa.amtacctdr) as tt, 0 as tong_tp,null::int4 as tong_van  
+			select att.lot ,mi.movementdate as dateacct ,-1* sum(fa.qty) as qty ,sum(case when fa.qty  > 0 then -1*fa.amtacctdr else  fa.amtacctcr end) as tt, 0 as tong_tp,null::int4 as tong_van  
 			from m_inventory mi
 			join m_inventoryline miv on mi.m_inventory_id  = miv.m_inventory_id  
 			join m_attributesetinstance att on att.m_attributesetinstance_id = miv.m_attributesetinstance_id 
 			join m_product hh on miv.m_product_id = hh.m_product_id and hh.m_product_category_id in (1000562,1000084)
 			join fact_acct fa on fa.record_id = miv.m_inventory_id and fa.line_id = miv.m_inventoryline_id and fa.ad_table_id = 321
+			join c_elementvalue acct on fa.account_id = acct.c_elementvalue_id and (LEFT(acct.value, 2) in ('15'))
 			where  mi.ad_client_id = $P{AD_CLIENT_ID}  and fa.c_campaign_id in (1000088,1000090)
-			and fa.qty >0
 			group by att.lot,movementdate 
 	
 			union all
 			
-			select att.lot ,mi.movementdate as dateacct , -1*sum(fa.qty) as qty ,sum(fa.amtacctdr) as tt,0 as tong_tp, null::int4 as tong_van 
+			select att.lot ,mi.movementdate as dateacct , -1*sum(fa.qty) as qty ,sum(case when fa.qty  > 0 then -1*fa.amtacctdr else  fa.amtacctcr end) as tt,0 as tong_tp, null::int4 as tong_van 
 			from m_inventory mi
 			join m_inventoryline miv on mi.m_inventory_id  = miv.m_inventory_id  
 			join m_attributesetinstance att on att.m_attributesetinstance_id = miv.m_attributesetinstance_id 
 			join m_product hh on miv.m_product_id = hh.m_product_id and hh.m_product_category_id in (1000562,1000084)
 			join fact_acct fa on fa.record_id = miv.m_inventory_id and fa.line_id = miv.m_inventoryline_id and fa.ad_table_id = 321
+			join c_elementvalue acct on fa.account_id = acct.c_elementvalue_id and (LEFT(acct.value, 2) in ('15'))
 			where  mi.ad_client_id = $P{AD_CLIENT_ID}  and fa.c_campaign_id in (1000036,1000091)
-			and fa.qty >0
 			group by att.lot,movementdate 
 			
 			union all 
