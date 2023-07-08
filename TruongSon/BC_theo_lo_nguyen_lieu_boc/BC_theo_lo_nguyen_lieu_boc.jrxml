@@ -43,7 +43,7 @@ from(
 	union all 
 	select 4 as danhmuc, 'Thành phẩm bóc ' as dm_name
 	union all 
-	select 5 as danhmuc, 'Keo cọc chuyển băm chíp' as dm_name
+	select 5 as danhmuc, 'Gỗ chuyển lô khác' as dm_name
 	union all 
 	select 6 as danhmuc, 'Keo loại đóng falet' as dm_name
 	union all
@@ -76,7 +76,7 @@ from(
 	
 	select  3 as danhmuc, name, sum(qty) as qty, sum(tt) as tt, 0 as sl_thanhpham,0 as tong_van 
 	from(
-		select  'Nhân công (220.000/m3)' as name,qty,qty * 220000 as tt 
+		select  'Nhân công (210.000/m3)' as name,qty,qty * 210000 as tt 
 		from(
 			select civ.productionqty as qty 
 			from m_production ci 
@@ -89,7 +89,7 @@ from(
 		) as k
 		
 		union all 
-		select  'Khac (180.000/m3)' as name,qty,qty * 180000 as tt 
+		select  'Khac (100.000/m3)' as name,qty,qty * 100000 as tt 
 		from(
 			select civ.productionqty as qty 
 			from m_production ci 
@@ -113,14 +113,13 @@ from(
 		join hsv_nkdongialine dgl on hh.m_product_id = dgl.m_product_id 
 		join hsv_dongia hsv_dg on hsv_dg.hsv_dongia_id = dgl.hsv_dongia_id and hsv_dg.hsv_loaidongia_id  in (1000000,1000042)				
 		where ci.ad_client_id =$P{AD_CLIENT_ID}  and ci.movementdate >= hsv_dg.startdate and ci.movementdate <= hsv_dg.enddate 
-	
-	
+
 		union  all 
 		select   hh.name,0 as qty, 0 as tt, 0 as sl_thanhpham, coalesce(civ.productionqty,0) as tong_van
 		from m_production ci 	 
 		join m_productionplan  civ on ci.m_production_id  = civ.m_production_id 	
 		join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id and  (att.m_lot_id = $P{M_Lot_ID} ) 
-		join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_category_id in (1000569,1000085)
+		join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_category_id in (1000569,1000085) and hh.m_attributeset_id in (1000065,1000160)
 		join hsv_nkdongialine dgl on hh.m_product_id = dgl.m_product_id 
 		join hsv_dongia hsv_dg on hsv_dg.hsv_dongia_id = dgl.hsv_dongia_id and hsv_dg.hsv_loaidongia_id  in (1000000,1000042)				
 		where ci.ad_client_id =$P{AD_CLIENT_ID}  and ci.movementdate >= hsv_dg.startdate and ci.movementdate <= hsv_dg.enddate 
@@ -133,7 +132,7 @@ from(
 		
 	
 			
-		select 5 as danhmuc, hh.name , sum(-1*fa.qty) as qty , sum(case when fa.qty > 0 then -1*fa.amtacctdr else fa.amtsourcecr end ) as tt, 0 as sl_thanhpham,0 as tong_van  
+		select 5 as danhmuc, hh.name , sum(-1*fa.qty) as qty , sum(case when fa.qty > 0 then -1*fa.amtacctdr else fa.amtacctcr end ) as tt, 0 as sl_thanhpham,0 as tong_van  
 		from m_inventory mi
 		join m_inventoryline miv on mi.m_inventory_id  = miv.m_inventory_id  
 		join m_attributesetinstance att on att.m_attributesetinstance_id = miv.m_attributesetinstance_id  and  (att.m_lot_id = $P{M_Lot_ID} )
@@ -149,14 +148,14 @@ from(
 		
 
 		
-		select 6 as danhmuc, hh.name , sum(fa.qty) as qty , sum(fa.amtacctdr) as tt , 0 as sl_thanhpham,0 as tong_van 
+		select 6 as danhmuc, hh.name , sum(fa.qty) as qty , sum(case when fa.qty > 0 then -1*fa.amtacctdr else fa.amtacctcr end ) as tt , 0 as sl_thanhpham,0 as tong_van 
 		from m_inventory mi
 		join m_inventoryline miv on mi.m_inventory_id  = miv.m_inventory_id  
 		join m_attributesetinstance att on att.m_attributesetinstance_id = miv.m_attributesetinstance_id and  (att.m_lot_id = $P{M_Lot_ID} )
 		join m_product hh on miv.m_product_id = hh.m_product_id and hh.m_product_category_id in (1000562,1000084)
 		join fact_acct fa on fa.record_id = miv.m_inventory_id and fa.line_id = miv.m_inventoryline_id and fa.ad_table_id = 321
-		where  mi.ad_client_id = $P{AD_CLIENT_ID}  and fa.c_campaign_id in (1000036,1000091)
-		and fa.qty >0
+		join c_elementvalue acct on fa.account_id = acct.c_elementvalue_id and (LEFT(acct.value, 2) in ('15'))
+		where  mi.ad_client_id = $P{AD_CLIENT_ID}  and fa.c_campaign_id in (1000036,1000091) and mi.docstatus in ('CL','CO')
 		group by hh.name
 
 		
@@ -510,6 +509,7 @@ from(
 			<subreport isUsingCache="true">
 				<reportElement x="0" y="0" width="555" height="29" uuid="9e730ff1-f198-4952-a7de-4f97041bf05a">
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="pixel"/>
 				</reportElement>
 				<subreportParameter name="AD_CLIENT_ID">
 					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
