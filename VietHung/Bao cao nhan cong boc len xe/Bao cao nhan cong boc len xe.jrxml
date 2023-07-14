@@ -12,36 +12,7 @@
 		<defaultValueExpression><![CDATA["dev/"]]></defaultValueExpression>
 	</parameter>
 	<queryString>
-		<![CDATA[select row_number() over(PARTITION BY dm ORDER BY name) as stt,dm, name, sl, dg,tt, tienkhac, ketqua
-from(
-select 'A. Nhân công khai thác' as dm,   name, sl, case when sl<>0 then tt/sl else 0 end  dg, tienkhac ,tt,tt+tienkhac as ketqua
-from(
-	select hj.name, sum(sl) as sl, sum(tt) as tt, sum(tienkhac) as tienkhac
-	from(
-			select nkkt.hr_job_id, nkkt.qtyother as sl, nkkt.qtyother * k.gia as tt, 0 as tienkhac 
-			from   hsv_nkkhaithac nk 
-			join hsv_nkkhaithacline nkkt on nk.hsv_nkkhaithac_id = nkkt.hsv_nkkhaithac_id 
-			left join (	----don gia---
-					select dgl.amount as gia,dgl.c_project_id, dg.c_period_id,dgl.hr_job_id,dg.startdate ,dg.enddate 
-					from hsv_dgngaomau dg
-					join hsv_dgngaomline dgl on dg.hsv_dgngaomau_id =dgl.hsv_dgngaomau_id  
-					where dg.ad_client_id = $P{AD_CLIENT_ID} and dg.isactive ='Y'  and dgl.isactive ='Y'
-			) as k on nkkt.hr_job_id = k.hr_job_id and k.c_project_id = nk.c_project_id
-			where nk.dateacct >= $P{StartDate} and nk.dateacct <= $P{EndDate} and nk.dateacct >=k.startdate and nk.dateacct <= k.enddate
-			and (nk.c_project_id = $P{C_Project_ID} or $P{C_Project_ID} is null)
-			union all 
-			
-			select gvl.hr_job_id, 0 as sl, 0 as tt,gvl.Amount as tienkhac
-			from hsv_giaoviec gv 
-			join hsv_pgvLine gvl on gv.hsv_giaoviec_id = gvl.hsv_giaoviec_id
-			where gv.ad_client_id = $P{AD_CLIENT_ID} and (gvl.c_project_id = $P{C_Project_ID} or $P{C_Project_ID} is null)
-			and gv.dateacct  >= $P{StartDate} and gv.dateacct <= $P{EndDate}	
-		) as t join hr_job hj on hj.hr_job_id = t.hr_job_id
-		group by hj.name
-		
-) as t
-union all
-select 'B. Chi phí bốc lên xe' as dm, name, sl, case when sl<>0 then tt/sl else 0 end  dg, tienkhac ,tt,tt+tienkhac as ketqua
+		<![CDATA[select row_number() over() as stt, name, sl, case when sl<>0 then tt/sl else 0 end  dg, tienkhac ,tt,tt+tienkhac as ketqua
 from(
 	select hj.name, sum(sl) as sl, sum(tt) as tt, sum(tienkhac) as tienkhac
 	from(
@@ -52,10 +23,11 @@ from(
 					select dgl.amount as gia,dgl.c_project_id, dg.c_period_id,dgl.HR_ListType_ID,dg.startdate ,dg.enddate 
 					from hsv_dgngaomau dg
 					join hsv_dgngaomline dgl on dg.hsv_dgngaomau_id =dgl.hsv_dgngaomau_id  
-					where dg.ad_client_id = $P{AD_CLIENT_ID} and dg.isactive ='Y'  and dgl.isactive ='Y'
+					where dg.ad_client_id = $P{AD_CLIENT_ID}  and dg.isactive ='Y'  and dgl.isactive ='Y'
 			) as k on nkkt.HR_ListType_ID = k.HR_ListType_ID and k.c_project_id = nk.c_project_id
 			where nk.dateacct >= $P{StartDate} and nk.dateacct <= $P{EndDate} and nk.dateacct >=k.startdate and nk.dateacct <= k.enddate
 			and (nk.c_project_id = $P{C_Project_ID} or $P{C_Project_ID} is null)
+			
 			union all 
 			
 			select gvl.HR_ListType_ID, 0 as sl, 0 as tt,gvl.Amount as tienkhac
@@ -64,71 +36,19 @@ from(
 			where gv.ad_client_id = $P{AD_CLIENT_ID} and (gvl.c_project_id = $P{C_Project_ID} or $P{C_Project_ID} is null)
 			and gv.dateacct  >= $P{StartDate} and gv.dateacct <= $P{EndDate}	
 		) as t join HR_ListType hj on hj.HR_ListType_ID = t.HR_ListType_ID
+		where  (hj.HR_ListType_ID = $P{HR_ListType_ID} or $P{HR_ListType_ID} is null)
 		group by hj.name
 		
-) as t
-union all 
-select 'C. Chi phí vận chuyển' as dm, name, sl, case when sl<>0 then tt/sl else 0 end  dg, tienkhac ,tt,tt+tienkhac as ketqua
-from(
-	select hj.name, sum(sl) as sl, sum(tt) as tt, sum(tienkhac) as tienkhac
-	from(
-			select nkkt.hr_contract_id, nkkt.qtyother as sl, nkkt.qtyother * k.gia as tt, 0 as tienkhac 
-			from   hsv_nkkhaithac nk 
-			join hsv_nkkhaithacline nkkt on nk.hsv_nkkhaithac_id = nkkt.hsv_nkkhaithac_id 
-			left join (	----don gia---
-					select dgl.amount as gia, dgl.c_project_id,dg.c_period_id,dgl.hr_contract_id,dgl.c_bpartner_id , dg.startdate , dg.enddate 
-					from hsv_dgngaomau dg
-					join hsv_dgngaomline dgl on dg.hsv_dgngaomau_id =dgl.hsv_dgngaomau_id  
-					where dg.ad_client_id = $P{AD_CLIENT_ID}  and dg.isactive ='Y'  and dgl.isactive ='Y'
-			) as k on nkkt.hr_contract_id = k.hr_contract_id and nk.c_bpartner_id = k.c_bpartner_id and k.c_project_id = nk.c_project_id
-			where nk.dateacct >= $P{StartDate} and nk.dateacct <= $P{EndDate} and nk.dateacct >=k.startdate and nk.dateacct <= k.enddate
-			and (nk.c_project_id = $P{C_Project_ID} or $P{C_Project_ID} is null)
-			union all 
-			
-			select gvl.hr_contract_id, 0 as sl, 0 as tt,gvl.Amount as tienkhac
-			from hsv_giaoviec gv 
-			join hsv_pgvLine gvl on gv.hsv_giaoviec_id = gvl.hsv_giaoviec_id
-			where gv.ad_client_id = $P{AD_CLIENT_ID} and (gvl.c_project_id = $P{C_Project_ID} or $P{C_Project_ID} is null)
-			and gv.dateacct  >= $P{StartDate} and gv.dateacct <= $P{EndDate}	
-		) as t join hr_contract  hj on hj.hr_contract_id  = t.hr_contract_id
-		group by hj.name
-		
-) as t
-union all 
-select 'D. Chi phí vận chuyển chuyển tải từ rừng ra bải tập kết' as dm,   name, sl, case when sl<>0 then tt/sl else 0 end  dg, tienkhac ,tt,tt+tienkhac as ketqua
-from(
-	select hj.name, sum(sl) as sl, sum(tt) as tt, sum(tienkhac) as tienkhac
-	from(
-			select nkkt.hsv_vcct_id, nkkt.qtyother as sl, nkkt.qtyother * k.gia as tt, 0 as tienkhac 
-			from   hsv_nkkhaithac nk 
-			join hsv_nkkhaithacline nkkt on nk.hsv_nkkhaithac_id = nkkt.hsv_nkkhaithac_id 
-			left join (	----don gia---
-					select dgl.amount as gia,dgl.c_project_id, dg.c_period_id,dgl.hsv_vcct_id,dg.startdate ,dg.enddate 
-					from hsv_dgngaomau dg
-					join hsv_dgngaomline dgl on dg.hsv_dgngaomau_id =dgl.hsv_dgngaomau_id  
-					where dg.ad_client_id = $P{AD_CLIENT_ID}  and dg.isactive ='Y'  and dgl.isactive ='Y'
-			) as k on nkkt.hsv_vcct_id = k.hsv_vcct_id and k.c_project_id = nk.c_project_id
-			where nk.dateacct >= $P{StartDate} and nk.dateacct <= $P{EndDate} and nk.dateacct >=k.startdate and nk.dateacct <= k.enddate
-			and (nk.c_project_id = $P{C_Project_ID} or $P{C_Project_ID} is null)	
-	) as t join hsv_vcct hj on hj.hsv_vcct_id = t.hsv_vcct_id
-	group by hj.name
-	
-		
-) as t
-) as k]]>
+) as t]]>
 	</queryString>
 	<field name="stt" class="java.lang.Long">
 		<property name="com.jaspersoft.studio.field.name" value="stt"/>
 		<property name="com.jaspersoft.studio.field.label" value="stt"/>
 	</field>
-	<field name="dm" class="java.lang.String">
-		<property name="com.jaspersoft.studio.field.name" value="dm"/>
-		<property name="com.jaspersoft.studio.field.label" value="dm"/>
-	</field>
 	<field name="name" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="name"/>
 		<property name="com.jaspersoft.studio.field.label" value="name"/>
-		<property name="com.jaspersoft.studio.field.tree.path" value="hr_contract"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="hr_listtype"/>
 	</field>
 	<field name="sl" class="java.math.BigDecimal">
 		<property name="com.jaspersoft.studio.field.name" value="sl"/>
@@ -138,13 +58,13 @@ from(
 		<property name="com.jaspersoft.studio.field.name" value="dg"/>
 		<property name="com.jaspersoft.studio.field.label" value="dg"/>
 	</field>
-	<field name="tt" class="java.math.BigDecimal">
-		<property name="com.jaspersoft.studio.field.name" value="tt"/>
-		<property name="com.jaspersoft.studio.field.label" value="tt"/>
-	</field>
 	<field name="tienkhac" class="java.math.BigDecimal">
 		<property name="com.jaspersoft.studio.field.name" value="tienkhac"/>
 		<property name="com.jaspersoft.studio.field.label" value="tienkhac"/>
+	</field>
+	<field name="tt" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="tt"/>
+		<property name="com.jaspersoft.studio.field.label" value="tt"/>
 	</field>
 	<field name="ketqua" class="java.math.BigDecimal">
 		<property name="com.jaspersoft.studio.field.name" value="ketqua"/>
@@ -162,121 +82,6 @@ from(
 	<variable name="sum_kq" class="java.lang.Double" calculation="Sum">
 		<variableExpression><![CDATA[$F{ketqua}]]></variableExpression>
 	</variable>
-	<variable name="sum_sl_1" class="java.lang.Double" resetType="Group" resetGroup="Group1" calculation="Sum">
-		<variableExpression><![CDATA[$F{sl}]]></variableExpression>
-	</variable>
-	<variable name="sum_tt_1" class="java.lang.Double" resetType="Group" resetGroup="Group1" calculation="Sum">
-		<variableExpression><![CDATA[$F{tt}]]></variableExpression>
-	</variable>
-	<variable name="sum_tienkhac_1" class="java.lang.Double" resetType="Group" resetGroup="Group1" calculation="Sum">
-		<variableExpression><![CDATA[$F{tienkhac}]]></variableExpression>
-	</variable>
-	<variable name="sum_kq_1" class="java.lang.Double" resetType="Group" resetGroup="Group1" calculation="Sum">
-		<variableExpression><![CDATA[$F{ketqua}]]></variableExpression>
-	</variable>
-	<group name="Group1">
-		<groupExpression><![CDATA[$F{dm}]]></groupExpression>
-		<groupHeader>
-			<band height="30">
-				<textField>
-					<reportElement x="-5" y="0" width="570" height="30" uuid="cee6f342-1e9f-419c-bef4-11cfab3ea82a">
-						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="d2c802eb-ac4c-4018-bf07-731bb51e0adc"/>
-						<property name="com.jaspersoft.studio.unit.width" value="px"/>
-					</reportElement>
-					<box topPadding="0" leftPadding="5" rightPadding="2">
-						<pen lineWidth="0.5"/>
-					</box>
-					<textElement textAlignment="Left" verticalAlignment="Middle">
-						<font fontName="Arial" size="11" isBold="true"/>
-					</textElement>
-					<textFieldExpression><![CDATA[$F{dm}]]></textFieldExpression>
-				</textField>
-			</band>
-		</groupHeader>
-		<groupFooter>
-			<band height="30">
-				<textField pattern="#,##0.##">
-					<reportElement x="465" y="0" width="100" height="30" uuid="71a0ab74-0de4-49b7-a765-3566dcaa48bf">
-						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c8570131-7cf8-4229-b980-e22821b08818"/>
-					</reportElement>
-					<box leftPadding="2" rightPadding="2">
-						<pen lineWidth="0.5"/>
-						<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-						<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-						<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-						<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					</box>
-					<textElement textAlignment="Right" verticalAlignment="Middle">
-						<font fontName="Arial" isBold="true"/>
-					</textElement>
-					<textFieldExpression><![CDATA[$V{sum_kq_1}]]></textFieldExpression>
-				</textField>
-				<textField pattern="#,##0.##">
-					<reportElement x="145" y="0" width="70" height="30" uuid="4ea2e631-9806-4609-ae48-c12ca7251ccd">
-						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="d4d8e13a-bd39-4b0b-a77a-c5b5828acff6"/>
-					</reportElement>
-					<box topPadding="0" leftPadding="2" rightPadding="2">
-						<pen lineWidth="0.5"/>
-					</box>
-					<textElement textAlignment="Right" verticalAlignment="Middle">
-						<font fontName="Arial" isBold="true"/>
-					</textElement>
-					<textFieldExpression><![CDATA[$V{sum_sl_1}]]></textFieldExpression>
-				</textField>
-				<textField pattern="#,##0.##">
-					<reportElement x="285" y="0" width="90" height="30" uuid="94de6e4f-ab36-43be-9663-b3ebd3aa2ea4">
-						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="9a8b214d-bed8-4dca-a14c-bfd893265d1f"/>
-						<property name="com.jaspersoft.studio.unit.width" value="px"/>
-					</reportElement>
-					<box topPadding="0" leftPadding="2" rightPadding="2">
-						<pen lineWidth="0.5"/>
-					</box>
-					<textElement textAlignment="Right" verticalAlignment="Middle">
-						<font fontName="Arial" isBold="true"/>
-					</textElement>
-					<textFieldExpression><![CDATA[$V{sum_tt_1}]]></textFieldExpression>
-				</textField>
-				<textField pattern="#,##0.##">
-					<reportElement x="375" y="0" width="90" height="30" uuid="54ef0fbc-f712-4893-be25-f002bfec5cb1">
-						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="7c01f563-45f4-4b44-8dec-77e3a46bacc0"/>
-						<property name="com.jaspersoft.studio.unit.width" value="px"/>
-					</reportElement>
-					<box topPadding="0" leftPadding="2" rightPadding="2">
-						<pen lineWidth="0.5"/>
-					</box>
-					<textElement textAlignment="Right" verticalAlignment="Middle">
-						<font fontName="Arial" isBold="true"/>
-					</textElement>
-					<textFieldExpression><![CDATA[$V{sum_tienkhac_1}]]></textFieldExpression>
-				</textField>
-				<textField>
-					<reportElement x="-5" y="0" width="150" height="30" uuid="fc08ce97-e225-4556-ad6b-2571d6de75fd">
-						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="d2c802eb-ac4c-4018-bf07-731bb51e0adc"/>
-						<property name="com.jaspersoft.studio.unit.width" value="px"/>
-					</reportElement>
-					<box topPadding="0" leftPadding="2" rightPadding="2">
-						<pen lineWidth="0.5"/>
-					</box>
-					<textElement textAlignment="Left" verticalAlignment="Middle">
-						<font fontName="Arial" isBold="true"/>
-					</textElement>
-					<textFieldExpression><![CDATA["Cộng nhóm"]]></textFieldExpression>
-				</textField>
-				<textField pattern="#,##0.##" isBlankWhenNull="true">
-					<reportElement x="215" y="0" width="70" height="30" uuid="f347aaca-14e4-45f9-9318-77f5e2543021">
-						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="03426b46-2c5a-407e-ba87-0fa47dc6a608"/>
-						<property name="com.jaspersoft.studio.unit.width" value="px"/>
-					</reportElement>
-					<box topPadding="0" leftPadding="2" rightPadding="2">
-						<pen lineWidth="0.5"/>
-					</box>
-					<textElement textAlignment="Right" verticalAlignment="Middle" markup="none">
-						<font fontName="Arial" isBold="true"/>
-					</textElement>
-				</textField>
-			</band>
-		</groupFooter>
-	</group>
 	<background>
 		<band splitType="Stretch"/>
 	</background>
@@ -290,7 +95,7 @@ from(
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font fontName="Arial" size="16" isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA["TỔNG HỢP CHI PHÍ KHAI THÁC GỖ"]]></textFieldExpression>
+				<textFieldExpression><![CDATA["BÁO CÁO NHÂN CÔNG BỐC LÊN XE"]]></textFieldExpression>
 			</textField>
 			<textField>
 				<reportElement positionType="Float" x="-5" y="67" width="570" height="23" uuid="50e50581-f386-400e-9ec4-1c362abbff7b"/>
