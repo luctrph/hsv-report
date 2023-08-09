@@ -7,31 +7,29 @@
 	<parameter name="StartDate" class="java.util.Date"/>
 	<parameter name="EndDate" class="java.util.Date"/>
 	<queryString language="SQL">
-		<![CDATA[select row_number() over() as stt, noidung ,sum(sl) as sl, sum(sl2) as sl2, sum(sla1) as a1,sum(sla3) as a3
+		<![CDATA[select row_number() over() as stt, noidung ,sum(sl) as sl, sum(sl2) as sl2
 	from(
-		select 'SL nguyên liệu gỗ xuất bóc ván(kg)' as noidung,lot,dateacct,sl,0.94*sl as sl2, sl as sla1, 0 as sla3
+		select 'SL nguyên liệu gỗ xuất bóc ván(kg)' as noidung,lot,dateacct,sl,0.94*sl as sl2
 		from(
 			select att.lot,ci.movementdate  as dateacct , civ.qtyinternaluse  as sl
 			from m_inventory  ci
 			join m_inventoryline civ  on ci.m_inventory_id  = civ.m_inventory_id  
 			join m_product hh on hh.m_product_id = civ.m_product_id and (hh.m_product_category_id in (1000562,1000084) )			
 			join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
-			join m_lot lot on lot.m_lot_id = att.m_lot_id and lot.m_lotctl_id in (1000022,1000037) 
-			where civ.ad_client_id = $P{AD_CLIENT_ID} and ci.docstatus in ('CL','CO') and ci.c_campaign_id not in (1000090,1000088) 			
+			where civ.ad_client_id = $P{AD_CLIENT_ID} and ci.docstatus in ('CL','CO')		 			
 		) as k 
 		union all 
-		select 'SL Phụ phẩm lõi thu được(kg)' as noidung,lot,dateacct ,sl,-1*sl2 as sl2, 0 as sla1, 0 as sla3
+		select 'SL Phụ phẩm lõi thu được(kg)' as noidung,lot,dateacct ,sl,-1*sl2 as sl2
 		from(
 			select  att.lot,ci.movementdate as dateacct, civ.productionqty as sl,civ.productionqty as sl2 
 			from m_production ci  
 			join m_productionplan civ on ci.m_production_id = civ.m_production_id
 			join m_product hh on hh.m_product_id = civ.m_product_id and ( hh.m_product_id  in (1018344,1008358) )						
 			join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
-			join m_lot lot on lot.m_lot_id = att.m_lot_id and lot.m_lotctl_id in (1000022,1000037) 
 			where ci.ad_client_id =$P{AD_CLIENT_ID}  and   ci.docstatus in ('CL','CO')										
 		) as k 
 		union all 
-		select 'SL ván bóc thu được(m3)' as noidung , lot,  dateacct, sl, -1 * sl2  as sl2, 0 as sla1, sl as sla3
+		select 'SL ván bóc thu được(m3)' as noidung , lot,  dateacct, sl, -1 * sl2  as sl2
 		from (
 			select  att.lot,ci.movementdate as dateacct, civ.productionqty as sl,civ.productionqty*k.amountdg1 as sl2 
 			from m_production ci  
@@ -44,12 +42,10 @@
 				join hsv_dongia hsv_dg on hsv_dg.hsv_dongia_id = dgl.hsv_dongia_id and hsv_dg.hsv_loaidongia_id  in (1000000,1000042)
 				where hsv_dg.ad_client_id = $P{AD_CLIENT_ID}				
 			) as k on k.m_product_id = civ.m_product_id 
-			
 			where ci.ad_client_id =$P{AD_CLIENT_ID}  and ci.movementdate >= k.startdate and ci.movementdate <= k.enddate and  ci.docstatus in ('CL','CO')										
-		
-			) as k where sl2 <>0
-	) as k 
-	where  k.dateacct >= $P{StartDate} and k.dateacct <=$P{EndDate}
+		) as k where sl2 <>0
+	) as k join m_lot lo on lo.name = k.lot and  lo.m_lotctl_id in (1000022,1000037) 
+	and k.dateacct >= $P{StartDate} and k.dateacct <=$P{EndDate}
 	group by noidung]]>
 	</queryString>
 	<field name="stt" class="java.lang.Long">
@@ -68,23 +64,9 @@
 		<property name="com.jaspersoft.studio.field.name" value="sl2"/>
 		<property name="com.jaspersoft.studio.field.label" value="sl2"/>
 	</field>
-	<field name="a1" class="java.math.BigDecimal">
-		<property name="com.jaspersoft.studio.field.name" value="a1"/>
-		<property name="com.jaspersoft.studio.field.label" value="a1"/>
-	</field>
-	<field name="a3" class="java.math.BigDecimal">
-		<property name="com.jaspersoft.studio.field.name" value="a3"/>
-		<property name="com.jaspersoft.studio.field.label" value="a3"/>
-	</field>
 	<variable name="sl2" class="java.lang.Double" calculation="Sum">
 		<variableExpression><![CDATA[$F{sl2}]]></variableExpression>
 		<initialValueExpression><![CDATA[0]]></initialValueExpression>
-	</variable>
-	<variable name="a1" class="java.lang.Double" calculation="Sum">
-		<variableExpression><![CDATA[$F{a1}]]></variableExpression>
-	</variable>
-	<variable name="a3" class="java.lang.Double" calculation="Sum">
-		<variableExpression><![CDATA[$F{a3}]]></variableExpression>
 	</variable>
 	<background>
 		<band splitType="Stretch"/>
@@ -215,7 +197,7 @@
 		</band>
 	</detail>
 	<summary>
-		<band height="52" splitType="Stretch">
+		<band height="26" splitType="Stretch">
 			<textField pattern="#,##0" isBlankWhenNull="true">
 				<reportElement x="440" y="0" width="115" height="26" uuid="485f4196-4b09-4528-ba00-88cab9fc6453">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c247f36e-d821-46aa-b2af-73d59b16b2c4"/>
@@ -302,91 +284,6 @@
 					<font fontName="Arial" size="11"/>
 				</textElement>
 				<textFieldExpression><![CDATA["Rác thu được (DM: 94%* NL - Lõi - Ván bóc QĐ) (kg)"]]></textFieldExpression>
-			</textField>
-			<textField pattern="#,##0" isBlankWhenNull="true">
-				<reportElement x="270" y="26" width="90" height="26" uuid="495a2200-f648-470d-bb98-67978963400b">
-					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c247f36e-d821-46aa-b2af-73d59b16b2c4"/>
-					<property name="com.jaspersoft.studio.unit.height" value="px"/>
-				</reportElement>
-				<box leftPadding="2" rightPadding="2">
-					<pen lineWidth="0.5"/>
-					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-				</box>
-				<textElement textAlignment="Right" verticalAlignment="Middle">
-					<font fontName="Arial" size="11"/>
-				</textElement>
-				<textFieldExpression><![CDATA[$V{a3}==0?0:$V{a1}/$V{a3}]]></textFieldExpression>
-			</textField>
-			<textField pattern="#,##0" isBlankWhenNull="true">
-				<reportElement x="440" y="26" width="115" height="26" uuid="3dccc1b3-aa7b-442d-8959-93ebc08743ba">
-					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c247f36e-d821-46aa-b2af-73d59b16b2c4"/>
-					<property name="com.jaspersoft.studio.unit.y" value="px"/>
-					<property name="com.jaspersoft.studio.unit.height" value="px"/>
-				</reportElement>
-				<box leftPadding="2" rightPadding="2">
-					<pen lineWidth="0.5"/>
-					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-				</box>
-				<textElement textAlignment="Right" verticalAlignment="Middle">
-					<font fontName="Arial" size="11"/>
-				</textElement>
-			</textField>
-			<textField>
-				<reportElement x="40" y="26" width="230" height="26" uuid="3cb12600-53b7-4593-b1f3-5a2385a5cbf3">
-					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="d29b2e3a-2010-4cb6-aa14-04ab9e9bd963"/>
-					<property name="com.jaspersoft.studio.unit.height" value="px"/>
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-				</reportElement>
-				<box leftPadding="2" rightPadding="2">
-					<pen lineWidth="0.5"/>
-					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-				</box>
-				<textElement verticalAlignment="Middle">
-					<font fontName="Arial" size="11"/>
-				</textElement>
-				<textFieldExpression><![CDATA["Tỷ lệ thu hồi ván (NL gỗ / ván bóc) (kg/m3)"]]></textFieldExpression>
-			</textField>
-			<textField pattern="#,##0.##" isBlankWhenNull="true">
-				<reportElement x="360" y="26" width="80" height="26" uuid="7ee2f1bc-0ddc-43d1-a62c-cb16b60b7612">
-					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c247f36e-d821-46aa-b2af-73d59b16b2c4"/>
-					<property name="com.jaspersoft.studio.unit.height" value="px"/>
-				</reportElement>
-				<box leftPadding="2" rightPadding="2">
-					<pen lineWidth="0.5"/>
-					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-				</box>
-				<textElement textAlignment="Right" verticalAlignment="Middle">
-					<font fontName="Arial" size="11"/>
-				</textElement>
-			</textField>
-			<textField>
-				<reportElement x="0" y="26" width="40" height="26" uuid="4c5965f4-3538-4b1f-b9ce-0a7cb31470a3">
-					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="dfd9557f-0c07-4638-a6eb-f56e22e127bd"/>
-					<property name="com.jaspersoft.studio.unit.height" value="px"/>
-				</reportElement>
-				<box leftPadding="2" rightPadding="2">
-					<pen lineWidth="0.5"/>
-					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-				</box>
-				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font fontName="Arial" size="11"/>
-				</textElement>
-				<textFieldExpression><![CDATA[$F{stt}+2]]></textFieldExpression>
 			</textField>
 		</band>
 	</summary>
