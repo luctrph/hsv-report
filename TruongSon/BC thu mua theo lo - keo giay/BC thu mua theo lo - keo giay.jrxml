@@ -25,10 +25,9 @@
 	<parameter name="SUBREPORT_DIR" class="java.lang.String">
 		<defaultValueExpression><![CDATA["dev/"]]></defaultValueExpression>
 	</parameter>
-	<parameter name="M_LotCtl_ID" class="java.lang.Integer"/>
-	<parameter name="EXPORT_TYPE" class="java.lang.String"/>
 	<parameter name="StartDate" class="java.util.Date"/>
 	<parameter name="EndDate" class="java.util.Date"/>
+	<parameter name="M_Lot_ID" class="java.lang.Integer"/>
 	<queryString language="SQL">
 		<![CDATA[select row_number() over() as stt, lot,sum(slm) as slm, sum(ttm) as ttm, sum(c5) as cp_dm, sum(c6) as nhap_cl, sum(c7) as xuat_cl, sum(c8) as tp_sx,sum(c9) as slb, sum(c10) as ttb, sum(c11)*0.17*500 as tien_ppdm, case when sum(c8)<>0 then sum(c11)/sum(c8) else 0 end  as tyle
 ,sum(c12)+sum(c11)*0.17*500 as hq
@@ -114,8 +113,9 @@ from(
 			where ci.issotrx = 'Y' and ci.ad_client_id = $P{AD_CLIENT_ID} and ci.docstatus in ('CO','CL')
 		) as k 
 	) as k
-	join m_lot ml on ml.name = k.lot and ml.isactive ='Y'
-	where ml.m_lotctl_id = $P{M_LotCtl_ID} and   ml.dateto >= $P{StartDate} AND ml.dateto <= $P{EndDate} 
+	join m_lot ml on ml.name = k.lot and ml.isactive ='Y' 
+	where ml.m_lotctl_id in (1000048,1000038) and   ml.dateto >= $P{StartDate} AND ml.dateto <= $P{EndDate} 
+	and (ml.m_lot_id = $P{M_Lot_ID} or $P{M_Lot_ID} is null)
 	group by lot]]>
 	</queryString>
 	<field name="stt" class="java.lang.Long">
@@ -423,7 +423,7 @@ from(
 		<band splitType="Stretch"/>
 	</background>
 	<title>
-		<band height="83" splitType="Stretch">
+		<band height="115" splitType="Stretch">
 			<staticText>
 				<reportElement x="0" y="40" width="1159" height="24" uuid="0c46b131-f63a-4c80-a6c1-4dea94f98c2e">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
@@ -456,12 +456,6 @@ from(
 				<subreportParameter name="SUBREPORT_DIR">
 					<subreportParameterExpression><![CDATA[$P{SUBREPORT_DIR}]]></subreportParameterExpression>
 				</subreportParameter>
-				<subreportParameter name="M_LotCtl_ID">
-					<subreportParameterExpression><![CDATA[$P{M_LotCtl_ID}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="EXPORT_TYPE">
-					<subreportParameterExpression><![CDATA[$P{EXPORT_TYPE}]]></subreportParameterExpression>
-				</subreportParameter>
 				<subreportParameter name="StartDate">
 					<subreportParameterExpression><![CDATA[$P{StartDate}]]></subreportParameterExpression>
 				</subreportParameter>
@@ -470,6 +464,31 @@ from(
 				</subreportParameter>
 				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
 				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"CompanyInfo.jasper"]]></subreportExpression>
+			</subreport>
+			<subreport>
+				<reportElement x="40" y="85" width="1119" height="30" uuid="a9accd91-a587-42e9-a1a8-8d35247da127">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<subreportParameter name="AD_CLIENT_ID">
+					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="SUBREPORT_DIR">
+					<subreportParameterExpression><![CDATA[$P{SUBREPORT_DIR}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="StartDate">
+					<subreportParameterExpression><![CDATA[$P{StartDate}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="EndDate">
+					<subreportParameterExpression><![CDATA[$P{EndDate}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="M_Lot_ID">
+					<subreportParameterExpression><![CDATA[$P{M_Lot_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"Lo.jasper"]]></subreportExpression>
 			</subreport>
 		</band>
 	</title>
@@ -893,7 +912,6 @@ from(
 				<reportElement x="0" y="43" width="260" height="20" uuid="8ae8fa51-ea5b-46af-9405-06ee791607cb">
 					<property name="local_mesure_unity" value="pixel"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
-					<printWhenExpression><![CDATA[$P{EXPORT_TYPE}==null]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
 					<font fontName="Arial" size="12" isBold="true"/>
@@ -903,7 +921,6 @@ from(
 			<staticText>
 				<reportElement x="500" y="43" width="225" height="20" uuid="06008522-1365-4a1f-9a1a-963a868bc079">
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
-					<printWhenExpression><![CDATA[$P{EXPORT_TYPE}==null]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
 					<font fontName="Arial" size="12" isBold="true"/>
@@ -913,7 +930,6 @@ from(
 			<staticText>
 				<reportElement x="975" y="43" width="184" height="20" uuid="acfe9ce9-bbc4-4439-af73-06346a65c9f3">
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
-					<printWhenExpression><![CDATA[$P{EXPORT_TYPE}==null]]></printWhenExpression>
 				</reportElement>
 				<textElement textAlignment="Center">
 					<font fontName="Arial" size="12" isBold="true"/>
