@@ -56,7 +56,7 @@ from(
 	      	select nk.AD_Org_ID ,nk.hsv_tosx_ID ,nkl.hsv_sanpham_ID,nk.DateAcct ,sum(nkl.QtyOther +nkl.Qty_tam) as sl
 			from hsv_nhatkysx nk
 			join hsv_nhatkysxline nkl on nk.hsv_nhatkysx_id=nkl.hsv_nhatkysx_id
-			where nk.ad_client_id=$P{AD_CLIENT_ID} and $P{AD_CLIENT_ID} in (1000006,1000036)
+			where nk.ad_client_id=$P{AD_CLIENT_ID} 
 			and (nk.AD_Org_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
 			and nk.DateAcct>=$P{StartDate} and nk.DateAcct<=$P{EndDate}  and nk.hsv_tosx_ID not in (1000006, 1000024,1000246,1000195)
 			group by nk.AD_Org_ID ,nk.hsv_tosx_ID, nkl.hsv_sanpham_ID   ,nk.DateAcct
@@ -79,7 +79,7 @@ from(
 			from hsv_nhatkysx nk
 			join hsv_nhatkysxline nkl on nk.hsv_nhatkysx_id=nkl.hsv_nhatkysx_id
 			join hsv_tosx tsx on nk.hsv_tosx_id =tsx.hsv_tosx_id and (tsx.hsv_loaimat_ID in (1000004))
-			where nk.ad_client_id=$P{AD_CLIENT_ID} and  $P{AD_CLIENT_ID} = 1000006
+			where nk.ad_client_id=$P{AD_CLIENT_ID} 
 			and (nk.AD_Org_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
 			and nk.DateAcct>=$P{StartDate} and nk.DateAcct<=$P{EndDate}
 			group by nk.AD_Org_ID ,nk.hsv_tosx_ID, nkl.hsv_sanpham_ID,nk.DateAcct,nk.ad_client_id
@@ -188,6 +188,7 @@ from(
 			where nk.ad_client_id=$P{AD_CLIENT_ID}  and (nk.AD_Org_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
 			and nk.DateAcct>=$P{StartDate} and nk.DateAcct<=$P{EndDate}
 			group by nk.AD_Org_ID ,nk.hsv_tosx_ID, nkl.hsv_sanpham_ID,nk.DateAcct,nk.ad_client_id
+			
 		) as t
 		join hsv_sanpham sp on t.hsv_sanpham_ID=sp.hsv_sanpham_ID
 		join (select l.EndDate,l.StartDate,ln.hsv_tosx_ID ,ln.hsv_sanpham_ID,ln.hsv_dongialuong,ln.AD_Org_ID
@@ -196,28 +197,26 @@ from(
 	) as l on t.hsv_sanpham_ID=l.hsv_sanpham_ID and t.hsv_tosx_ID=l.hsv_tosx_ID  and t.DateAcct>=l.StartDate and t.DateAcct<=l.EndDate  and t.AD_Org_ID=l.AD_Org_ID
 	join hsv_tosx tsx on t.hsv_tosx_ID=tsx.hsv_tosx_ID and (tsx.hsv_tosx_id =$P{hsv_tosx_ID} or $P{hsv_tosx_ID} is null)
 	group by tsx.hsv_stt,t.hsv_tosx_ID,tsx.hsv_loaimat_ID,tsx.name ,sp.name,t.DateAcct,sp.ShelfDepth,sp.ShelfWidth,sp.ShelfHeight,l.hsv_dongialuong
+union all
+--- bam chip
+		select t.hsv_stt, t.name  as tosx ,t.sp,k.dateacct ,k.sl ,t.hsv_dongialuong, k.sl* t.hsv_dongialuong as luong
+		from (
+			select 1000256 as id,miv.m_product_id , mi.dateacct , miv.qtyentered as sl
+			from m_inout mi
+			join  m_inoutline miv on mi.m_inout_id = miv.m_inout_id
+			where mi.issotrx = 'Y' and mi.ad_client_id = $P{AD_CLIENT_ID} and miv.m_product_id = 1018826 and mi.docstatus in ('CL','CO')
+			and mi.DateAcct>=$P{StartDate} and mi.DateAcct<=$P{EndDate} 
+		) as k
+		join (
+			select l.EndDate, l.StartDate, ht.hsv_stt, ht.name, sp.m_product_id, sp.name as sp, dgln.hsv_dongialuong
+			from  hsv_dgluongLine dgln
+			join hsv_dgluong l  on l.hsv_dgluong_ID = dgln.hsv_dgluong_ID
+			join hsv_sanpham sp on sp.hsv_sanpham_id = dgln.hsv_sanpham_id
+			join hsv_tosx ht on ht.hsv_tosx_id = dgln.hsv_tosx_id 
+			where  sp.hsv_sanpham_ID = 1000383 and l.hsv_loaidongia_ID in (1000001,1000002,1000008,1000022,1000043) and l.ad_client_id=$P{AD_CLIENT_ID}
+		) as t on k.m_product_id = t.m_product_id
+		where k.DateAcct >= t.StartDate and k.DateAcct <= t.EndDate
 
-	union all
-	--- bam chip
-	select z.hsv_stt, z.name  as tosx ,t.sp,k.dateacct ,k.sl ,t.hsv_dongialuong, k.sl* t.hsv_dongialuong as luong
-	from (
-		select 1000256 as id,miv.m_product_id , mi.dateacct , miv.qtyentered as sl
-		from m_inout mi
-		join  m_inoutline miv on mi.m_inout_id = miv.m_inout_id
-		where mi.issotrx = 'Y' and mi.ad_client_id = $P{AD_CLIENT_ID}  and $P{AD_CLIENT_ID} = 1000006 and miv.m_product_id = 1018826 and mi.docstatus in ('CL','CO')
-		and mi.DateAcct>=$P{StartDate} and mi.DateAcct<=$P{EndDate} and $P{hsv_tosx_ID} = 1000256
-	) as k
-	join (
-		select l.EndDate, l.StartDate, dgln.hsv_tosx_ID, sp.m_product_id, sp.name as sp, dgln.hsv_dongialuong
-		from  hsv_dgluongLine dgln
-		join hsv_dgluong l  on l.hsv_dgluong_ID = dgln.hsv_dgluong_ID
-		join hsv_sanpham sp on sp.hsv_sanpham_id = dgln.hsv_sanpham_id
-		where  sp.hsv_sanpham_ID = 1000383 and l.hsv_loaidongia_ID in (1000001,1000002,1000008,1000022,1000043) and l.ad_client_id=$P{AD_CLIENT_ID}
-	) as t on k.m_product_id = t.m_product_id
-	join (
-		select 1000256 as id, ht.hsv_stt, ht.name   from hsv_tosx ht  where ht.hsv_tosx_id = $P{hsv_tosx_ID}
-	) as z on k.id = z.id
-	where k.DateAcct >= t.StartDate and k.DateAcct <= t.EndDate
 ) as t
 group by  t.hsv_stt,t.tosx,t.sp,t.hsv_dongialuong
 order by t.hsv_stt]]>

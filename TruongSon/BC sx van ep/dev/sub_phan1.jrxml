@@ -1,0 +1,283 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.20.0.final using JasperReports Library version 6.20.0-2bc7ab61c56f459e8176eb05c7705e145cd400ad  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Blank_A4" pageWidth="555" pageHeight="842" columnWidth="555" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="4db6558a-3114-4c7e-b169-47fe579aa77c">
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="psql"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="224"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="769"/>
+	<property name="com.jaspersoft.studio.unit." value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.pageHeight" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.pageWidth" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.topMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.bottomMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.leftMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.rightMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.columnWidth" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.columnSpacing" value="pixel"/>
+	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
+	<parameter name="StartDate" class="java.util.Date"/>
+	<parameter name="EndDate" class="java.util.Date"/>
+	<queryString language="SQL">
+		<![CDATA[select 'A' as stt, 'Ván ép đơn hàng xuất bán' as noidung, null::int4 as sl_tam, -1*sum(case when fa.qty <0 then qty else 0 end ) as m3, -1* sum(case when fa.qty<0 then fa.amtacctdr  - fa.amtacctcr  else 0 end ) as tt 
+from fact_acct fa 
+join  m_product hh on hh.m_product_id = fa.m_product_id and hh.m_attributeset_id in  (1000064,1000165)
+where fa.ad_table_id = 318 and fa.ad_client_id = $P{AD_CLIENT_ID} and fa.dateacct >= $P{StartDate} and fa.dateacct <= $P{EndDate}
+
+union all 
+
+select 'B' as stt, 'Ván độn (sấy) sử dụng' as noidung, null::int4 as sl_tam, sum(sl) as m3,sum(tt) as tt
+from( 
+	select (dudau - ducuoi +nhap-xuat) as sl,  (dudau - ducuoi +nhap-xuat)*dg as tt
+	from(
+		select sum(dudau) as dudau, sum(ducuoi) as ducuoi, sum(nhap) as nhap, sum(xuat) as xuat,sum(dg) as dg 
+		from(
+			select t.name,
+				sum(case when t.movementdate < $P{StartDate} then t.movementqty else 0 end) as dudau,
+				sum(case when t.movementdate <= $P{EndDate} then t.movementqty else 0 end) as ducuoi,
+				
+				0 as nhap, 0 as xuat,0 as dg
+						
+			from (	
+				select trans.AD_Org_ID,hh.m_product_id,hh.value ,hh.name ,trans.m_product_id,trans.m_locator_id,trans.movementdate,trans.movementtype,trans.movementqty
+				from m_transaction trans 
+				join m_product hh on trans.m_product_id=hh.m_product_id and hh.m_product_category_id in (1000085,1000569) and  hh.M_AttributeSet_ID in (1000168,1000066)
+				join (select ml.M_inventoryline_id  from M_inventoryline ml join M_inventory m on ml.M_inventory_id=m.M_inventory_id and m.docstatus in ('CO','CL') and m.ad_client_id=$P{AD_CLIENT_ID}) t on trans.M_inventoryline_id=t.M_inventoryline_id
+				where trans.movementdate<=$P{EndDate} and trans.ad_client_id=$P{AD_CLIENT_ID}
+				 
+				union all
+		
+				select trans.AD_Org_ID,hh.m_product_id,hh.value ,hh.name ,trans.m_product_id,trans.m_locator_id,trans.movementdate,trans.movementtype,trans.movementqty
+				from m_transaction trans 
+				join m_product hh on trans.m_product_id=hh.m_product_id and hh.m_product_category_id in (1000085,1000569) and  hh.M_AttributeSet_ID in (1000168,1000066)
+				join (select ml.M_movementline_id  from M_movementline ml join M_movement m on ml.M_movement_id=m.M_movement_id and m.docstatus in ('CO','CL')and m.ad_client_id=$P{AD_CLIENT_ID}) t1 on trans.M_movementline_id=t1.M_movementline_id
+				where trans.movementdate<=$P{EndDate} and trans.ad_client_id=$P{AD_CLIENT_ID}
+				 
+				union all
+		
+				select trans.AD_Org_ID,hh.m_product_id,hh.value ,hh.name ,trans.m_product_id,trans.m_locator_id,trans.movementdate,trans.movementtype,trans.movementqty
+				from m_transaction trans 
+				join m_product hh on trans.m_product_id=hh.m_product_id and hh.m_product_category_id in (1000085,1000569) and  hh.M_AttributeSet_ID in (1000168,1000066)
+				join (select ml.M_inoutline_id  from M_inoutline ml join M_inout m on ml.M_inout_id=m.M_inout_id and m.docstatus in ('CO','CL')and m.ad_client_id=$P{AD_CLIENT_ID}) t2 on trans.M_inoutline_id=t2.M_inoutline_id
+			 	where trans.movementdate<=$P{EndDate} and trans.ad_client_id=$P{AD_CLIENT_ID}
+			 
+				union all
+		
+				select trans.AD_Org_ID,hh.m_product_id,hh.value ,hh.name ,trans.m_product_id,trans.m_locator_id,trans.movementdate,trans.movementtype,trans.movementqty
+				from m_transaction trans 
+				join m_product hh on trans.m_product_id=hh.m_product_id and hh.m_product_category_id in (1000085,1000569) and  hh.M_AttributeSet_ID in (1000168,1000066)
+				join (select ml.M_productionline_id  from M_productionline ml join (select ml.M_productionplan_id from M_productionplan ml join M_production m on ml.M_production_id=m.M_production_id and m.docstatus in ('CO','CL')and m.ad_client_id=$P{AD_CLIENT_ID} ) m on ml.M_productionplan_id=m.M_productionplan_id ) t3 on trans.M_productionline_id=t3.M_productionline_id
+				where trans.movementdate<=$P{EndDate} and trans.ad_client_id=$P{AD_CLIENT_ID}
+				 
+				union all
+		
+				select trans.AD_Org_ID,hh.m_product_id,hh.value ,hh.name ,trans.m_product_id,trans.m_locator_id,trans.movementdate,trans.movementtype,trans.movementqty
+				from m_transaction trans 
+				join m_product hh on trans.m_product_id=hh.m_product_id and hh.m_product_category_id in (1000085,1000569) and  hh.M_AttributeSet_ID in (1000168,1000066)
+				join (select ml.M_productionline_id  from M_productionline ml join M_production m on ml.M_production_id=m.M_production_id and m.docstatus in ('CO','CL') and m.ad_client_id=$P{AD_CLIENT_ID}) t4 on trans.M_productionline_id=t4.M_productionline_id
+				where trans.movementdate<=$P{EndDate} and trans.ad_client_id=$P{AD_CLIENT_ID}
+				 
+			) as t
+			join m_locator kho on t.m_locator_id=kho.m_locator_id and kho.m_locator_id in (1000229,1000285,1000289,1000282)
+			group by t.name 
+			
+	
+	
+			union all 
+		
+		--- chuyen den----
+			select hh.name,0 as dudau, 0 as ducuoi, sum(civ.movementqty) as nhap, 0 as xuat,0 as dg
+			from M_Movement ci
+			join m_movementline civ on ci.m_movement_id = civ.m_movement_id and ci.docstatus  in ('CL','CO')
+			join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_category_id in (1000085,1000569)   and  hh.M_AttributeSet_ID in (1000168,1000066)
+			join M_Locator loc on loc.m_locator_id = civ.m_locatorto_id 
+			where ci.ad_client_id = $P{AD_CLIENT_ID} and loc.m_locator_id in (1000229,1000285,1000289,1000282) and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
+			group by name
+			
+			union all
+			--- chueyn di ----
+			select  hh.name,0 as dudau, 0 as ducuoi,0 as nhap,sum(civ.movementqty) as xuat,0 as dg
+			from M_Movement ci
+			join m_movementline civ on ci.m_movement_id = civ.m_movement_id and ci.docstatus  in ('CL','CO')
+			join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_category_id in (1000085,1000569)   and  hh.M_AttributeSet_ID in (1000168,1000066)
+			join M_Locator loc on loc.m_locator_id = civ.m_locator_id  
+			where ci.ad_client_id = $P{AD_CLIENT_ID} and loc.m_locator_id in (1000229,1000285,1000289,1000282) and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
+			group by name
+			
+			union all
+			
+			select hh.name,0 as dudau, 0 as ducuoi,0 as nhap,0 as xuat, hsv_dinhmuc as dg 
+			from hsv_dongia dg
+			join hsv_nkdongialine dgl on dg.hsv_dongia_id = dgl.hsv_dongia_id 
+			join m_product hh on hh.m_product_id = dgl.m_product_id and hh.m_product_category_id in (1000085,1000569)   and  hh.M_AttributeSet_ID in (1000168,1000066)
+		 	where dg.hsv_loaidongia_id in (1000045,1000017) and dg.ad_client_id = $P{AD_CLIENT_ID}
+		 	and $P{EndDate} <= dg.enddate and $P{EndDate} >= dg.startdate  and $P{StartDate} >= dg.startdate and $P{StartDate} <= dg.enddate		                                                                                                                                                                                                                                                                                                                      		   
+		) as k 
+		group by name
+) as k
+where (dudau + ducuoi + nhap + xuat) > 0
+) as k
+
+union all
+select  'C' as stt, 'Ván cốt xếp được' as noidung,  sum(sl) as sl_tam , sum(m3) as m3, null::int4 as tt
+from
+(
+	select nk.dateacct ,sp.name,sp.hsv_sanpham_id,sum(nkl.qtyother) as sl, sum(nkl.qtyother * sp.shelfwidth * sp.hsv_dinhmuc4 * sp.shelfdepth) as m3
+	from hsv_nhatkysx nk 
+	join hsv_nhatkysxline nkl on nk.hsv_nhatkysx_id = nkl.hsv_nhatkysx_id 
+	join hsv_sanpham sp on sp.hsv_sanpham_id = nkl.hsv_sanpham_id 
+	join m_product hh on hh.m_product_id = sp.m_product_id 
+	join hsv_tosx tsx on tsx.hsv_tosx_id = nk.hsv_tosx_id and tsx.hsv_loaimat_id in (1000000, 1000064)
+	where   nk.ad_client_id = $P{AD_CLIENT_ID} 
+	group by sp.name,sp.hsv_sanpham_id, nk.dateacct 
+) as k 
+join (
+	select  dgl.hsv_sanpham_id , dgl.Amountdg1 as dg,dg.startdate ,dg.enddate 
+	from hsv_dongia dg 
+	join hsv_nkdongialine dgl on dg.hsv_dongia_id = dgl.hsv_dongia_id 
+	where dg.hsv_loaidongia_ID in (1000048,1000049) 
+	and	dg.ad_client_id = $P{AD_CLIENT_ID}
+) as t on k.hsv_sanpham_id = t.hsv_sanpham_id
+where  k.dateacct >= $P{StartDate} and k.dateacct <= $P{EndDate}
+and k.dateacct <= t.enddate and k.dateacct >= t.startdate 
+
+union all 
+
+select  'D' as stt, 'Ván đã vào mặt trong kỳ' as noidung, sum(nkl.qtyother) as sl_tam,sum(sp.ShelfWidth * sp.ShelfDepth * sp.hsv_dinhmuc4*nkl.qtyother) as m3, null::int4 as tt  
+from hsv_nhatkysx nk
+	join hsv_nhatkysxline nkl on nk.hsv_nhatkysx_id = nkl.hsv_nhatkysx_id 
+	join hsv_sanpham sp on sp.hsv_sanpham_id = nkl.hsv_sanpham_id and sp.hsv_c_thuoctinh_id in (1000016,1000111)
+	join hsv_tosx tsx on tsx.hsv_tosx_id = nk.hsv_tosx_id and tsx.hsv_loaimat_id in (1000011, 1000072) 
+where nk.ad_client_id = $P{AD_CLIENT_ID} and nk.dateacct >= $P{StartDate} and nk.dateacct <= $P{EndDate}]]>
+	</queryString>
+	<field name="stt" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="stt"/>
+		<property name="com.jaspersoft.studio.field.label" value="stt"/>
+	</field>
+	<field name="noidung" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="noidung"/>
+		<property name="com.jaspersoft.studio.field.label" value="noidung"/>
+	</field>
+	<field name="sl_tam" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="sl_tam"/>
+		<property name="com.jaspersoft.studio.field.label" value="sl_tam"/>
+	</field>
+	<field name="m3" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="m3"/>
+		<property name="com.jaspersoft.studio.field.label" value="m3"/>
+	</field>
+	<field name="tt" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="tt"/>
+		<property name="com.jaspersoft.studio.field.label" value="tt"/>
+	</field>
+	<variable name="x1" class="java.lang.Double" calculation="Sum">
+		<variableExpression><![CDATA[$F{stt}.equals("A")?($F{m3}.doubleValue()==0?0:$F{tt}.doubleValue()/$F{m3}.doubleValue()):null]]></variableExpression>
+	</variable>
+	<variable name="sl1" class="java.lang.Double" calculation="Sum">
+		<variableExpression><![CDATA[$F{stt}.equals("A")?$F{m3}.doubleValue():0]]></variableExpression>
+	</variable>
+	<variable name="sl3" class="java.lang.Double" calculation="Sum">
+		<variableExpression><![CDATA[$F{stt}.equals("B")?$F{m3}.doubleValue():0]]></variableExpression>
+	</variable>
+	<variable name="tt_3" class="java.lang.Double" calculation="Sum">
+		<variableExpression><![CDATA[$F{stt}.equals("B")?$F{tt}.doubleValue():0]]></variableExpression>
+	</variable>
+	<variable name="sl6" class="java.lang.Double" calculation="Sum">
+		<variableExpression><![CDATA[$F{stt}.equals("C")?$F{m3}.doubleValue():0]]></variableExpression>
+	</variable>
+	<variable name="sl8" class="java.lang.Double" calculation="Sum">
+		<variableExpression><![CDATA[$F{stt}.equals("D")?$F{m3}.doubleValue():0]]></variableExpression>
+	</variable>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<detail>
+		<band height="30" splitType="Stretch">
+			<textField>
+				<reportElement x="0" y="0" width="40" height="30" uuid="c460a464-9ed9-427b-a6c0-bd74122eb494"/>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{stt}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="40" y="0" width="182" height="30" uuid="60045c4f-de30-4a07-85f8-bd9060945ebb"/>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{noidung}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.##" isBlankWhenNull="true">
+				<reportElement x="222" y="0" width="60" height="30" uuid="ec92c00b-1860-40c4-a92a-b66ef54f58a9">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{sl_tam}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.##" isBlankWhenNull="true">
+				<reportElement x="282" y="0" width="60" height="30" uuid="6a0dc770-66e6-430f-b5b1-054415b316af"/>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{m3}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.##" isBlankWhenNull="true">
+				<reportElement x="342" y="0" width="111" height="30" uuid="575cd3bb-6d99-4117-929e-222a86a0875a"/>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{tt}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.##" isBlankWhenNull="true">
+				<reportElement x="453" y="0" width="102" height="30" uuid="e1323074-a871-4c27-aa06-34a8961bda93"/>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{stt}.equals("A")?($F{m3}.doubleValue()==0?0:$F{tt}.doubleValue()/$F{m3}.doubleValue()):null]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+</jasperReport>

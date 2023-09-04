@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Created with Jaspersoft Studio version 6.19.0.final using JasperReports Library version 6.19.0-646c68931cebf1a58bc65c4359d1f0ca223c5e94  -->
+<!-- Created with Jaspersoft Studio version 6.20.0.final using JasperReports Library version 6.20.0-2bc7ab61c56f459e8176eb05c7705e145cd400ad  -->
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="BC_tyle_thu_hoi_van_ep" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="96dcd32b-f523-46ca-b711-751198936127">
 	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
-	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="adempiere_7.1"/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="psql"/>
 	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="0"/>
 	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="1000"/>
 	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
@@ -28,7 +28,7 @@ union all
 select '2' as id,sum(civ.productionqty) as qty,0 as qtyi6
 from m_production ci
 join m_productionplan civ on ci.m_production_id = civ.m_production_id and ci.docstatus in ('CL','CO')
-join m_product hh on civ.m_product_id = hh.m_product_id and hh.m_product_category_id = 1000085 and hh.m_attributeset_id = 1000066
+join m_product hh on civ.m_product_id = hh.m_product_id and hh.m_product_category_id in (1000085,1000569) and hh.m_attributeset_id in (1000066,1000168)
 where ci.ad_client_id = $P{AD_CLIENT_ID} and (ci.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate} 
 
 union all 
@@ -38,8 +38,8 @@ union all
 select '3' as id,sum(civ.qtyentered)  as qty,0 as qtyi6
 from m_inout ci
 join m_inoutline civ on ci.m_inout_id= civ.m_inout_id and ci.docstatus in('CL','CO') and ci.issotrx = 'N'
-join m_product hh on civ.m_product_id = hh.m_product_id and hh.m_product_category_id = 1000085 and hh.M_AttributeSet_ID = 1000066
-where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.c_doctype_id <> 1000306 and (ci.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and ci.dateacct >=$P{StartDate} and ci.dateacct <= $P{EndDate}
+join m_product hh on civ.m_product_id = hh.m_product_id and hh.m_product_category_id in (1000085,1000569) and hh.M_AttributeSet_ID in (1000066,1000168)
+where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.c_doctype_id not in (1000306,1001173) and (ci.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and ci.dateacct >=$P{StartDate} and ci.dateacct <= $P{EndDate}
 
 union all
 
@@ -48,7 +48,7 @@ from(
 	select sum(civ.movementqty) as qty, 0 as qty1
 	from M_Movement ci
 	join m_movementline civ on ci.m_movement_id = civ.m_movement_id and ci.docstatus  in ('CL','CO')
-	join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_category_id = 1000085 and hh.m_attributeset_id = 1000066
+	join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_category_id in (1000085,1000569) and hh.m_attributeset_id in (1000066,1000168)
 	join M_Locator loc on loc.m_locator_id = civ.m_locator_id 
 	where ci.ad_client_id = $P{AD_CLIENT_ID} and (loc.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
 	
@@ -57,7 +57,7 @@ from(
 	select 0 as qty,sum(civ.movementqty) as qty1
 	from M_Movement ci
 	join m_movementline civ on ci.m_movement_id = civ.m_movement_id and ci.docstatus  in ('CL','CO')
-	join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_category_id = 1000085 and hh.m_attributeset_id = 1000066
+	join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_category_id in (1000085,1000569) and hh.m_attributeset_id in (1000066,1000168)
 	join M_Locator loc on loc.m_locator_id = civ.m_locatorto_id  
 	where ci.ad_client_id = $P{AD_CLIENT_ID} and (loc.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
 ) as k
@@ -75,7 +75,7 @@ union all
 	(	
 		select tran.m_locator_id,tran.movementdate,tran.movementqty
 		from m_transaction tran 
-		join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id = 1000085 and hh.M_AttributeSet_ID = 1000066
+		join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id in (1000085,1000569) and hh.M_AttributeSet_ID in (1000066,1000168)
 		join (select ml.M_inventoryline_id  from M_inventoryline ml join M_inventory m on ml.M_inventory_id=m.M_inventory_id and m.docstatus in ('CO','CL') and m.ad_client_id=$P{AD_CLIENT_ID}) t on tran.M_inventoryline_id=t.M_inventoryline_id
 		where tran.movementdate<=$P{EndDate} and tran.ad_client_id=$P{AD_CLIENT_ID}
 		 
@@ -83,7 +83,7 @@ union all
 
 		select tran.m_locator_id,tran.movementdate,tran.movementqty
 		from m_transaction tran 
-		join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id = 1000085 and hh.M_AttributeSet_ID = 1000066
+		join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id in (1000085,1000569) and hh.M_AttributeSet_ID in (1000066,1000168)
 		join (select ml.M_movementline_id  from M_movementline ml join M_movement m on ml.M_movement_id=m.M_movement_id and m.docstatus in ('CO','CL')and m.ad_client_id=$P{AD_CLIENT_ID}) t1 on tran.M_movementline_id=t1.M_movementline_id
 		where tran.movementdate<=$P{EndDate} and tran.ad_client_id=$P{AD_CLIENT_ID}
 		 
@@ -91,7 +91,7 @@ union all
 
 		select tran.m_locator_id,tran.movementdate,tran.movementqty
 		from m_transaction tran 
-		join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id = 1000085 and hh.M_AttributeSet_ID = 1000066
+		join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id in (1000085,1000569) and hh.M_AttributeSet_ID in (1000066,1000168)
 		join (select ml.M_inoutline_id  from M_inoutline ml join M_inout m on ml.M_inout_id=m.M_inout_id and m.docstatus in ('CO','CL')and m.ad_client_id=$P{AD_CLIENT_ID}) t2 on tran.M_inoutline_id=t2.M_inoutline_id
 	 	where tran.movementdate<=$P{EndDate} and tran.ad_client_id=$P{AD_CLIENT_ID}
 	 
@@ -99,7 +99,7 @@ union all
 
 		select tran.m_locator_id,tran.movementdate,tran.movementqty
 		from m_transaction tran 
-		join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id = 1000085 and hh.M_AttributeSet_ID = 1000066
+		join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id in (1000085,1000569) and hh.M_AttributeSet_ID in (1000066,1000168)
 		join (select ml.M_productionline_id  from M_productionline ml join (select ml.M_productionplan_id from M_productionplan ml join M_production m on ml.M_production_id=m.M_production_id and m.docstatus in ('CO','CL')and m.ad_client_id=$P{AD_CLIENT_ID} ) m on ml.M_productionplan_id=m.M_productionplan_id ) t3 on tran.M_productionline_id=t3.M_productionline_id
 		where tran.movementdate<=$P{EndDate} and tran.ad_client_id=$P{AD_CLIENT_ID}
 		 
@@ -107,7 +107,7 @@ union all
 
 		select tran.m_locator_id,tran.movementdate,tran.movementqty
 		from m_transaction tran 
-		join m_product hh on tran.m_product_id=hh.m_product_id and  hh.m_product_category_id = 1000085 and hh.M_AttributeSet_ID = 1000066
+		join m_product hh on tran.m_product_id=hh.m_product_id and  hh.m_product_category_id in (1000085,1000569) and hh.M_AttributeSet_ID in (1000066,1000168)
 		join (select ml.M_productionline_id  from M_productionline ml join M_production m on ml.M_production_id=m.M_production_id and m.docstatus in ('CO','CL') and m.ad_client_id=$P{AD_CLIENT_ID}) t4 on tran.M_productionline_id=t4.M_productionline_id
 		where tran.movementdate<=$P{EndDate} and tran.ad_client_id=$P{AD_CLIENT_ID}
 		 
@@ -120,7 +120,7 @@ union all
 select '6' as id,sum(civ.productionqty)* hh.shelfdepth * hh.shelfheight * hh.shelfwidth /1000000000 as qty,sum(civ.productionqty) as qtyi6
 from m_production ci
 join m_productionplan civ on ci.m_production_id = civ.m_production_id  and ci.docstatus  in ('CL','CO') 
-join m_product hh on civ.m_product_id = hh.m_product_id and hh.m_product_id = 1017249
+join m_product hh on civ.m_product_id = hh.m_product_id and hh.m_product_id  in (1017249,1018765)
 where ci.ad_client_id = $P{AD_CLIENT_ID} and (ci.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate} 
 group by hh.shelfdepth , hh.shelfheight , hh.shelfwidth
 
@@ -131,7 +131,7 @@ from(
 	select sum(civ.movementqty) * hh.shelfdepth * hh.shelfheight * hh.shelfwidth / 1000000000 as qty, 0 as qty1
 	from M_Movement ci 
 	join m_movementline civ on ci.m_movement_id = civ.m_movement_id and ci.docstatus  in ('CL','CO')
-	join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_id = 1017249
+	join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_id  in (1017249,1018765)
 	join M_Locator loc on loc.m_locator_id = civ.m_locator_id 
 	where ci.ad_client_id = $P{AD_CLIENT_ID} and (loc.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
 	group by hh.shelfdepth , hh.shelfheight , hh.shelfwidth
@@ -140,7 +140,7 @@ from(
 	select 0 as qty,sum(civ.movementqty) * hh.shelfdepth * hh.shelfheight * hh.shelfwidth /1000000000 as qty1
 	from M_Movement ci
 	join m_movementline civ on ci.m_movement_id = civ.m_movement_id and ci.docstatus  in ('CL','CO')
-	join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_id = 1017249
+	join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_id  in (1017249,1018765)
 	join M_Locator loc on loc.m_locator_id = civ.m_locatorto_id  
 	where ci.ad_client_id = $P{AD_CLIENT_ID} and (loc.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
 	group by hh.shelfdepth , hh.shelfheight , hh.shelfwidth	
@@ -154,7 +154,7 @@ sum(case when t.movementdate <= $P{EndDate} then t.movementqty else 0 end) as qt
 from (
 	select tran.m_locator_id,tran.movementdate,tran.movementqty * hh.shelfdepth * hh.shelfheight * hh.shelfwidth/1000000000 as movementqty
 	from m_transaction tran 
-	join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_id = 1017249
+	join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_id in (1017249,1018765)
 	join (select ml.M_inventoryline_id  from M_inventoryline ml join M_inventory m on ml.M_inventory_id=m.M_inventory_id and m.docstatus in ('CO','CL') and m.ad_client_id=$P{AD_CLIENT_ID}) t on tran.M_inventoryline_id=t.M_inventoryline_id
 	where tran.movementdate <= $P{EndDate} and (tran.ad_client_id=$P{AD_CLIENT_ID}  )
 		
@@ -162,7 +162,7 @@ from (
 	
 	select tran.m_locator_id,tran.movementdate,tran.movementqty * hh.shelfdepth * hh.shelfheight * hh.shelfwidth/1000000000 as movementqty
 	from m_transaction tran 
-	join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_id = 1017249
+	join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_id  in (1017249,1018765)
 	join (select ml.M_movementline_id  from M_movementline ml join M_movement m on ml.M_movement_id=m.M_movement_id and m.docstatus in ('CO','CL')and m.ad_client_id=$P{AD_CLIENT_ID}) t1 on tran.M_movementline_id=t1.M_movementline_id
 	where tran.movementdate <= $P{EndDate} and (tran.ad_client_id=$P{AD_CLIENT_ID} )
 	
@@ -171,7 +171,7 @@ from (
 	
 	select tran.m_locator_id,tran.movementdate,tran.movementqty * hh.shelfdepth * hh.shelfheight * hh.shelfwidth/1000000000 as movementqty
 	from m_transaction tran 
-	join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_id = 1017249
+	join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_id  in (1017249,1018765)
 	join (select ml.M_inoutline_id  from M_inoutline ml join M_inout m on ml.M_inout_id=m.M_inout_id and m.docstatus in ('CO','CL')and m.ad_client_id=$P{AD_CLIENT_ID}) t2 on tran.M_inoutline_id=t2.M_inoutline_id
 	where tran.movementdate <= $P{EndDate} and (tran.ad_client_id=$P{AD_CLIENT_ID} )
 	
@@ -179,7 +179,7 @@ from (
 	
 	select tran.m_locator_id,tran.movementdate,tran.movementqty * hh.shelfdepth * hh.shelfheight * hh.shelfwidth/1000000000 as movementqty
 	from m_transaction tran 
-	join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_id = 1017249
+	join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_id  in (1017249,1018765)
 	join (select ml.M_productionline_id  from M_productionline ml join (select ml.M_productionplan_id from M_productionplan ml join M_production m on ml.M_production_id=m.M_production_id and m.docstatus in ('CO','CL')and m.ad_client_id=$P{AD_CLIENT_ID} ) m on ml.M_productionplan_id=m.M_productionplan_id ) t3 on tran.M_productionline_id=t3.M_productionline_id
 	where tran.movementdate <= $P{EndDate} and (tran.ad_client_id=$P{AD_CLIENT_ID} ) 
 	
@@ -188,7 +188,7 @@ from (
 	
 	select tran.m_locator_id,tran.movementdate,tran.movementqty * hh.shelfdepth * hh.shelfheight * hh.shelfwidth/1000000000 as movementqty
 	from m_transaction tran 
-	join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_id = 1017249
+	join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_id  in (1017249,1018765)
 	join (select ml.M_productionline_id  from M_productionline ml join M_production m on ml.M_production_id=m.M_production_id and m.docstatus in ('CO','CL') and m.ad_client_id=$P{AD_CLIENT_ID}) t4 on tran.M_productionline_id=t4.M_productionline_id
 	where tran.movementdate <= $P{EndDate} and tran.ad_client_id=$P{AD_CLIENT_ID} 
 	 
@@ -202,12 +202,12 @@ union all
 select '10' as id,sum(civ.qtyentered*atv.hsv_dinhmuc1)  as qty,0 as qtyi6
 from m_inout ci
 join m_inoutline civ on ci.m_inout_id= civ.m_inout_id and ci.docstatus in('CL','CO') and ci.issotrx = 'Y'
-join m_product hh on civ.m_product_id = hh.m_product_id and hh.m_product_category_id = 1000085 and hh.M_AttributeSet_ID in(1000064,1000136)
+join m_product hh on civ.m_product_id = hh.m_product_id and hh.m_product_category_id in (1000085,1000569) and hh.M_AttributeSet_ID in(1000064,1000165)
 join m_attributeinstance att on att.m_attributesetinstance_id  = civ.m_attributesetinstance_id 
-join m_attributevalue atv on atv.m_attributevalue_id = att.m_attributevalue_id  and atv.M_Attribute_ID=1000036
-where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.c_doctype_id <> 1000304 and (ci.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and ci.dateacct >=$P{StartDate} and ci.dateacct <= $P{EndDate}
+join m_attributevalue atv on atv.m_attributevalue_id = att.m_attributevalue_id  and atv.M_Attribute_ID in (1000036,1000124)
+where ci.ad_client_id = $P{AD_CLIENT_ID}  and (ci.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and ci.dateacct >=$P{StartDate} and ci.dateacct <= $P{EndDate}
 
-
+----and ci.c_doctype_id not in (1000304,1001171)
 
 union all
 select '11' as id,
@@ -216,7 +216,7 @@ sum(case when t.movementdate < $P{StartDate} then t.movementqty else 0 end) as q
 from (
 	select tran.m_locator_id,tran.movementdate,tran.movementqty
 	from m_transaction tran 
-	join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id = 1000085 and hh.m_attributeset_id in (1000064, 1000136) 
+	join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id in (1000085,1000569) and hh.m_attributeset_id in (1000064, 1000136,1000165,1000171) 
 	join (select ml.M_inventoryline_id  from M_inventoryline ml join M_inventory m on ml.M_inventory_id=m.M_inventory_id and m.docstatus in ('CO','CL') and m.ad_client_id=$P{AD_CLIENT_ID}) t on tran.M_inventoryline_id=t.M_inventoryline_id
 	where tran.movementdate <= $P{EndDate} and (tran.ad_client_id=$P{AD_CLIENT_ID} )
 	 
@@ -224,7 +224,7 @@ from (
 	
 	select tran.m_locator_id,tran.movementdate,tran.movementqty
 	from m_transaction tran 
-	join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id = 1000085 and hh.m_attributeset_id in (1000064, 1000136)
+	join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id in (1000085,1000569) and hh.m_attributeset_id in (1000064, 1000136,1000165,1000171)
 	join (select ml.M_movementline_id  from M_movementline ml join M_movement m on ml.M_movement_id=m.M_movement_id and m.docstatus in ('CO','CL')and m.ad_client_id=$P{AD_CLIENT_ID}) t1 on tran.M_movementline_id=t1.M_movementline_id
 	where tran.movementdate <= $P{EndDate} and (tran.ad_client_id=$P{AD_CLIENT_ID} )
 	 
@@ -232,7 +232,7 @@ from (
 	
 	select tran.m_locator_id,tran.movementdate,tran.movementqty
 	from m_transaction tran 
-	join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id = 1000085 and hh.m_attributeset_id in (1000064, 1000136)
+	join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id in (1000085,1000569) and hh.m_attributeset_id in (1000064, 1000136,1000165,1000171)
 	join (select ml.M_inoutline_id  from M_inoutline ml join M_inout m on ml.M_inout_id=m.M_inout_id and m.docstatus in ('CO','CL')and m.ad_client_id=$P{AD_CLIENT_ID}) t2 on tran.M_inoutline_id=t2.M_inoutline_id
 	where tran.movementdate <= $P{EndDate} and (tran.ad_client_id=$P{AD_CLIENT_ID}  )
 	 
@@ -240,14 +240,14 @@ from (
 	
 	select tran.m_locator_id,tran.movementdate,tran.movementqty
 	from m_transaction tran 
-	join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id = 1000085 and hh.m_attributeset_id in (1000064, 1000136)
+	join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id in (1000085,1000569) and hh.m_attributeset_id in (1000064, 1000136,1000165,1000171)
 	join (select ml.M_productionline_id  from M_productionline ml join (select ml.M_productionplan_id from M_productionplan ml join M_production m on ml.M_production_id=m.M_production_id and m.docstatus in ('CO','CL')and m.ad_client_id=$P{AD_CLIENT_ID} ) m on ml.M_productionplan_id=m.M_productionplan_id ) t3 on tran.M_productionline_id=t3.M_productionline_id
 	where tran.movementdate <= $P{EndDate} and (tran.ad_client_id=$P{AD_CLIENT_ID} ) 
 	 
 	union all
 	select tran.m_locator_id,tran.movementdate,tran.movementqty
 	from m_transaction tran 
-	join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id = 1000085 and hh.m_attributeset_id in (1000064, 1000136)
+	join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id in (1000085,1000569) and hh.m_attributeset_id in (1000064, 1000136,1000165,1000171)
 	join (select ml.M_productionline_id  from M_productionline ml join M_production m on ml.M_production_id=m.M_production_id and m.docstatus in ('CO','CL') and m.ad_client_id=$P{AD_CLIENT_ID}) t4 on tran.M_productionline_id=t4.M_productionline_id
 	where tran.movementdate <= $P{EndDate} and (tran.ad_client_id=$P{AD_CLIENT_ID} ) 
 ) as t
@@ -258,8 +258,8 @@ union all
 select '12' as id,sum(civ.qtyentered)  as qty,0 as qtyi6
 from m_inout ci
 join m_inoutline civ on ci.m_inout_id= civ.m_inout_id and ci.docstatus in('CL','CO') and ci.issotrx = 'Y'
-join m_product hh on civ.m_product_id = hh.m_product_id and hh.m_product_category_id = 1000085 and hh.M_AttributeSet_ID = 1000066
-where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.c_doctype_id <> 1000304 and (ci.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and ci.dateacct >=$P{StartDate} and ci.dateacct <= $P{EndDate}
+join m_product hh on civ.m_product_id = hh.m_product_id and hh.m_product_category_id in (1000085,1000569) and hh.M_AttributeSet_ID in (1000066,1000168)
+where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.c_doctype_id not in (1000304,1001171) and (ci.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and ci.dateacct >=$P{StartDate} and ci.dateacct <= $P{EndDate}
 
 union all
 
@@ -268,15 +268,15 @@ from(
 	select sum(civ.qtyentered)* hh.shelfdepth *hh.shelfheight *hh.shelfwidth /1000000000 as qty
 	from m_inout ci
 	join m_inoutline civ on ci.m_inout_id= civ.m_inout_id and ci.docstatus in('CL','CO') and ci.issotrx = 'Y'
-	join m_product hh on civ.m_product_id = hh.m_product_id and hh.m_product_category_id = 1000530
-	where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.c_doctype_id <> 1000304 and (ci.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and ci.dateacct >=$P{StartDate} and ci.dateacct <= $P{EndDate}
+	join m_product hh on civ.m_product_id = hh.m_product_id and hh.m_product_category_id in (1000530,1000572)
+	where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.c_doctype_id not in (1000304,1001171) and (ci.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and ci.dateacct >=$P{StartDate} and ci.dateacct <= $P{EndDate}
 	group by hh.shelfdepth ,hh.shelfheight ,hh.shelfwidth
 	union all 
 	select -1 * sum(civ.qtyentered)* hh.shelfdepth *hh.shelfheight *hh.shelfwidth /1000000000 as qty
 	from m_inout ci
 	join m_inoutline civ on ci.m_inout_id= civ.m_inout_id and ci.docstatus in('CL','CO') and ci.issotrx = 'N'
-	join m_product hh on civ.m_product_id = hh.m_product_id and hh.m_product_category_id = 1000530
-	where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.c_doctype_id <> 1000304 and (ci.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and ci.dateacct >=$P{StartDate} and ci.dateacct <= $P{EndDate}
+	join m_product hh on civ.m_product_id = hh.m_product_id and hh.m_product_category_id in (1000530,1000572)
+	where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.c_doctype_id not in (1000304,1001171) and (ci.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and ci.dateacct >=$P{StartDate} and ci.dateacct <= $P{EndDate}
 	group by hh.shelfdepth ,hh.shelfheight ,hh.shelfwidth
 ) as k
 
@@ -287,7 +287,7 @@ from(
 	select sum(civ.movementqty) * hh.shelfdepth * hh.shelfheight * hh.shelfwidth / 1000000000 as qty, 0 as qty1
 	from M_Movement ci 
 	join m_movementline civ on ci.m_movement_id = civ.m_movement_id and ci.docstatus  in ('CL','CO')
-	join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_category_id = 1000530
+	join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_category_id in (1000530,1000572)
 	join M_Locator loc on loc.m_locator_id = civ.m_locator_id 
 	where ci.ad_client_id = $P{AD_CLIENT_ID} and (loc.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
 	group by hh.shelfdepth , hh.shelfheight , hh.shelfwidth
@@ -296,7 +296,7 @@ from(
 	select 0 as qty,sum(civ.movementqty) * hh.shelfdepth * hh.shelfheight * hh.shelfwidth /1000000000 as qty1
 	from M_Movement ci
 	join m_movementline civ on ci.m_movement_id = civ.m_movement_id and ci.docstatus  in ('CL','CO')
-	join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_category_id = 1000530
+	join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_category_id in (1000530,1000572)
 	join M_Locator loc on loc.m_locator_id = civ.m_locatorto_id  
 	where ci.ad_client_id = $P{AD_CLIENT_ID} and (loc.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
 	group by hh.shelfdepth , hh.shelfheight , hh.shelfwidth	
@@ -308,43 +308,43 @@ select '15' as id,
 sum(case when t.movementdate <= $P{EndDate} then t.movementqty  else 0 end) -
 sum(case when t.movementdate < $P{StartDate} then t.movementqty else 0 end) as qty,0 as qtyi6
 from (
-	select tran.m_locator_id, tran.movementdate,tran.movementqty * hh.shelfdepth * hh.shelfheight * hh.shelfwidth/1000000000 as movementqty
+	select tran.m_locator_id, tran.movementdate,tran.movementqty * hh.shelfdepth * hh.hsv_dinhmuc4  * hh.shelfwidth/1000000000 as movementqty
 	from m_transaction tran 
-	join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id = 1000530
+	join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id in (1000530,1000572)
 	join (select ml.M_inventoryline_id  from M_inventoryline ml join M_inventory m on ml.M_inventory_id=m.M_inventory_id and m.docstatus in ('CO','CL') and m.ad_client_id=$P{AD_CLIENT_ID}) t on tran.M_inventoryline_id=t.M_inventoryline_id
 	where tran.movementdate <= $P{EndDate} and (tran.ad_client_id=$P{AD_CLIENT_ID}  )
 		
 	union all
 	
-	select tran.m_locator_id,tran.movementdate,tran.movementqty * hh.shelfdepth * hh.shelfheight * hh.shelfwidth/1000000000 as movementqty
+	select tran.m_locator_id,tran.movementdate,tran.movementqty * hh.shelfdepth * hh.hsv_dinhmuc4 * hh.shelfwidth/1000000000 as movementqty
 	from m_transaction tran 
-	join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id = 1000530
+	join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id in (1000530,1000572)
 	join (select ml.M_movementline_id  from M_movementline ml join M_movement m on ml.M_movement_id=m.M_movement_id and m.docstatus in ('CO','CL')and m.ad_client_id=$P{AD_CLIENT_ID}) t1 on tran.M_movementline_id=t1.M_movementline_id
 	where tran.movementdate <= $P{EndDate} and (tran.ad_client_id=$P{AD_CLIENT_ID})
 	
 	
 	union all
 	
-	select tran.m_locator_id, tran.movementdate,tran.movementqty * hh.shelfdepth * hh.shelfheight * hh.shelfwidth/1000000000 as movementqty
+	select tran.m_locator_id, tran.movementdate,tran.movementqty * hh.shelfdepth * hh.hsv_dinhmuc4 * hh.shelfwidth/1000000000 as movementqty
 	from m_transaction tran 
-	join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id = 1000530
+	join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id in (1000530,1000572)
 	join (select ml.M_inoutline_id  from M_inoutline ml join M_inout m on ml.M_inout_id=m.M_inout_id and m.docstatus in ('CO','CL')and m.ad_client_id=$P{AD_CLIENT_ID}) t2 on tran.M_inoutline_id=t2.M_inoutline_id
 	where tran.movementdate <= $P{EndDate} and (tran.ad_client_id=$P{AD_CLIENT_ID} )
 	
 	union all
 	
-	select tran.m_locator_id,tran.movementdate,tran.movementqty * hh.shelfdepth * hh.shelfheight * hh.shelfwidth/1000000000 as movementqty
+	select tran.m_locator_id,tran.movementdate,tran.movementqty * hh.shelfdepth * hh.hsv_dinhmuc4 * hh.shelfwidth/1000000000 as movementqty
 	from m_transaction tran 
-	join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id = 1000530
+	join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id in (1000530,1000572)
 	join (select ml.M_productionline_id  from M_productionline ml join (select ml.M_productionplan_id from M_productionplan ml join M_production m on ml.M_production_id=m.M_production_id and m.docstatus in ('CO','CL')and m.ad_client_id=$P{AD_CLIENT_ID} ) m on ml.M_productionplan_id=m.M_productionplan_id ) t3 on tran.M_productionline_id=t3.M_productionline_id
 	where tran.movementdate <= $P{EndDate} and (tran.ad_client_id=$P{AD_CLIENT_ID} ) 
 	
 	
 	union all
 	
-	select tran.m_locator_id,tran.movementdate,tran.movementqty * hh.shelfdepth * hh.shelfheight * hh.shelfwidth/1000000000 as movementqty
+	select tran.m_locator_id,tran.movementdate,tran.movementqty * hh.shelfdepth * hh.hsv_dinhmuc4 * hh.shelfwidth/1000000000 as movementqty
 	from m_transaction tran 
-	join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id = 1000530
+	join m_product hh on tran.m_product_id=hh.m_product_id and hh.m_product_category_id in (1000530,1000572)
 	join (select ml.M_productionline_id  from M_productionline ml join M_production m on ml.M_production_id=m.M_production_id and m.docstatus in ('CO','CL') and m.ad_client_id=$P{AD_CLIENT_ID}) t4 on tran.M_productionline_id=t4.M_productionline_id
 	where tran.movementdate <= $P{EndDate} and (tran.ad_client_id=$P{AD_CLIENT_ID} ) 
 
@@ -359,7 +359,7 @@ select '16' as id,sum(qty) as qty,0 as qtyi6
 		join m_inventoryline civ on ci.m_inventory_id = civ.m_inventory_id and ci.docstatus  in ('CL','CO') and civ.hsv_xuatkhac = 'Y'	
 		join (  select m_product_id,shelfdepth , shelfheight, shelfwidth 
 				from m_product hh 
-				where hh.m_product_category_id = 1000530 and ad_client_id = $P{AD_CLIENT_ID}
+				where hh.m_product_category_id in (1000530,1000572) and ad_client_id = $P{AD_CLIENT_ID}
 		) as t on t.m_product_id = civ.m_product_id 
 		where   ci.ad_client_id = $P{AD_CLIENT_ID} and (ci.ad_org_id = $P{AD_Org_ID} or $P{AD_Org_ID} is null) and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
 		group by  t.shelfdepth , t.shelfheight, t.shelfwidth 
