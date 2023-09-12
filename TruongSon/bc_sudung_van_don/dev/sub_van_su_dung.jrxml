@@ -26,6 +26,7 @@ from(
 			join (select ml.M_inventoryline_id  from M_inventoryline ml join M_inventory m on ml.M_inventory_id=m.M_inventory_id and m.docstatus in ('CO','CL') and m.ad_client_id=$P{AD_CLIENT_ID}) t on trans.M_inventoryline_id=t.M_inventoryline_id
 			where trans.movementdate<=$P{EndDate} and trans.ad_client_id=$P{AD_CLIENT_ID}
 			 
+			
 			union all
 	
 			select trans.AD_Org_ID,hh.m_product_id,hh.value ,hh.name ,trans.m_product_id,trans.m_locator_id,trans.movementdate,trans.movementtype,trans.movementqty
@@ -62,6 +63,8 @@ from(
 		join m_locator kho on t.m_locator_id=kho.m_locator_id and kho.m_locator_id in (1000229,1000285,1000289,1000282)
 		group by t.name 
 		
+		--(1000229,1000285,1000289,1000282)
+		
 
 
 		union all 
@@ -71,18 +74,20 @@ from(
 		from M_Movement ci
 		join m_movementline civ on ci.m_movement_id = civ.m_movement_id and ci.docstatus  in ('CL','CO')
 		join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_category_id in (1000085,1000569)   and  hh.M_AttributeSet_ID in (1000168,1000066)
-		join M_Locator loc on loc.m_locator_id = civ.m_locatorto_id 
+		join M_Locator loc on loc.m_locator_id = civ.m_locatorto_id
 		where ci.ad_client_id = $P{AD_CLIENT_ID} and loc.m_locator_id in (1000229,1000285,1000289,1000282) and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
+		and civ.m_locator_id <> civ.m_locatorto_id
 		group by name
-		
+
 		union all
 		--- chueyn di ----
 		select  hh.name,0 as dudau, 0 as ducuoi,0 as nhap,sum(civ.movementqty) as xuat,0 as dg
 		from M_Movement ci
 		join m_movementline civ on ci.m_movement_id = civ.m_movement_id and ci.docstatus  in ('CL','CO')
-		join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_category_id in (1000085,1000569)   and  hh.M_AttributeSet_ID in (1000168,1000066)
+		join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_category_id in (1000085,1000569)   and  hh.M_AttributeSet_ID in (1000168,1000066) 
 		join M_Locator loc on loc.m_locator_id = civ.m_locator_id  
-		where ci.ad_client_id = $P{AD_CLIENT_ID} and loc.m_locator_id in (1000229,1000285,1000289,1000282) and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
+		where ci.ad_client_id = $P{AD_CLIENT_ID} and civ.m_locator_id in (1000229,1000285,1000289,1000282) and ci.movementdate >= $P{StartDate} and ci.movementdate <= $P{EndDate}
+		and civ.m_locator_id <> civ.m_locatorto_id 
 		group by name
 		
 		union all
@@ -96,8 +101,8 @@ from(
 	) as k 
 	group by name
 ) as k
-where (dudau + ducuoi + nhap + xuat) > 0
-	]]>
+where (dudau + ducuoi + nhap + xuat) <> 0
+]]>
 	</queryString>
 	<field name="stt" class="java.lang.Long">
 		<property name="com.jaspersoft.studio.field.name" value="stt"/>

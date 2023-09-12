@@ -18,10 +18,12 @@
 	<parameter name="StartDate" class="java.util.Date"/>
 	<parameter name="EndDate" class="java.util.Date"/>
 	<queryString language="SQL">
-		<![CDATA[select 'A' as stt, 'Ván ép đơn hàng xuất bán' as noidung, null::int4 as sl_tam, -1*sum(case when fa.qty <0 then qty else 0 end ) as m3, -1* sum(case when fa.qty<0 then fa.amtacctdr  - fa.amtacctcr  else 0 end ) as tt 
-from fact_acct fa 
-join  m_product hh on hh.m_product_id = fa.m_product_id and hh.m_attributeset_id in  (1000064,1000165)
-where fa.ad_table_id = 318 and fa.ad_client_id = $P{AD_CLIENT_ID} and fa.dateacct >= $P{StartDate} and fa.dateacct <= $P{EndDate}
+		<![CDATA[select 'A' as stt,'Ván ép đơn hàng xuất bán' as noidung, null::int4 as sl_tam, sum(civ.qtyinvoiced) as m3, sum(civ.linenetamt) as tt  
+from c_invoice ci 
+join c_invoiceline civ on ci.c_invoice_id = civ.c_invoice_id 
+join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_attributeset_id in  (1000064,1000165) 
+where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.dateacct >= $P{StartDate} and ci.dateacct <= $P{EndDate}
+and ci.docstatus in('CL','CO') and ci.issotrx = 'Y'
 
 union all 
 

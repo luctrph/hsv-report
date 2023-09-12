@@ -57,9 +57,9 @@ from(
 	
 	union all 
 	
-	select 'Chi phí sản xuất' as name, null::int4 as qty,  sum(tt), case when $P{sl_6} <> 0 then sum(tt)/$P{sl_6} else 0 end as dg 
+	select 'Chi phí sản xuất' as name, sum(qty) as qty,  sum(tt), case when $P{sl_6} <> 0 then sum(tt)/$P{sl_6} else 0 end as dg 
 	from(
-		select (COALESCE(sum(amtacctdr - amtacctcr), 0)) as tt
+		select 0 as qty, (COALESCE(sum(amtacctdr - amtacctcr), 0)) as tt
 		FROM(
 		   	SELECT  fc.amtacctdr, fc.amtacctcr, fc.account_id, fc.c_activity_id, fc.dateacct 
 			from fact_acct fc
@@ -78,14 +78,17 @@ from(
 		
 		union all
 	
-		select -1*sum(case when fa.qty > 0 then -1*fa.amtacctdr else fa.amtacctcr end ) as tt
+		select   COALESCE(sum(amtacctdr - amtacctcr), 0) as qty , COALESCE(sum(amtacctdr - amtacctcr), 0) as tt
 		from m_inventory mi
 			join m_inventoryline miv on mi.m_inventory_id  = miv.m_inventory_id  
 			join m_product hh on miv.m_product_id = hh.m_product_id and hh.m_parttype_id  in (1000009, 1000119)
 			join fact_acct fa on fa.record_id = miv.m_inventory_id and fa.line_id = miv.m_inventoryline_id 
 			join c_elementvalue acct on fa.account_id = acct.c_elementvalue_id and (LEFT(acct.value, 2) in ('15'))
-		where  fa.ad_client_id = $P{AD_CLIENT_ID} and fa.ad_table_id = 321  and fa.dateacct >= $P{StartDate} and fa.datetrx <=$P{EndDate}
+		where  fa.ad_client_id = $P{AD_CLIENT_ID} and fa.ad_table_id = 321  and fa.dateacct >= $P{StartDate} and fa.dateacct  <=$P{EndDate}
+		
 	) as k
+	
+
 	union all 
 	select 'CP vận chuyển' as name, null::int4 as qty, (COALESCE(sum(amtacctdr - amtacctcr), 0)) as tt, case when  $P{sl_1} <> 0 then (COALESCE(sum(amtacctdr - amtacctcr), 0))/$P{sl_1} else 0 end as dg
 	FROM(

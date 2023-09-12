@@ -13,57 +13,54 @@
 	<queryString language="SQL">
 		<![CDATA[select row_number() over(order by stt) as stt, dm_name , tyle ,kq
 from(
-	select 1 as stt,'Hiệu quả (4+5+6+7+8)-(1+2+3)' as dm_name,null as tyle, ($P{kq}+  ($P{sl_rac}*600)) as kq
+	select 1 as stt,'Hiệu quả (4+5+6+7+8)-(1+2+3)' as dm_name,null::int4 as tyle, ($P{kq}+  ($P{sl_rac}*600)) as kq
 	union all 
 	select 2 as stt, 'Tỷ lệ thu hồi (Kg gỗ/m3' as dm_name, $P{tyle} as tyle, null as kq
 
-	union all 	
-	select 3 as stt, 'Tỷ lệ thu hồi ván A (%)' as dm_name, case when  $P{tong_sl} <>0 then  100*sum(fa.qty)/ $P{tong_sl}else 0 end as tyle, null as kq
-	from fact_acct fa 
-	join m_product hh on hh.m_product_id = fa.m_product_id and hh.m_product_id in (1004077,1018331) 
-	join m_productionline  civ on fa.line_id = civ.m_productionline_id 
-	join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id and  (att.m_lot_id = $P{M_Lot_ID} )
-	where fa.ad_table_id = 325 and fa.ad_client_id = $P{AD_CLIENT_ID}  and fa.amtacctdr >0 
-	group by hh.name
 	union all
-	select 4 as stt, 'Tỷ lệ thu hồi ván B (%)' as dm_name,  case when  $P{tong_sl}  <>0 then 100* sum(fa.qty)/ $P{tong_sl}else 0 end as tyle, null as kq
-	from fact_acct fa 
-	join m_product hh on hh.m_product_id = fa.m_product_id and hh.m_product_id in (1004076,1018332)
-	join m_productionline  civ on fa.line_id = civ.m_productionline_id 
+	
+	select 3 as stt, 'Tỷ lệ thu hồi ván A (%)' as dm_name, case when  $P{tong_sl} <>0 then  100*sum(civ.productionqty)/ $P{tong_sl}else 0 end as tyle, null as kq
+	from m_production ci
+	join m_productionplan civ on ci.m_production_id = civ.m_production_id and ci.docstatus in ('CL','CO')	
 	join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id and  (att.m_lot_id = $P{M_Lot_ID} )
-	where fa.ad_table_id = 325 and fa.ad_client_id = $P{AD_CLIENT_ID}  and fa.amtacctdr >0 
-	group by hh.name
+	where ci.ad_client_id = $P{AD_CLIENT_ID} and civ.m_product_id in (1004077,1018331) 
+
 	union all
-	select 5 as stt, 'Tỷ lệ thu hồi ván C (%)' as dm_name, case when  $P{tong_sl} <>0 then 100* sum(fa.qty)/ $P{tong_sl} else 0 end as tyle, null as kq
-	from fact_acct fa 
-	join m_product hh on hh.m_product_id = fa.m_product_id and hh.m_product_id in (1004079,1018333)
-	join m_productionline  civ on fa.line_id = civ.m_productionline_id 
+	select 4 as stt, 'Tỷ lệ thu hồi ván B (%)' as dm_name,  case when  $P{tong_sl}  <>0 then 100* sum(civ.productionqty)/ $P{tong_sl}else 0 end as tyle, null as kq
+	from m_production ci
+	join m_productionplan civ on ci.m_production_id = civ.m_production_id and ci.docstatus in ('CL','CO')	
 	join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id and  (att.m_lot_id = $P{M_Lot_ID} )
-	where fa.ad_table_id = 325 and fa.ad_client_id = $P{AD_CLIENT_ID}  and fa.amtacctdr >0 
-	group by hh.name
+	where  ci.ad_client_id = $P{AD_CLIENT_ID}  and civ.m_product_id in (1004076,1018332)
+	
+	union all
+	select 5 as stt, 'Tỷ lệ thu hồi ván C (%)' as dm_name, case when  $P{tong_sl} <>0 then 100* sum(civ.productionqty)/ $P{tong_sl} else 0 end as tyle, null as kq
+	from m_production ci
+	join m_productionplan civ on ci.m_production_id = civ.m_production_id and ci.docstatus in ('CL','CO')	
+	join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id and  (att.m_lot_id = $P{M_Lot_ID} )
+	where  ci.ad_client_id = $P{AD_CLIENT_ID} and civ.m_product_id in (1004079,1018333)	
+	
 	
 	union all
 	
-	select 6 as stt, 'Tỷ lệ thu hồi ván AB (%)' as dm_name, case when  $P{tong_sl} <>0 then 100* sum(fa.qty)/ $P{tong_sl} else 0 end as tyle, null as kq
-	from fact_acct fa 
-	join m_product hh on hh.m_product_id = fa.m_product_id and hh.m_product_id in (1018871,1018870)
-	join m_productionline  civ on fa.line_id = civ.m_productionline_id 
+	select 6 as stt, 'Tỷ lệ thu hồi ván AB (%)' as dm_name, case when  $P{tong_sl} <>0 then 100* sum(civ.productionqty)/ $P{tong_sl} else 0 end as tyle, null as kq
+	from m_production ci
+	join m_productionplan civ on ci.m_production_id = civ.m_production_id and ci.docstatus in ('CL','CO')
 	join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id and  (att.m_lot_id = $P{M_Lot_ID} )
-	where fa.ad_table_id = 325 and fa.ad_client_id = $P{AD_CLIENT_ID}  and fa.amtacctdr >0 
-	group by hh.name
+	where ci.ad_client_id = $P{AD_CLIENT_ID} and civ.m_product_id in (1018871,1018870)
+
 	
 	union all
 	
-	select 7 as stt, 'Tỷ lệ thu hồi ván BC (%)' as dm_name, case when  $P{tong_sl} <>0 then 100* sum(fa.qty)/ $P{tong_sl} else 0 end as tyle, null as kq
-	from fact_acct fa 
-	join m_product hh on hh.m_product_id = fa.m_product_id and hh.m_product_id in (1018893,1018903)
-	join m_productionline  civ on fa.line_id = civ.m_productionline_id 
+	select 7 as stt, 'Tỷ lệ thu hồi ván BC (%)' as dm_name, case when  $P{tong_sl} <>0 then 100* sum(civ.productionqty)/ $P{tong_sl} else 0 end as tyle, null as kq
+	from m_production ci
+	join m_productionplan civ on ci.m_production_id = civ.m_production_id and ci.docstatus in ('CL','CO')	
 	join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id and  (att.m_lot_id = $P{M_Lot_ID} )
-	where fa.ad_table_id = 325 and fa.ad_client_id = $P{AD_CLIENT_ID}  and fa.amtacctdr >0 
-	group by hh.name
+	where ci.ad_client_id = $P{AD_CLIENT_ID} and civ.m_product_id in (1018893,1018903)
+
 	union all 
 	select 8 as stt,'Hiệu quả /m3 ván bóc' as dm_name,null as tyle, case when $P{tong_sl} <> 0 then  ($P{kq}+  ($P{sl_rac}*600))/$P{tong_sl}  else 0 end as kq
-) as k]]>
+) as k 
+where (tyle >0 or kq >0)]]>
 	</queryString>
 	<field name="stt" class="java.lang.Long">
 		<property name="com.jaspersoft.studio.field.name" value="stt"/>
