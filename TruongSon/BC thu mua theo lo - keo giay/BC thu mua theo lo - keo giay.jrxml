@@ -29,23 +29,35 @@
 	<parameter name="EndDate" class="java.util.Date"/>
 	<parameter name="M_Lot_ID" class="java.lang.Integer"/>
 	<queryString language="SQL">
-		<![CDATA[select row_number() over() as stt, lot,sum(slm) as slm, sum(ttm) as ttm, sum(c5) as cp_dm, sum(c6) as nhap_cl, sum(c7) as xuat_cl, sum(c8) as tp_sx,sum(c9) as slb, sum(c10) as ttb, sum(c11)*0.125*500 as tien_ppdm, case when sum(c8)<>0 then sum(c11)/sum(c8) else 0 end  as tyle
-,sum(c12)+sum(c11)*0.125*500 as hq
-from(
-				---2---
-		select  att.lot, civ.qtyentered  as slm, civ.linenetamt  as ttm, 0 as c5, 0 as c6,0 as c7, 0 as c8,0 as c9, 0 as c10 ,civ.qtyentered as c11	,-1*civ.linenetamt as c12		
-		from c_invoice ci  
-		join c_invoiceline civ  on ci.c_invoice_id  = civ.c_invoice_id  and ci.issotrx = 'N'
-		join M_AttributeSetInstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
-		join m_lot lot on lot.m_lot_id = att.m_lot_id
-		join m_product hh on hh.m_product_id = civ.m_product_id 
-		where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.docstatus in ('CO','CL')
+		<![CDATA[select row_number() over() as stt,  
+	lot,
+	sum(slm) as slm,
+	sum(ttm) as ttm,
+	sum(c5) as cp_dm,
+	sum(c6) as nhap_cl,
+	sum(c7) as xuat_cl,
+	sum(c8) as tp_sx,
+	sum(c9) as slb,
+	sum(c10) as ttb,
+	sum(c11)*0.125*350 as tien_ppdm,
+	case when sum(c8)<>0 then sum(c11)/sum(c8) else 0 end  as tyle,
+	sum(c12)+sum(c11)*0.125*350 as hq 
+	
+	
+from(		---2---
+			select   att.lot, civ.qtyentered  as slm, civ.linenetamt  as ttm, 0 as c5, 0 as c6,0 as c7, 0 as c8,0 as c9, 0 as c10 ,civ.qtyentered as c11, -1*civ.linenetamt as c12		
+			from c_invoice ci  
+			join c_invoiceline civ  on ci.c_invoice_id  = civ.c_invoice_id  and ci.issotrx = 'N'
+			join M_AttributeSetInstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
+			join m_lot lot on lot.m_lot_id = att.m_lot_id
+			join m_product hh on hh.m_product_id = civ.m_product_id 
+			where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.docstatus in ('CO','CL')
 		
 
 
-	union all
+			union all
 		----CPDM.VC,SX--3-
-			select att.lot,0 as slm, 0 as ttm,civ.productionqty *170 as c5 , 0 as c6,0 as c7 , 0 as c8, 0 as c9,0 as c10,0 as c11,-1*civ.productionqty *170 as c12
+			select att.lot,0 as slm, 0 as ttm,civ.productionqty *183 as c5 , 0 as c6,0 as c7 , 0 as c8, 0 as c9,0 as c10,0 as c11,-1*civ.productionqty *183 as c12
 			from m_production ci 
 			join m_productionplan civ on ci.m_production_id = civ.m_production_id 
 			join m_product hh on hh.m_product_id = civ.m_product_id  and (hh.m_product_category_id in (1000569,1000085) or hh.m_product_id in (1018826,1018827))
@@ -53,70 +65,84 @@ from(
 			where ci.ad_client_id= $P{AD_CLIENT_ID} and ci.docstatus in ('CO','CL')		
 			union all 
 		----SL nhap chuyen lo---1--
-			select   att.lot,0 as slm, 0 as ttm, 0 as c5, fa.qty as c6, 0 as c7, 0 as c8, 0 as c9,0 as c10 , fa.qty  as c11, -1*fa.amtacctcr as c12
+			select    att.lot,0 as slm, 0 as ttm, 0 as c5, fa.qty as c6, 0 as c7, 0 as c8, 0 as c9,0 as c10 , fa.qty  as c11,-1* case when qty >0 then fa.amtacctdr else -1 * fa.amtacctcr end as c12
 			from fact_acct fa 
 			join m_product hh on hh.m_product_id = fa.m_product_id and (hh.m_product_category_id in (1000562,1000084) or hh.m_product_id in (1008358,1018344))
 			join m_productionline  civ on fa.line_id = civ.m_productionline_id 
 			join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
 			join c_elementvalue acct on fa.account_id = acct.c_elementvalue_id and (LEFT(acct.value, 2) in ('15'))
 			where fa.ad_table_id = 325 and fa.ad_client_id = $P{AD_CLIENT_ID} and  fa.c_campaign_id in (1000090,1000088)
-			
+					
+		
 			union all	
-			
-	
-				select  att.lot ,0 as slm, 0 as ttm,0 as c5, 0 as c6, -1*fa.qty as c7, 0 as c8 , 0 as c9,0 as c10  ,fa.qty  as c11, case when miv.qtyinternaluse  < 0 then -1*fa.amtacctdr else  fa.amtacctcr  end as c12
-				from m_inventory mi
+		----5------
+
+		
+			select  att.lot ,0 as slm, 0 as ttm,0 as c5, 0 as c6, -1*fa.qty as c7, 0 as c8 , 0 as c9,0 as c10  ,fa.qty  as c11, case when miv.qtyinternaluse  < 0 then -1*fa.amtacctdr else  fa.amtacctcr end as c12
+			from m_inventory mi
 				join m_inventoryline miv on mi.m_inventory_id  = miv.m_inventory_id  
 				join m_attributesetinstance att on att.m_attributesetinstance_id = miv.m_attributesetinstance_id 
-				join m_product hh on miv.m_product_id = hh.m_product_id and hh.m_product_category_id in (1000562,1000084)
+				join m_product hh on miv.m_product_id = hh.m_product_id and hh.m_product_category_id in (1000562,1000084,1000589,1000588)
 				join fact_acct fa on fa.record_id = miv.m_inventory_id and fa.line_id = miv.m_inventoryline_id and fa.ad_table_id = 321
 				join c_elementvalue acct on fa.account_id = acct.c_elementvalue_id and (LEFT(acct.value, 2) in ('15'))
-				where  mi.ad_client_id = $P{AD_CLIENT_ID}  and fa.c_campaign_id in (1000036,1000091,1000088,1000090)
-			
-			
-		union all
-		---sl tp sx ra-4--
-		select 	lot,0 as slm, 0 as ttm, 0 as c5, 0 as c6, 0 as c7,c8 as c8, 0 as c9,0 as c10,0  as c11, tt as c12
-		from(
-			select   att.lot, civ.productionqty*coalesce(k.amountdg1,0) as c8,coalesce(k.hsv_dinhmuc,0) *civ.productionqty as tt
-			from m_production ci 	 
-			join m_productionplan  civ on ci.m_production_id  = civ.m_production_id and ci.docstatus in ('CL','CO')	
-			join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
-			join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_category_id in (1000569,1000085,1000565,1000470,1000558,1000570)
-			left join (
-				select hsv_dg.startdate , hsv_dg.enddate, dgl.m_product_id,coalesce(hsv_dinhmuc,0) as hsv_dinhmuc,coalesce(amountdg1,0) as amountdg1
-				from hsv_nkdongialine dgl  
-				join hsv_dongia hsv_dg on hsv_dg.hsv_dongia_id = dgl.hsv_dongia_id and hsv_dg.hsv_loaidongia_id  in (1000000,1000042)
-				where hsv_dg.ad_client_id = $P{AD_CLIENT_ID}
-			) as k on k.m_product_id = civ.m_product_id 
-			where ci.ad_client_id =$P{AD_CLIENT_ID}  and ci.movementdate >= k.startdate and ci.movementdate <= k.enddate 			
-			and ci.c_campaign_id in (1000090,1000088)
-		) as k 
+			where  mi.ad_client_id = $P{AD_CLIENT_ID}  and fa.c_campaign_id in (1000036,1000091,1000088,1000090)
+			and att.m_lot_id = $P{M_Lot_ID}
 		
-		union all
-	------7----		
-		select  lot,0 as slm, 0 as ttm,0 as c5, 0 as c6, 0 as c7,0 as c8,  c9,  c10,-1*tong_van as c11, c10 as c12
-		from(		
-			select  att.lot, civ.qtyinvoiced as c9, civ.linenetamt as c10,0 as tong_van 
-			from c_invoice ci 
-			join c_invoiceline civ on ci.c_invoice_id = civ.c_invoice_id 
-			join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
-			join m_product hh on civ.m_product_id = hh.m_product_id and (hh.M_Product_Category_ID in (1000562,1000084) or hh.m_product_id in (1018826,1018827,1018340,1018219))
-			where ci.issotrx = 'Y' and ci.ad_client_id = $P{AD_CLIENT_ID} and ci.docstatus in ('CO','CL')
 	
 			union all
-			select att.lot, 0 as c9, 0 as c10,civ.qtyinvoiced as tong_van 
-			from c_invoice ci 
-			join c_invoiceline civ on ci.c_invoice_id = civ.c_invoice_id 
-			join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
-			join m_product hh on civ.m_product_id = hh.m_product_id and hh.M_Product_Category_ID in (1000562,1000084) and hh.m_product_id not in (1018340,1018219) 
-			where ci.issotrx = 'Y' and ci.ad_client_id = $P{AD_CLIENT_ID} and ci.docstatus in ('CO','CL')
-		) as k 
-	) as k
-	join m_lot ml on ml.name = k.lot and ml.isactive ='Y' 
-	where ml.m_lotctl_id in (1000048,1000038) and   ml.dateto >= $P{StartDate} AND ml.dateto <= $P{EndDate} 
-	and (ml.m_lot_id = $P{M_Lot_ID} or $P{M_Lot_ID} is null)
-	group by lot]]>
+		---sl tp sx ra-4--
+			select 	lot,0 as slm, 0 as ttm, 0 as c5, 0 as c6, 0 as c7,c8 as c8, 0 as c9,0 as c10,0  as c11, tt as c12
+			from(
+				select   att.lot,  coalesce(civ.productionqty,0) as c8,k.hsv_dinhmuc *civ.productionqty  as tt
+				from m_production ci 	 
+				join m_productionplan  civ on ci.m_production_id  = civ.m_production_id and ci.docstatus in ('CL','CO')	
+				join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
+				join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_category_id in (1000569,1000085,1000565,1000470,1000558,1000570)
+				left join (
+					select hsv_dg.startdate , hsv_dg.enddate, dgl.m_product_id,coalesce(hsv_dinhmuc,0) as hsv_dinhmuc,coalesce(amountdg1,0) as amountdg1
+					from hsv_nkdongialine dgl  
+					join hsv_dongia hsv_dg on hsv_dg.hsv_dongia_id = dgl.hsv_dongia_id and hsv_dg.hsv_loaidongia_id  in (1000000,1000042)
+					where hsv_dg.ad_client_id = $P{AD_CLIENT_ID}
+				) as k on k.m_product_id = civ.m_product_id 
+				where ci.ad_client_id =$P{AD_CLIENT_ID}  and ci.movementdate >= k.startdate and ci.movementdate <= k.enddate 			
+			
+			) as k 
+		
+			----
+			union all
+		select 	lot,0 as slm, 0 as ttm, 0 as c5, 0 as c6, 0 as c7,0 as c8, 0 as c9,0 as c10, -1*miv.qtyinternaluse  as c11, 0 as c12
+		from m_inventory mi
+		join m_inventoryline miv on mi.m_inventory_id  = miv.m_inventory_id  
+		join m_attributesetinstance att on att.m_attributesetinstance_id = miv.m_attributesetinstance_id and  (att.m_lot_id = $P{M_Lot_ID} )
+		join m_product hh on miv.m_product_id = hh.m_product_id and hh.m_product_category_id in (1000562,1000084)
+		join fact_acct fa on fa.record_id = miv.m_inventory_id and fa.line_id = miv.m_inventoryline_id and fa.ad_table_id = 321
+		where  fa.ad_client_id = $P{AD_CLIENT_ID}  and fa.c_campaign_id in (1000036,1000091)
+		and fa.amtacctcr =0
+		
+			union all
+	------7----		
+			select  lot,0 as slm, 0 as ttm,0 as c5, 0 as c6, 0 as c7,0 as c8,  c9,  c10,-1*tong_van as c11, c10 as c12
+			from(		
+				select  att.lot, civ.qtyinvoiced as c9, civ.linenetamt as c10,0 as tong_van 
+				from c_invoice ci 
+				join c_invoiceline civ on ci.c_invoice_id = civ.c_invoice_id 
+				join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
+				join m_product hh on civ.m_product_id = hh.m_product_id and (hh.M_Product_Category_ID in (1000562,1000084) or hh.m_product_id in (1018826,1018827,1018340,1018219))
+				where ci.issotrx = 'Y' and ci.ad_client_id = $P{AD_CLIENT_ID} and ci.docstatus in ('CO','CL')
+		
+				union all
+				select att.lot, 0 as c9, 0 as c10,civ.qtyinvoiced as tong_van 
+				from c_invoice ci 
+				join c_invoiceline civ on ci.c_invoice_id = civ.c_invoice_id 
+				join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
+				join m_product hh on civ.m_product_id = hh.m_product_id and hh.M_Product_Category_ID in (1000562,1000084) and hh.m_product_id not in (1018340,1018219) 
+				where ci.issotrx = 'Y' and ci.ad_client_id = $P{AD_CLIENT_ID} and ci.docstatus in ('CO','CL')
+			) as k 
+		) as k
+		join m_lot ml on ml.name = k.lot and ml.isactive ='Y' 
+		where    ml.m_lotctl_id in (1000048,1000038) and   ml.dateto >= $P{StartDate} AND ml.dateto <= $P{EndDate} and
+		 (ml.m_lot_id = $P{M_Lot_ID} or $P{M_Lot_ID} is null)
+		group by lot]]>
 	</queryString>
 	<field name="stt" class="java.lang.Long">
 		<property name="com.jaspersoft.studio.field.name" value="stt"/>
@@ -283,7 +309,7 @@ from(
 					<textElement textAlignment="Right" verticalAlignment="Middle">
 						<font fontName="Arial" isBold="true"/>
 					</textElement>
-					<textFieldExpression><![CDATA[$V{sum_tpsx}==0?0:$V{sum_hieuqua}/$V{sum_tpsx}]]></textFieldExpression>
+					<textFieldExpression><![CDATA[$V{sum_sl_ban}==0?0:$V{sum_hieuqua}/$V{sum_sl_ban}]]></textFieldExpression>
 				</textField>
 				<textField pattern="#,##0.##" isBlankWhenNull="true">
 					<reportElement x="905" y="0" width="70" height="26" uuid="67ce50df-7f7b-4449-9312-1798924c6e98">
@@ -902,7 +928,7 @@ from(
 				<textElement textAlignment="Right" verticalAlignment="Middle">
 					<font fontName="Arial"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{tp_sx}.doubleValue()==0?0:$F{hq}.doubleValue()/$F{tp_sx}.doubleValue()]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{slb}.doubleValue()==0?0:$F{hq}.doubleValue()/$F{slb}.doubleValue()]]></textFieldExpression>
 			</textField>
 		</band>
 	</detail>
