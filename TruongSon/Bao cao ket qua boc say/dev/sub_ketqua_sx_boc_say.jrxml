@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.20.0.final using JasperReports Library version 6.20.0-2bc7ab61c56f459e8176eb05c7705e145cd400ad  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="sub_ketqua_sx_boc_say" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="f0be6cb5-d1ac-4087-8c3a-337ef53332d4">
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="psql"/>
+	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
+	<parameter name="StartDate" class="java.util.Date"/>
+	<parameter name="EndDate" class="java.util.Date"/>
+	<queryString language="SQL">
+		<![CDATA[select row_number() over(partition by dm ) as stt,*
+from(
+	select 'Kết quả bóc ván nhập kho' as dm,hh.name,sum(civ.productionqty) as qty from m_production ci
+	join m_productionplan civ on ci.m_production_id = civ.m_production_id 
+	join m_product hh on hh.m_product_id = civ.m_product_id 
+	where hh.m_product_category_id in (1000569,1000085) and hh.M_AttributeSet_ID in (1000160,1000065)
+	and ci.ad_client_id = $P{AD_CLIENT_ID} and $P{StartDate} >= ci.movementdate and ci.movementdate <= $P{EndDate}
+	group by hh.name
+	
+	union all 
+	
+	select 'Kết quả phơi, sấy ván nhập kho' as dm,hh.name,sum(civ.productionqty) as qty from m_production ci
+	join m_productionplan civ on ci.m_production_id = civ.m_production_id 
+	join m_product hh on hh.m_product_id = civ.m_product_id 
+	where hh.m_product_category_id in (1000569,1000085) and hh.M_AttributeSet_ID in (1000168,1000066)
+	and ci.ad_client_id = $P{AD_CLIENT_ID} and $P{StartDate} >= ci.movementdate and ci.movementdate <= $P{EndDate}
+	group by hh.name 
+	union all 
+	
+	select 'Ván sấy đã chuyển cho px ép  (Chuyển - nhận)' as dm, hh.name,sum(civ.productionqty) as qty from m_production ci
+	join m_productionplan civ on ci.m_production_id = civ.m_production_id 
+	join m_product hh on hh.m_product_id = civ.m_product_id 
+	where hh.m_product_category_id in (1000569,1000085) and hh.M_AttributeSet_ID in (1000168,1000066)
+	and ci.ad_client_id = $P{AD_CLIENT_ID} and $P{StartDate} >= ci.movementdate and ci.movementdate <= $P{EndDate}
+	group by hh.name
+) as k]]>
+	</queryString>
+	<field name="stt" class="java.lang.Long">
+		<property name="com.jaspersoft.studio.field.name" value="stt"/>
+		<property name="com.jaspersoft.studio.field.label" value="stt"/>
+	</field>
+	<field name="dm" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="dm"/>
+		<property name="com.jaspersoft.studio.field.label" value="dm"/>
+	</field>
+	<field name="name" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="name"/>
+		<property name="com.jaspersoft.studio.field.label" value="name"/>
+	</field>
+	<field name="qty" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="qty"/>
+		<property name="com.jaspersoft.studio.field.label" value="qty"/>
+	</field>
+	<variable name="row_number" class="java.lang.Integer">
+		<variableExpression><![CDATA[($V{Group1_COUNT} == 1) ? $V{row_number} + 1 : $V{row_number} ]]></variableExpression>
+		<initialValueExpression><![CDATA[1]]></initialValueExpression>
+	</variable>
+	<group name="Group1">
+		<groupExpression><![CDATA[$F{dm}]]></groupExpression>
+		<groupHeader>
+			<band height="30">
+				<textField>
+					<reportElement x="0" y="0" width="50" height="30" uuid="34eb3a0c-c353-4d7d-b88f-f1599d02fd58"/>
+					<box topPadding="0" leftPadding="2" bottomPadding="0" rightPadding="2">
+						<pen lineWidth="0.5"/>
+					</box>
+					<textElement textAlignment="Center" verticalAlignment="Middle"/>
+					<textFieldExpression><![CDATA[$V{row_number}]]></textFieldExpression>
+				</textField>
+				<textField>
+					<reportElement x="50" y="0" width="505" height="30" uuid="36f59146-afa9-45a1-84a1-fe4348b8fb4c">
+						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="a458c690-fbbb-416e-8dee-fe5ff044f409"/>
+					</reportElement>
+					<box topPadding="0" leftPadding="2" bottomPadding="0" rightPadding="2">
+						<pen lineWidth="0.5"/>
+					</box>
+					<textElement verticalAlignment="Middle"/>
+					<textFieldExpression><![CDATA[$F{dm}]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupHeader>
+		<groupFooter>
+			<band height="50"/>
+		</groupFooter>
+	</group>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="79" splitType="Stretch"/>
+	</title>
+	<pageHeader>
+		<band height="35" splitType="Stretch"/>
+	</pageHeader>
+	<columnHeader>
+		<band height="30" splitType="Stretch">
+			<staticText>
+				<reportElement x="0" y="0" width="50" height="30" uuid="1f502068-5f43-4c4e-a18c-c24675cf02e1">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="a458c690-fbbb-416e-8dee-fe5ff044f409"/>
+				</reportElement>
+				<box topPadding="0" leftPadding="2" bottomPadding="0" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<text><![CDATA[stt]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="50" y="0" width="320" height="30" uuid="2654d0e9-125b-4b33-8d88-ec6671f28955">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="43ba9cad-539a-410d-9f65-62f2c4c98c40"/>
+				</reportElement>
+				<box topPadding="0" leftPadding="2" bottomPadding="0" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement verticalAlignment="Middle"/>
+				<text><![CDATA[name]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="370" y="0" width="185" height="30" uuid="9de75518-3e2b-4d8b-bf00-2ef0751a9d8e">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="a1c671f5-3823-4576-be94-46d8169faf86"/>
+				</reportElement>
+				<box topPadding="0" leftPadding="2" bottomPadding="0" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement verticalAlignment="Middle"/>
+				<text><![CDATA[qty]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="31" splitType="Stretch">
+			<textField>
+				<reportElement x="50" y="0" width="320" height="30" uuid="57654d55-c947-4e4a-8164-5f4322d227cd">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="43ba9cad-539a-410d-9f65-62f2c4c98c40"/>
+				</reportElement>
+				<box topPadding="0" leftPadding="2" bottomPadding="0" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[$F{name}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="370" y="0" width="185" height="30" uuid="ab015305-074a-4528-9290-2c9417e821d3">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="a1c671f5-3823-4576-be94-46d8169faf86"/>
+				</reportElement>
+				<box topPadding="0" leftPadding="2" bottomPadding="0" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA[$F{qty}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="0" y="0" width="50" height="30" uuid="c8861fb1-f138-4f6d-9965-93d82fc93e2c">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="a458c690-fbbb-416e-8dee-fe5ff044f409"/>
+				</reportElement>
+				<box topPadding="0" leftPadding="2" bottomPadding="0" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle"/>
+				<textFieldExpression><![CDATA["-"]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<columnFooter>
+		<band height="45" splitType="Stretch"/>
+	</columnFooter>
+	<pageFooter>
+		<band height="54" splitType="Stretch"/>
+	</pageFooter>
+	<summary>
+		<band height="42" splitType="Stretch"/>
+	</summary>
+</jasperReport>
