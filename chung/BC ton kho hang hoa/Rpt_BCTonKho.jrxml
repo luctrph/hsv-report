@@ -29,9 +29,10 @@
 	</parameter>
 	<parameter name="EXPORT_TYPE" class="java.lang.String"/>
 	<parameter name="M_Product_ID" class="java.lang.Integer"/>
+	<parameter name="M_AttributeSet_ID" class="java.lang.Integer"/>
 	<queryString language="SQL">
 		<![CDATA[select t1.mn,t1.tn,t1.mh,t1.th,t1.dudau,t1.sln,t1.slx,t1.ducuoi
-from(	select n.value as mn,n.name as tn,t.value as mh,t.name as th,
+from(	select n.value as mn,n.name as tn,hh.value as mh,hh.name as th,
 
 		sum(case when t.movementdate<$P{StartDate} then t.movementqty else 0 end) as dudau,
 
@@ -42,51 +43,52 @@ from(	select n.value as mn,n.name as tn,t.value as mh,t.name as th,
 		sum(case when t.movementdate<=$P{EndDate} then t.movementqty else 0 end) as ducuoi
 		
 		
-	from 
-	(select m_transaction.AD_Org_ID,hh.m_product_category_id,hh.value ,hh.name ,m_transaction.m_product_id,m_transaction.m_locator_id,m_transaction.movementdate,m_transaction.movementtype,m_transaction.movementqty
-		from m_transaction 
-		join m_product hh on m_transaction.m_product_id=hh.m_product_id and (hh.M_Product_ID=$P{M_Product_ID} or $P{M_Product_ID} is null)
-		join (select ml.M_inventoryline_id  from M_inventoryline ml join M_inventory m on ml.M_inventory_id=m.M_inventory_id and m.docstatus in ('CO','CL') and m.ad_client_id=$P{AD_CLIENT_ID}) t on m_transaction.M_inventoryline_id=t.M_inventoryline_id
-		 where m_transaction.movementdate<=$P{EndDate} and m_transaction.ad_client_id=$P{AD_CLIENT_ID}
+	from( 	
+		select tras.AD_Org_ID,hh.m_product_category_id,tras.m_product_id,tras.m_locator_id,tras.movementdate,tras.movementtype,tras.movementqty
+		from m_transaction tras 
+		join m_product hh on tras.m_product_id=hh.m_product_id 
+		join (select ml.M_inventoryline_id  from M_inventoryline ml join M_inventory m on ml.M_inventory_id=m.M_inventory_id and m.docstatus in ('CO','CL') and m.ad_client_id=$P{AD_CLIENT_ID}) t on tras.M_inventoryline_id=t.M_inventoryline_id
+		where tras.movementdate<=$P{EndDate} and tras.ad_client_id=$P{AD_CLIENT_ID}
 		 
 		union all
 
-		select m_transaction.AD_Org_ID,hh.m_product_category_id,hh.value ,hh.name ,m_transaction.m_product_id,m_transaction.m_locator_id,m_transaction.movementdate,m_transaction.movementtype,m_transaction.movementqty
-		from m_transaction 
-		join m_product hh on m_transaction.m_product_id=hh.m_product_id and (hh.M_Product_ID=$P{M_Product_ID} or $P{M_Product_ID} is null)
-		join (select ml.M_movementline_id  from M_movementline ml join M_movement m on ml.M_movement_id=m.M_movement_id and m.docstatus in ('CO','CL')and m.ad_client_id=$P{AD_CLIENT_ID}) t1 on m_transaction.M_movementline_id=t1.M_movementline_id
-		 where m_transaction.movementdate<=$P{EndDate} and m_transaction.ad_client_id=$P{AD_CLIENT_ID}
+		select tras.AD_Org_ID,hh.m_product_category_id,tras.m_product_id,tras.m_locator_id,tras.movementdate,tras.movementtype,tras.movementqty
+		from m_transaction tras 
+		join m_product hh on tras.m_product_id=hh.m_product_id 
+		join (select ml.M_movementline_id  from M_movementline ml join M_movement m on ml.M_movement_id=m.M_movement_id and m.docstatus in ('CO','CL')and m.ad_client_id=$P{AD_CLIENT_ID}) t1 on tras.M_movementline_id=t1.M_movementline_id
+		where tras.movementdate<=$P{EndDate} and tras.ad_client_id=$P{AD_CLIENT_ID}
 		 
-	union all
+		union all
 
-	select m_transaction.AD_Org_ID,hh.m_product_category_id,hh.value ,hh.name ,m_transaction.m_product_id,m_transaction.m_locator_id,m_transaction.movementdate,m_transaction.movementtype,m_transaction.movementqty
-		from m_transaction 
-		join m_product hh on m_transaction.m_product_id=hh.m_product_id and (hh.M_Product_ID=$P{M_Product_ID} or $P{M_Product_ID} is null)
-		join (select ml.M_inoutline_id  from M_inoutline ml join M_inout m on ml.M_inout_id=m.M_inout_id and m.docstatus in ('CO','CL')and m.ad_client_id=$P{AD_CLIENT_ID}) t2 on m_transaction.M_inoutline_id=t2.M_inoutline_id
-	 where m_transaction.movementdate<=$P{EndDate} and m_transaction.ad_client_id=$P{AD_CLIENT_ID}
+		select tras.AD_Org_ID,hh.m_product_category_id,tras.m_product_id,tras.m_locator_id,tras.movementdate,tras.movementtype,tras.movementqty
+		from m_transaction tras 
+		join m_product hh on tras.m_product_id=hh.m_product_id 
+		join (select ml.M_inoutline_id  from M_inoutline ml join M_inout m on ml.M_inout_id=m.M_inout_id and m.docstatus in ('CO','CL')and m.ad_client_id=$P{AD_CLIENT_ID}) t2 on tras.M_inoutline_id=t2.M_inoutline_id
+		where tras.movementdate<=$P{EndDate} and tras.ad_client_id=$P{AD_CLIENT_ID}
 	 
 		union all
 
-		select m_transaction.AD_Org_ID,hh.m_product_category_id,hh.value ,hh.name ,m_transaction.m_product_id,m_transaction.m_locator_id,m_transaction.movementdate,m_transaction.movementtype,m_transaction.movementqty
-		from m_transaction 
-		join m_product hh on m_transaction.m_product_id=hh.m_product_id and (hh.M_Product_ID=$P{M_Product_ID} or $P{M_Product_ID} is null)
-		 join (select ml.M_productionline_id  from M_productionline ml join (select ml.M_productionplan_id from M_productionplan ml join M_production m on ml.M_production_id=m.M_production_id and m.docstatus in ('CO','CL')and m.ad_client_id=$P{AD_CLIENT_ID} ) m on ml.M_productionplan_id=m.M_productionplan_id ) t3 on m_transaction.M_productionline_id=t3.M_productionline_id
-		 where m_transaction.movementdate<=$P{EndDate} and m_transaction.ad_client_id=$P{AD_CLIENT_ID}
+		select tras.AD_Org_ID,hh.m_product_category_id,tras.m_product_id,tras.m_locator_id,tras.movementdate,tras.movementtype,tras.movementqty
+		from m_transaction tras 
+		join m_product hh on tras.m_product_id=hh.m_product_id 
+		join (select ml.M_productionline_id  from M_productionline ml join (select ml.M_productionplan_id from M_productionplan ml join M_production m on ml.M_production_id=m.M_production_id and m.docstatus in ('CO','CL')and m.ad_client_id=$P{AD_CLIENT_ID} ) m on ml.M_productionplan_id=m.M_productionplan_id ) t3 on tras.M_productionline_id=t3.M_productionline_id
+		where tras.movementdate<=$P{EndDate} and tras.ad_client_id=$P{AD_CLIENT_ID}
 		 
-		 union all
+		union all
 
-		select m_transaction.AD_Org_ID,hh.m_product_category_id,hh.value ,hh.name ,m_transaction.m_product_id,m_transaction.m_locator_id,m_transaction.movementdate,m_transaction.movementtype,m_transaction.movementqty
-		from m_transaction 
-		join m_product hh on m_transaction.m_product_id=hh.m_product_id and (hh.M_Product_ID=$P{M_Product_ID} or $P{M_Product_ID} is null)
-		 join (select ml.M_productionline_id  from M_productionline ml join M_production m on ml.M_production_id=m.M_production_id and m.docstatus in ('CO','CL') and m.ad_client_id=$P{AD_CLIENT_ID}) t4 on m_transaction.M_productionline_id=t4.M_productionline_id
-		 where m_transaction.movementdate<=$P{EndDate} and m_transaction.ad_client_id=$P{AD_CLIENT_ID}
+		select tras.AD_Org_ID,hh.m_product_category_id,tras.m_product_id,tras.m_locator_id,tras.movementdate,tras.movementtype,tras.movementqty
+		from m_transaction tras 
+		join m_product hh on tras.m_product_id=hh.m_product_id
+		join (select ml.M_productionline_id  from M_productionline ml join M_production m on ml.M_production_id=m.M_production_id and m.docstatus in ('CO','CL') and m.ad_client_id=$P{AD_CLIENT_ID}) t4 on tras.M_productionline_id=t4.M_productionline_id
+		where tras.movementdate<=$P{EndDate} and tras.ad_client_id=$P{AD_CLIENT_ID}
 		 
 	) as t
-	inner join m_product_category n on t.m_product_category_id=n.m_product_category_id  and (n.m_product_category_id=$P{M_Product_Category_ID} or $P{M_Product_Category_ID} is null)
-	inner join m_locator kho on t.m_locator_id=kho.m_locator_id and (kho.m_locator_id=$P{M_Locator_ID} or $P{M_Locator_ID} is null)
-	inner join AD_Org bp on t.AD_Org_ID=bp.AD_Org_ID and (bp.AD_Org_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-	group by n.value,n.name, t.value ,t.name
-	order by n.value,t.value  asc
+	join m_product_category n on t.m_product_category_id=n.m_product_category_id  and (n.m_product_category_id=$P{M_Product_Category_ID} or $P{M_Product_Category_ID} is null)
+	join m_locator kho on t.m_locator_id=kho.m_locator_id and (kho.m_locator_id=$P{M_Locator_ID} or $P{M_Locator_ID} is null)
+	join AD_Org bp on t.AD_Org_ID=bp.AD_Org_ID and (bp.AD_Org_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
+	join m_product hh on hh.m_product_id = t.m_product_id and (hh.m_attributeset_id = $P{M_AttributeSet_ID} or $P{M_AttributeSet_ID} is null) and (hh.m_product_id = $P{M_Product_ID} or $P{M_Product_ID} is null) 
+	group by n.value,n.name, hh.value ,hh.name
+	order by n.value,hh.value  asc
   ) as t1
 where t1.dudau+t1.sln+t1.slx+t1.ducuoi<>0
 order by t1.mn,t1.tn,t1.mh,t1.th asc]]>
@@ -104,10 +106,12 @@ order by t1.mn,t1.tn,t1.mh,t1.th asc]]>
 	<field name="mh" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="mh"/>
 		<property name="com.jaspersoft.studio.field.label" value="mh"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="m_product"/>
 	</field>
 	<field name="th" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="th"/>
 		<property name="com.jaspersoft.studio.field.label" value="th"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="m_product"/>
 	</field>
 	<field name="dudau" class="java.math.BigDecimal">
 		<property name="com.jaspersoft.studio.field.name" value="dudau"/>

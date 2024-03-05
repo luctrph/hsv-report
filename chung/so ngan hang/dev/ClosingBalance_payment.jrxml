@@ -1,15 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Created with Jaspersoft Studio version 6.17.0.final using JasperReports Library version 6.17.0-6d93193241dd8cc42629e188b94f9e0bc5722efd  -->
-<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="ClosingBalance_payment" pageWidth="842" pageHeight="595" orientation="Landscape" columnWidth="842" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="8b32f809-572c-4626-b5ec-a7c403a052b3">
+<!-- Created with Jaspersoft Studio version 6.20.0.final using JasperReports Library version 6.20.0-2bc7ab61c56f459e8176eb05c7705e145cd400ad  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="ClosingBalance_payment" pageWidth="822" pageHeight="595" orientation="Landscape" columnWidth="822" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="8b32f809-572c-4626-b5ec-a7c403a052b3">
 	<property name="ireport.scriptlethandling" value="0"/>
-	<property name="ireport.encoding" value="UTF-8"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.keep.first.band.1" value="columnHeader"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.2" value="pageFooter"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.3" value="groupHeader"/>
 	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.rows" value="true"/>
 	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.columns" value="true"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.keep.first.band.1" value="columnHeader"/>
+	<property name="net.sf.jasperreports.export.xls.white.page.background" value="false"/>
 	<property name="net.sf.jasperreports.export.xls.detect.cell.type" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.ignore.graphics" value="false"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.1" value="pageHeader"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.group.3" value="ProductGroup"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.report.3" value="ProductReport"/>
+	<property name="net.sf.jasperreports.export.xls.ignore.cell.border" value="false"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.2" value="pageFooter"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.3" value="groupHeader"/>
+	<property name="net.sf.jasperreports.export.xlsx.remove.empty.space.between.rows" value="true"/>
+	<property name="net.sf.jasperreports.export.xlsx.remove.empty.space.between.columns" value="true"/>
+	<property name="net.sf.jasperreports.export.xlsx.white.page.background" value="false"/>
+	<property name="net.sf.jasperreports.export.xlsx.detect.cell.type" value="true"/>
+	<property name="net.sf.jasperreports.export.xlsx.ignore.graphics" value="false"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.1" value="pageHeader"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.group.3" value="ProductGroup"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.report.3" value="ProductReport"/>
+	<property name="net.sf.jasperreports.export.xlsx.ignore.cell.border" value="false"/>
+	<property name="ireport.encoding" value="UTF-8"/>
 	<property name="ireport.zoom" value="1.0"/>
 	<property name="ireport.x" value="0"/>
 	<property name="ireport.y" value="0"/>
-	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="adempiere_7.1"/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="psql"/>
 	<property name="com.jaspersoft.studio.unit." value="pixel"/>
 	<property name="com.jaspersoft.studio.unit.pageHeight" value="pixel"/>
 	<property name="com.jaspersoft.studio.unit.pageWidth" value="pixel"/>
@@ -32,9 +53,9 @@
 	<parameter name="C_Currency_ID" class="java.lang.Integer"/>
 	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
 	<queryString language="SQL">
-		<![CDATA[select sum(ARPayments) as ClosingBal 
+		<![CDATA[select sum(case when left(cb.accountno ,1) ='3' then  -1*ARPayments else ARPayments end) as ClosingBal 
 from (        
-         	  select COALESCE((SUM(pa.PAYAMT) ),0) as ARPayments
+         	  select COALESCE((SUM(pa.PAYAMT) ),0) as ARPayments,pa.C_BankAccount_ID 
               from C_PAYMENT pa,C_DOCTYPE doc
               where doc.docbasetype IN ('ARR')
               AND pa.DOCSTATUS IN ('CO','CL')
@@ -46,8 +67,10 @@ from (
               and (pa.C_Currency_ID=$P{C_Currency_ID} or $P{C_Currency_ID} is null)
               AND pa.DATETRX <= $P{EndDate} 
               and pa.ad_client_id = $P{AD_CLIENT_ID}
-          union all 
-              select -1* COALESCE((SUM(pa.PAYAMT) ),0) as ARPayments
+          	  group by C_BankAccount_ID
+              union all 
+              
+              select -1* COALESCE((SUM(pa.PAYAMT) ),0) as ARPayments,pa.c_bankaccount_id 
               from C_PAYMENT pa,C_DOCTYPE doc
               where doc.docbasetype IN ('APP')
               AND pa.DOCSTATUS IN ('CO','CL')
@@ -59,9 +82,11 @@ from (
               and (pa.C_Currency_ID=$P{C_Currency_ID} or $P{C_Currency_ID} is null)
               AND pa.DATETRX <= $P{EndDate}
              and pa.ad_client_id = $P{AD_CLIENT_ID}
+              group by c_bankaccount_id
               
-           union all   
-           select -1* COALESCE(Sum(t.ps),0)
+          	 union all   
+           
+          	 select -1* COALESCE(Sum(t.ps),0) as ARPayments, acct.c_bankaccount_id 
               from (select pa.PAYAMT as ps,c_charge_acct.ch_expense_acct
 		                 from C_PAYMENT pa 
                           join c_charge_acct on  pa.c_charge_id=c_charge_acct.c_charge_id 
@@ -75,11 +100,10 @@ from (
 		                              and pa.ad_client_id = $P{AD_CLIENT_ID}
                             ) as t
                   join c_bankaccount_acct acct on acct.b_asset_acct=t.ch_expense_acct and acct.C_BankAccount_ID=$P{C_BankAccount_ID}
-             
+             group by c_bankaccount_id
              union all  
-              
-         
-              select COALESCE(Sum(t.ps),0)
+                       
+              select COALESCE(Sum(t.ps),0) as ARPayments, acct.c_bankaccount_id
               from (
               	select pa.PAYAMT as ps,c_charge_acct.ch_expense_acct
 		                 from C_PAYMENT pa 
@@ -95,9 +119,10 @@ from (
 		                              
                    ) as t
                   join c_bankaccount_acct acct on acct.b_asset_acct=t.ch_expense_acct and acct.C_BankAccount_ID=$P{C_BankAccount_ID}
-                            
+                  group by c_bankaccount_id
               
-     ) as k]]>
+     ) as k
+    join c_bankaccount cb   on cb.c_bankaccount_id = k.c_bankaccount_id]]>
 	</queryString>
 	<field name="closingbal" class="java.math.BigDecimal">
 		<property name="com.jaspersoft.studio.field.name" value="closingbal"/>
@@ -115,8 +140,11 @@ from (
 	<columnHeader>
 		<band height="20" splitType="Stretch">
 			<textField textAdjust="StretchHeight" pattern="#,##0.00" isBlankWhenNull="true">
-				<reportElement key="textField" mode="Opaque" x="339" y="0" width="481" height="19" backcolor="#FFFFFF" uuid="4b8535a2-4724-4b00-beae-1d46cdfcaab8">
+				<reportElement key="textField" mode="Transparent" x="578" y="0" width="244" height="20" backcolor="#FFFFFF" uuid="4b8535a2-4724-4b00-beae-1d46cdfcaab8">
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
 				</reportElement>
 				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.25"/>
@@ -131,8 +159,10 @@ from (
 				<textFieldExpression><![CDATA[$F{closingbal}]]></textFieldExpression>
 			</textField>
 			<staticText>
-				<reportElement key="element-90" mode="Opaque" x="0" y="0" width="339" height="19" forecolor="#000000" backcolor="#FFFFFF" uuid="9c2eba71-b44b-41cb-a692-008b447f6809">
+				<reportElement key="element-90" mode="Transparent" x="0" y="0" width="578" height="20" forecolor="#000000" backcolor="#FFFFFF" uuid="9c2eba71-b44b-41cb-a692-008b447f6809">
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.25"/>
