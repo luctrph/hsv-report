@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.4.3.final using JasperReports Library version 6.4.3  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="tyle_trencan" pageWidth="576" pageHeight="23" columnWidth="576" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="71115b91-dd99-4bc5-b217-10e925ac5efb">
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="HSV"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="0"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="1000"/>
+	<parameter name="StartDate" class="java.util.Date">
+		<defaultValueExpression><![CDATA[new Date(117,0,1)]]></defaultValueExpression>
+	</parameter>
+	<parameter name="EndDate" class="java.util.Date">
+		<defaultValueExpression><![CDATA[NOW()]]></defaultValueExpression>
+	</parameter>
+	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
+	<queryString language="SQL">
+		<![CDATA[SELECT id ,tp.name, round(a37,2) as a37
+FROM(
+Select id,case when sum(qty)<>0 then (sum(tt1)+sum(tt2))/sum(qty) else 0 end as a37
+FROM(
+SELECT id, k.qty, 0 as tt1,0 as tt2
+FROM (
+    SELECT '37' AS id, sum(civ.productionqty) AS qty,0 AS tt
+	FROM m_production ci
+	JOIN m_productionplan  civ ON ci.m_production_id = civ.m_production_id 
+	JOIN m_product hh ON civ.m_product_id = hh.m_product_id AND hh.M_AttributeSet_ID=1000088 
+	WHERE ci.docstatus IN ('CO','CL') AND ci.c_activity_id = 1000273 AND ci.c_campaign_id=1000062  AND ci.movementdate>=$P{StartDate} AND ci.movementdate<=$P{EndDate}  and ci.ad_client_id = $P{AD_CLIENT_ID}
+	) AS k
+
+UNION ALL
+
+    SELECT id, 0 as qty, sum(tt) AS tt1, 0 as tt2
+    FROM (
+        SELECT '37' AS id,  sum(fc.qty) AS qty, sum(-fc.amtacctcr + fc.amtacctdr) AS "tt", 0 AS qtytt
+        FROM fact_acct fc
+        JOIN c_elementvalue acct ON fc.account_id = acct.c_elementvalue_id AND LEFT(acct.value, 2) IN ('15')
+        WHERE fc.C_Activity_ID = 1000273 AND ad_table_id = 325 AND M_Product_ID = 1015083 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate} and fc.ad_client_id = $P{AD_CLIENT_ID}
+        ) AS k GROUP BY id
+	
+    UNION ALL
+
+    SELECT id,0 as qty, 0 as tt1, sum(tt) AS tt2
+    FROM (
+        SELECT '37' AS id,  sum(fc.qty) AS qty, sum(-fc.amtacctcr + fc.amtacctdr) AS "tt", 0 AS qtytt
+        FROM fact_acct fc
+        JOIN c_elementvalue acct ON fc.account_id = acct.c_elementvalue_id AND LEFT(acct.value, 2) IN ('15')
+        WHERE fc.C_Activity_ID = 1000273 AND ad_table_id = 325 AND M_Product_ID = 1015097 AND fc.dateacct>=$P{StartDate} AND fc.dateacct<=$P{EndDate}  and fc.ad_client_id = $P{AD_CLIENT_ID}
+   ) AS k GROUP BY id
+)as k GROUP By id) as k
+RIGHT JOIN hsv_giathanhvan tp ON tp.value = k.id
+WHERE ad_client_id = $P{AD_CLIENT_ID} AND tp.value = '37']]>
+	</queryString>
+	<field name="id" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="id"/>
+	</field>
+	<field name="name" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.label" value="name"/>
+	</field>
+	<field name="a37" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.label" value="a37"/>
+	</field>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<detail>
+		<band height="23" splitType="Stretch">
+			<textField>
+				<reportElement x="0" y="0" width="480" height="23" uuid="8016b7e0-ba75-4884-9fc8-0dcd4bf2069c">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{name}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.###">
+				<reportElement x="480" y="0" width="95" height="23" uuid="384d18dd-f2f2-4160-9f61-1e56b5feca2a">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{a37}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+</jasperReport>
