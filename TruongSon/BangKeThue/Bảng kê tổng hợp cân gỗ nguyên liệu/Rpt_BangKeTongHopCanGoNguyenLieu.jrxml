@@ -63,7 +63,6 @@
 			<rightPen lineWidth="0.5" lineColor="#000000"/>
 		</box>
 	</style>
-	<parameter name="AD_Org_ID" class="java.lang.Integer"/>
 	<parameter name="SUBREPORT_DIR" class="java.lang.String">
 		<defaultValueExpression><![CDATA["dev/"]]></defaultValueExpression>
 	</parameter>
@@ -81,9 +80,9 @@
 				--,sum(odl.qtyordered) as sl,sum(odl.qtyordered*odl.priceactual) as tt,case when sum(odl.qtyordered)<>0 then sum(odl.qtyordered*odl.priceactual)/ sum(odl.qtyordered) else 0 end as gia
 		from C_invoice od
 --		join C_Order od on od.C_Order_id=odl.C_Order_id
-		left join AD_OrgInfo org on org.ad_org_id =od.ad_org_id 
+		left join AD_OrgInfo org on 1=1
 		left join AD_User adu on adu.c_bpartner_id =od.c_bpartner_id 
-		where od.ad_client_id =$P{AD_CLIENT_ID} and od.ad_org_id =$P{AD_Org_ID} and od.docstatus in ('CO','CL')
+		where org.ad_client_id =$P{AD_CLIENT_ID} and org.ad_org_id in (1000038,1000144) and od.docstatus in ('CO','CL')
 					 and (od.c_bpartner_id =$P{C_BPartner_ID} or $P{C_BPartner_ID} is null) and od.issotrx='N' and od.dateordered>=$P{StartDate} and od.dateordered<=$P{EndDate} 
 		group by org.C_Location2,org.name2 ,adu.name ,adu.diachiID ,adu.CMTND, adu.Birthday]]>
 	</queryString>
@@ -126,6 +125,13 @@
 	<variable name="tennm" class="java.lang.String">
 		<variableExpression><![CDATA[$V{ten_p}==null?$V{ten_b}:$V{ten_p}]]></variableExpression>
 	</variable>
+	<variable name="tennb_b" class="java.lang.String">
+		<variableExpression><![CDATA[$V{tennb_b}]]></variableExpression>
+	</variable>
+	<variable name="tennb_p" class="java.lang.String"/>
+	<variable name="tennb" class="java.lang.String">
+		<variableExpression><![CDATA[$V{tennb_b} == null?$V{tennb_p}:$V{tennb_b}]]></variableExpression>
+	</variable>
 	<background>
 		<band splitType="Stretch"/>
 	</background>
@@ -154,9 +160,6 @@
 				</subreportParameter>
 				<subreportParameter name="AD_CLIENT_ID">
 					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="AD_Org_ID">
-					<subreportParameterExpression><![CDATA[$P{AD_Org_ID}]]></subreportParameterExpression>
 				</subreportParameter>
 				<subreportParameter name="C_Project_ID">
 					<subreportParameterExpression><![CDATA[$P{C_Project_ID}]]></subreportParameterExpression>
@@ -208,9 +211,6 @@
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 					<printWhenExpression><![CDATA[$P{C_Project_ID}!=null]]></printWhenExpression>
 				</reportElement>
-				<subreportParameter name="AD_Org_ID">
-					<subreportParameterExpression><![CDATA[$P{AD_Org_ID}]]></subreportParameterExpression>
-				</subreportParameter>
 				<subreportParameter name="AD_CLIENT_ID">
 					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
 				</subreportParameter>
@@ -234,6 +234,7 @@
 				</subreportParameter>
 				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
 				<returnValue subreportVariable="tennm" toVariable="ten_p"/>
+				<returnValue subreportVariable="tennb" toVariable="tennb_p"/>
 				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"info_project.jasper"]]></subreportExpression>
 			</subreport>
 			<subreport>
@@ -241,9 +242,6 @@
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<printWhenExpression><![CDATA[$P{C_Project_ID}==null]]></printWhenExpression>
 				</reportElement>
-				<subreportParameter name="AD_Org_ID">
-					<subreportParameterExpression><![CDATA[$P{AD_Org_ID}]]></subreportParameterExpression>
-				</subreportParameter>
 				<subreportParameter name="AD_CLIENT_ID">
 					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
 				</subreportParameter>
@@ -267,6 +265,7 @@
 				</subreportParameter>
 				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
 				<returnValue subreportVariable="tennm" toVariable="ten_b"/>
+				<returnValue subreportVariable="tennb" toVariable="tennb_b"/>
 				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"info_bpartner.jasper"]]></subreportExpression>
 			</subreport>
 		</band>
@@ -277,9 +276,6 @@
 				<reportElement x="0" y="0" width="555" height="23" uuid="44ee1ef6-f2fb-4715-b1fe-7beb21b6a7de">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<subreportParameter name="AD_Org_ID">
-					<subreportParameterExpression><![CDATA[$P{AD_Org_ID}]]></subreportParameterExpression>
-				</subreportParameter>
 				<subreportParameter name="AD_CLIENT_ID">
 					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
 				</subreportParameter>
@@ -328,41 +324,9 @@
 		</band>
 	</pageFooter>
 	<summary>
-		<band height="132">
-			<subreport>
-				<reportElement x="0" y="0" width="555" height="30" uuid="4845c533-b74b-4753-9de6-452793694e92">
-					<property name="com.jaspersoft.studio.unit.x" value="px"/>
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-				</reportElement>
-				<subreportParameter name="AD_Org_ID">
-					<subreportParameterExpression><![CDATA[$P{AD_Org_ID}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="AD_CLIENT_ID">
-					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="C_BPartner_ID">
-					<subreportParameterExpression><![CDATA[$P{C_BPartner_ID}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="M_Product_Category_ID">
-					<subreportParameterExpression><![CDATA[$P{M_Product_Category_ID}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="StartDate">
-					<subreportParameterExpression><![CDATA[$P{StartDate}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="EndDate">
-					<subreportParameterExpression><![CDATA[$P{EndDate}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="SUBREPORT_DIR">
-					<subreportParameterExpression><![CDATA[$P{SUBREPORT_DIR}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="C_Project_ID">
-					<subreportParameterExpression><![CDATA[$P{C_Project_ID}]]></subreportParameterExpression>
-				</subreportParameter>
-				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
-				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"Rpt_detail_BangKeTongHopCanGoNguyenLieu_TongCong.jasper"]]></subreportExpression>
-			</subreport>
+		<band height="98">
 			<staticText>
-				<reportElement x="278" y="35" width="277" height="20" uuid="cd08b21b-800d-4f6e-a5fc-182b6328b951">
+				<reportElement x="278" y="4" width="277" height="20" uuid="cd08b21b-800d-4f6e-a5fc-182b6328b951">
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -371,14 +335,14 @@
 				<text><![CDATA[Đại diện bên mua]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="0" y="35" width="278" height="20" uuid="8648cf06-9658-41fb-a09a-deb1a57daa56"/>
+				<reportElement x="0" y="4" width="278" height="20" uuid="8648cf06-9658-41fb-a09a-deb1a57daa56"/>
 				<textElement textAlignment="Center">
 					<font fontName="Arial" size="12" isBold="true"/>
 				</textElement>
 				<text><![CDATA[Khách hàng]]></text>
 			</staticText>
 			<textField>
-				<reportElement x="278" y="112" width="277" height="20" uuid="0911286a-72c0-43bb-9696-0cfa1d204cd3">
+				<reportElement x="278" y="78" width="277" height="20" uuid="0911286a-72c0-43bb-9696-0cfa1d204cd3">
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
@@ -387,6 +351,13 @@
 					<font fontName="Arial" size="12" isBold="true"/>
 				</textElement>
 				<textFieldExpression><![CDATA[PROPER($F{tennm})]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="0" y="78" width="278" height="20" uuid="e28e3d1b-9619-4938-a065-969d4e94fd63"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[PROPER($V{tennb})]]></textFieldExpression>
 			</textField>
 		</band>
 	</summary>

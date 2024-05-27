@@ -3,21 +3,29 @@
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="info_project" pageWidth="575" pageHeight="842" columnWidth="575" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="feaee7e9-cdcb-48d2-afc9-f5390876a0a9">
 	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
 	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="psql"/>
-	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="0"/>
-	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="1000"/>
 	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
 	<parameter name="AD_Org_ID" class="java.lang.Integer"/>
 	<parameter name="C_BPartner_ID" class="java.lang.Integer"/>
 	<parameter name="StartDate" class="java.util.Date"/>
 	<parameter name="EndDate" class="java.util.Date"/>
+	<parameter name="C_Project_ID" class="java.lang.Integer"/>
 	<queryString language="SQL">
 		<![CDATA[select distinct  org.C_Location2 as diachinm,org.name2 as tennm
-				,adu.name as tennb,adu.diachiID as diachinb,adu.CMTND as cmtnd,adu.Birthday as ngaycap
+				--Nguoi ban
+				,a.name2 as tennb,a.diachiID as diachinb,a.CMTND as cmtnd,a.Birthday as ngaycap
 		
 		from C_invoice od
 		left join AD_OrgInfo org on 1=1
 		left join AD_User adu on adu.c_bpartner_id =od.c_bpartner_id 
-		where org.ad_client_id =$P{AD_CLIENT_ID} and org.ad_org_id in (1000038,1000144) 
+		join c_invoiceline ci on ci.c_invoice_id = od.c_invoice_id 
+		join (
+			select cp.c_project_id , att.m_attributesetinstance_id,cp.diachiid, cp.name2 , cp.cmtnd,cp.Birthday
+			from m_attributesetinstance att 
+			join m_lot ml on ml.m_lot_id = att.m_lot_id 
+			join c_project cp ON cp.c_project_id = ml.c_project_id 
+			where cp.c_project_id= $P{C_Project_ID}
+		) as a on ci.m_attributesetinstance_id = a.m_attributesetinstance_id		
+		where org.ad_client_id =$P{AD_CLIENT_ID} and org.ad_org_id in (1000038,1000144) and od.docstatus in ('CL','CO')
 					 and (od.c_bpartner_id =$P{C_BPartner_ID} or $P{C_BPartner_ID} is null) and od.issotrx='N' and od.dateordered>=$P{StartDate} and od.dateordered<=$P{EndDate} and adu.isactive ='Y']]>
 	</queryString>
 	<field name="diachinm" class="java.lang.String">
@@ -33,27 +41,27 @@
 	<field name="tennb" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="tennb"/>
 		<property name="com.jaspersoft.studio.field.label" value="tennb"/>
-		<property name="com.jaspersoft.studio.field.tree.path" value="ad_user"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_project"/>
 	</field>
 	<field name="diachinb" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="diachinb"/>
 		<property name="com.jaspersoft.studio.field.label" value="diachinb"/>
-		<property name="com.jaspersoft.studio.field.tree.path" value="ad_user"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_project"/>
 	</field>
 	<field name="cmtnd" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="cmtnd"/>
 		<property name="com.jaspersoft.studio.field.label" value="cmtnd"/>
-		<property name="com.jaspersoft.studio.field.tree.path" value="ad_user"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_project"/>
 	</field>
 	<field name="ngaycap" class="java.sql.Timestamp">
 		<property name="com.jaspersoft.studio.field.name" value="ngaycap"/>
 		<property name="com.jaspersoft.studio.field.label" value="ngaycap"/>
-		<property name="com.jaspersoft.studio.field.tree.path" value="ad_user"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_project"/>
 	</field>
 	<variable name="tennm" class="java.lang.String">
 		<variableExpression><![CDATA[$F{tennm}]]></variableExpression>
 	</variable>
-	<variable name="tennb" class="java.lang.String">
+	<variable name="ban" class="java.lang.String">
 		<variableExpression><![CDATA[$F{tennb}]]></variableExpression>
 	</variable>
 	<background>
