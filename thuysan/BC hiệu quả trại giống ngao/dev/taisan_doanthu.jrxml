@@ -12,11 +12,11 @@
 	<queryString>
 		<![CDATA[select row_number() over(partition by dm order by dm desc) as stt, *
 from(
-select 'Tài sản cố định' as dm, noidung , tt,null::int4 as dt_ngao, 0 as dt_tom 
+select 'Tài sản cố định' as dm, noidung , tt,null::int4 as dt_ngao, 0 as dt_tom, tt as tudau
 from (
 	select 'Tiền mua ban đầu (211)' as noidung, coalesce(sum(fa.amtacctdr-fa.amtacctcr),0) as tt 
 	from fact_acct fa 
-	where fa.ad_client_id = $P{AD_CLIENT_ID} and fa.dateacct >='01-01-2020' and fa.dateacct <= $P{EndDate}
+	where fa.ad_client_id = $P{AD_CLIENT_ID} and fa.dateacct >='01-01-2021' and fa.dateacct <= $P{EndDate}
 	and fa.fact_acct_id = 7744301 
 	
 	union all 
@@ -24,7 +24,7 @@ from (
 	select 'Số dư tài sản cố định đầu tư thêm (211)' as noidung, coalesce(sum(fa.amtacctdr-fa.amtacctcr) - 23000000000,0) as tt  
 	from fact_acct fa 
 	join c_elementvalue acct on fa.account_id = acct.c_elementvalue_id and LEFT(acct.value, 2) = '21'
-	where fa.ad_client_id = $P{AD_CLIENT_ID} and fa.ad_org_id = 1000143 and  fa.dateacct >='01-01-2020' and fa.dateacct <= $P{EndDate}
+	where fa.ad_client_id = $P{AD_CLIENT_ID} and fa.ad_org_id = 1000143 and  fa.dateacct >='01-01-2021' and fa.dateacct <= $P{EndDate}
 	
 	union all 
 	
@@ -32,67 +32,86 @@ from (
 	from fact_acct fa 
 	join c_elementvalue acct on fa.account_id = acct.c_elementvalue_id and LEFT(acct.value, 3) = '241'
 	where fa.ad_client_id = $P{AD_CLIENT_ID}
-	and fa.dateacct >= '01-01-2020'  and fa.dateacct <= $P{EndDate}
+	and fa.dateacct >= '01-01-2021'  and fa.dateacct <= $P{EndDate}
 	and fa.ad_client_id = $P{AD_CLIENT_ID} and fa.ad_org_id = 1000143
 ) as k
 
 union all
-select 'Doanh thu (511)' as dm, noidung , coalesce(tt,0) as tt, coalesce(dt_ngao,0) as dt_ngao, coalesce(dt_tom,0) as dt_tom 
+select 'Doanh thu (511)' as dm, noidung , coalesce(tt,0) as tt, coalesce(dt_ngao,0) as dt_ngao, coalesce(dt_tom,0) as dt_tom , coalesce(tudau) as tudau
 from(
-select 'Doanh thu bán ngao Giống' as noidung, sum(civ.linenetamt) as tt,sum(civ.linenetamt) as dt_ngao,null::int4 as dt_tom
-from c_invoice ci 
-join c_invoiceline civ on ci.c_invoice_id = civ.c_invoice_id 
-where civ.M_Product_ID in (1017917,1017918) and ci.issotrx ='Y' and ci.docstatus in ('CL','CO')
-and ci.ad_client_id = $P{AD_CLIENT_ID} and ci.ad_org_id = 1000143 and ci.dateacct >= $P{StartDate} and ci.dateacct <= $P{EndDate}
-
-union all 
-
-select 'Doanh thu bán ngao TP,Ngao N liệu' as noidung, sum(civ.linenetamt) as tt,sum(civ.linenetamt) as dt_ngao,null::int4 as dt_tom
-from c_invoice ci 
-join c_invoiceline civ on ci.c_invoice_id = civ.c_invoice_id 
-where civ.M_Product_ID in (1017197,1000017) and ci.issotrx ='Y' and ci.docstatus in ('CL','CO')
-and ci.ad_client_id = $P{AD_CLIENT_ID} and ci.ad_org_id = 1000143 and ci.dateacct >= $P{StartDate} and ci.dateacct <= $P{EndDate}
-
-union all 
-
-select 'Doanh thu bán Tôm' as noidung, sum(civ.linenetamt) as tt, null::int4 as dt_ngao,sum(civ.linenetamt) as dt_ngao
-from c_invoice ci 
-join c_invoiceline civ on ci.c_invoice_id = civ.c_invoice_id 
-where civ.M_Product_ID in (1017919) and ci.issotrx ='Y' and ci.docstatus in ('CL','CO')
-and ci.ad_client_id = $P{AD_CLIENT_ID} and ci.ad_org_id = 1000143 and ci.dateacct >= $P{StartDate} and ci.dateacct <= $P{EndDate}
-
-union all 
-
-select 'Doanh thu khác' as noidung, sum(tt1) as tt,null::int4 as dt_ngao, null::int4 as dt_tom 
-from(	
-		select  coalesce(sum( amtacctcr-amtacctdr),0) as tt1 
-		FROM(
-			   	SELECT   fa.amtacctdr, fa.amtacctcr, fa.account_id, fa.c_activity_id, fa.dateacct 
-				from fact_acct fa
-				join gl_journalline gl on fa.record_id = gl.gl_journal_id and fa.line_id = gl.gl_journalline_id and fa.Account_ID = gl.Account_ID and gl.IsGenerated = 'N'
-				join gl_journal a on a.gl_journal_id = fa.record_id and a.docstatus in ('CO', 'CL')
-				where  fa.ad_client_id = $P{AD_CLIENT_ID} and fa.ad_table_id = 224 
-				and fa.dateacct  >= $P{StartDate} and fa.dateacct  <= $P{EndDate} and fa.ad_org_id = 1000143
-				union all
-			 	
-				SELECT  fa.amtacctdr, fa.amtacctcr, fa.account_id, fa.c_activity_id, fa.dateacct 
-				from fact_acct fa
-				where  fa.ad_client_id = $P{AD_CLIENT_ID} and fa.ad_table_id <> 224 and fa.ad_org_id = 1000143
-				and fa.dateacct  >= $P{StartDate} and fa.dateacct  <= $P{EndDate}
-			) as t
-			join c_elementvalue acct on t.account_id = acct.c_elementvalue_id and LEFT(acct.value, 3) in ( '511') 
-			where acct.ad_client_id = $P{AD_CLIENT_ID}
-			
-			union all 
 	
-			select  -1 *sum(civ.linenetamt) as tt1  
-			from c_invoice ci 
-			join c_invoiceline civ on ci.c_invoice_id = civ.c_invoice_id 
-			where civ.M_Product_ID in (1017919,1017197,1000017,1017917,1017918) and ci.issotrx ='Y' and ci.docstatus in ('CL','CO')
-			and ci.ad_client_id = $P{AD_CLIENT_ID} and ci.ad_org_id = 1000143 and ci.dateacct >= $P{StartDate} and ci.dateacct <= $P{EndDate}
+	select 'Doanh thu bán ngao Giống' as noidung,
+	sum(case when ci.dateacct >= $P{StartDate} then  civ.linenetamt end) as tt,
+	sum(case when ci.dateacct >= $P{StartDate} then civ.linenetamt end) as dt_ngao,null::int4 as dt_tom,
+	sum(case when ci.dateacct >= '01-01-2021' then  civ.linenetamt end) as tudau
+	from c_invoice ci 
+	join c_invoiceline civ on ci.c_invoice_id = civ.c_invoice_id 
+	where civ.M_Product_ID in (1017917,1017918) and ci.issotrx ='Y' and ci.docstatus in ('CL','CO')
+	and ci.ad_client_id = $P{AD_CLIENT_ID} and ci.ad_org_id = 1000143 and  ci.dateacct <= $P{EndDate}
+	
+	
+	
+	
+	union all 
+	
+	select 'Doanh thu bán ngao TP,Ngao N liệu' as noidung,
+	sum(case when ci.dateacct >= $P{StartDate} then civ.linenetamt end) as tt,
+	sum(case when ci.dateacct >= $P{StartDate} then civ.linenetamt end) as dt_ngao,
+	null::int4 as dt_tom,
+	sum(case when ci.dateacct >= '01-01-2021' then  civ.linenetamt end) as tudau
+	from c_invoice ci 
+	join c_invoiceline civ on ci.c_invoice_id = civ.c_invoice_id 
+	where civ.M_Product_ID in (1017197,1000017) and ci.issotrx ='Y' and ci.docstatus in ('CL','CO')
+	and ci.ad_client_id = $P{AD_CLIENT_ID} and ci.ad_org_id = 1000143 and ci.dateacct <= $P{EndDate}
+	
+	union all 
+	
+	select 'Doanh thu bán Tôm' as noidung,
+	sum(case when ci.dateacct >= $P{StartDate} then civ.linenetamt end) as tt, 
+	null::int4 as dt_ngao,
+	sum(case when ci.dateacct >= $P{StartDate} then civ.linenetamt end) as dt_tom,
+	sum(case when ci.dateacct >= '01-01-2021' then  civ.linenetamt end) as tudau
+	from c_invoice ci 
+	join c_invoiceline civ on ci.c_invoice_id = civ.c_invoice_id 
+	where civ.M_Product_ID in (1017919) and ci.issotrx ='Y' and ci.docstatus in ('CL','CO')
+	and ci.ad_client_id = $P{AD_CLIENT_ID} and ci.ad_org_id = 1000143 and ci.dateacct <= $P{EndDate}
+	
+	union all 
+	
+	select 'Doanh thu khác' as noidung,
+	sum(tt1) as tt,
+	null::int4 as dt_ngao,
+	null::int4 as dt_tom, 
+	sum (tt2) as tudau 
+	from(	
+			select  coalesce(sum(case when dateacct >= $P{StartDate} then  amtacctcr-amtacctdr end),0) as tt1 ,coalesce(sum(case when dateacct >= '01-01-2021' then  amtacctcr-amtacctdr end),0) as tt2 
+			FROM(
+				   	SELECT   fa.amtacctdr, fa.amtacctcr, fa.account_id, fa.c_activity_id, fa.dateacct 
+					from fact_acct fa
+					join gl_journalline gl on fa.record_id = gl.gl_journal_id and fa.line_id = gl.gl_journalline_id and fa.Account_ID = gl.Account_ID and gl.IsGenerated = 'N'
+					join gl_journal a on a.gl_journal_id = fa.record_id and a.docstatus in ('CO', 'CL')
+					where  fa.ad_client_id = $P{AD_CLIENT_ID} and fa.ad_table_id = 224 
+					and  fa.dateacct  <= $P{EndDate} and fa.ad_org_id = 1000143
+					union all
+				 	
+					SELECT  fa.amtacctdr, fa.amtacctcr, fa.account_id, fa.c_activity_id, fa.dateacct 
+					from fact_acct fa
+					where  fa.ad_client_id = $P{AD_CLIENT_ID} and fa.ad_table_id <> 224 and fa.ad_org_id = 1000143
+					and  fa.dateacct  <= $P{EndDate}
+				) as t
+				join c_elementvalue acct on t.account_id = acct.c_elementvalue_id and LEFT(acct.value, 3) in ( '511') 
+				where acct.ad_client_id = $P{AD_CLIENT_ID}
+				
+				union all 
+		
+				select  -1 *sum(case when ci.dateacct >= $P{StartDate} then  civ.linenetamt end) as tt1  , -1*sum(case when ci.dateacct >= '01-01-2021' then civ.linenetamt end) as tt2
+				from c_invoice ci 
+				join c_invoiceline civ on ci.c_invoice_id = civ.c_invoice_id 
+				where civ.M_Product_ID in (1017919,1017197,1000017,1017917,1017918) and ci.issotrx ='Y' and ci.docstatus in ('CL','CO')
+				and ci.ad_client_id = $P{AD_CLIENT_ID} and ci.ad_org_id = 1000143 and  ci.dateacct <= $P{EndDate}
+		) as k
+	
 	) as k
-
-) as k
 ) as k]]>
 	</queryString>
 	<field name="stt" class="java.lang.Long">
@@ -119,6 +138,10 @@ from(
 		<property name="com.jaspersoft.studio.field.name" value="dt_tom"/>
 		<property name="com.jaspersoft.studio.field.label" value="dt_tom"/>
 	</field>
+	<field name="tudau" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="tudau"/>
+		<property name="com.jaspersoft.studio.field.label" value="tudau"/>
+	</field>
 	<variable name="t_tongthu" class="java.lang.Double" resetType="Group" resetGroup="Group1" calculation="Sum">
 		<variableExpression><![CDATA[$F{tt}]]></variableExpression>
 	</variable>
@@ -133,6 +156,9 @@ from(
 	</variable>
 	<variable name="tyle_tom" class="java.lang.Double">
 		<variableExpression><![CDATA[OR($V{t_tongthu}==0,$V{t_tongthu}==null)?0:$V{t_tom}/$V{t_tongthu}]]></variableExpression>
+	</variable>
+	<variable name="dt_tudau" class="java.lang.Double" resetType="Group" resetGroup="Group1" calculation="Sum">
+		<variableExpression><![CDATA[$F{tudau}]]></variableExpression>
 	</variable>
 	<group name="Group1">
 		<groupExpression><![CDATA[$F{dm}]]></groupExpression>
@@ -156,7 +182,7 @@ from(
 		<groupFooter>
 			<band height="26">
 				<textField>
-					<reportElement x="0" y="0" width="222" height="26" uuid="ac6384d3-7e4a-4452-833a-3e0c031198ee">
+					<reportElement x="0" y="0" width="195" height="26" uuid="ac6384d3-7e4a-4452-833a-3e0c031198ee">
 						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="85487a1d-75bf-42f2-834e-ae88671104fc"/>
 						<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					</reportElement>
@@ -169,11 +195,12 @@ from(
 					<textFieldExpression><![CDATA["Cộng nhóm"]]></textFieldExpression>
 				</textField>
 				<textField pattern="#,##0" isBlankWhenNull="true">
-					<reportElement x="444" y="0" width="111" height="26" uuid="1dbe1d48-f0a1-463b-984e-69af633729e1">
+					<reportElement x="375" y="0" width="90" height="26" uuid="1dbe1d48-f0a1-463b-984e-69af633729e1">
 						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="cdd1209c-fdab-4c41-a054-a6e9c0dc4d1b"/>
 						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					</reportElement>
-					<box>
+					<box rightPadding="1">
 						<pen lineWidth="0.5"/>
 					</box>
 					<textElement textAlignment="Right" verticalAlignment="Middle">
@@ -182,11 +209,12 @@ from(
 					<textFieldExpression><![CDATA[$V{t_tom}]]></textFieldExpression>
 				</textField>
 				<textField pattern="#,##0" isBlankWhenNull="true">
-					<reportElement x="222" y="0" width="111" height="26" uuid="80488060-6e9c-4955-becf-73c71e209f95">
+					<reportElement x="195" y="0" width="90" height="26" uuid="80488060-6e9c-4955-becf-73c71e209f95">
 						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="2105bcc5-fade-4bc0-bb68-07be7de931c2"/>
 						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					</reportElement>
-					<box>
+					<box rightPadding="1">
 						<pen lineWidth="0.5"/>
 					</box>
 					<textElement textAlignment="Right" verticalAlignment="Middle">
@@ -195,17 +223,32 @@ from(
 					<textFieldExpression><![CDATA[$V{t_tongthu}]]></textFieldExpression>
 				</textField>
 				<textField pattern="#,##0" isBlankWhenNull="true">
-					<reportElement x="333" y="0" width="111" height="26" uuid="f27df9ca-66b3-4d71-8e53-086f680a7b94">
+					<reportElement x="285" y="0" width="90" height="26" uuid="f27df9ca-66b3-4d71-8e53-086f680a7b94">
 						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="d22b6345-c602-4fb8-ad5e-b68d9dcc9c8c"/>
 						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					</reportElement>
-					<box>
+					<box rightPadding="1">
 						<pen lineWidth="0.5"/>
 					</box>
 					<textElement textAlignment="Right" verticalAlignment="Middle">
 						<font fontName="Arial" isBold="true"/>
 					</textElement>
 					<textFieldExpression><![CDATA[$V{t_ngao}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0" isBlankWhenNull="true">
+					<reportElement x="465" y="0" width="90" height="26" uuid="72afdcfa-b650-41da-84d8-8be38260a1fe">
+						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="cdd1209c-fdab-4c41-a054-a6e9c0dc4d1b"/>
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					</reportElement>
+					<box rightPadding="1">
+						<pen lineWidth="0.5"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{dt_tudau}]]></textFieldExpression>
 				</textField>
 			</band>
 		</groupFooter>
@@ -216,7 +259,7 @@ from(
 	<detail>
 		<band height="26" splitType="Stretch">
 			<textField>
-				<reportElement x="0" y="0" width="40" height="26" uuid="d7f655e5-7d0b-49ce-a56d-9407b36be5ca">
+				<reportElement x="0" y="0" width="28" height="26" uuid="d7f655e5-7d0b-49ce-a56d-9407b36be5ca">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="b0b31396-380d-4830-8e98-9337f135eda7"/>
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 				</reportElement>
@@ -229,9 +272,10 @@ from(
 				<textFieldExpression><![CDATA[$F{stt}]]></textFieldExpression>
 			</textField>
 			<textField>
-				<reportElement x="40" y="0" width="182" height="26" uuid="43d3679c-4172-4026-926d-40046181af50">
+				<reportElement x="28" y="0" width="167" height="26" uuid="43d3679c-4172-4026-926d-40046181af50">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="85487a1d-75bf-42f2-834e-ae88671104fc"/>
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box>
 					<pen lineWidth="0.5"/>
@@ -242,11 +286,12 @@ from(
 				<textFieldExpression><![CDATA[$F{noidung}]]></textFieldExpression>
 			</textField>
 			<textField pattern="#,##0" isBlankWhenNull="true">
-				<reportElement x="222" y="0" width="111" height="26" uuid="8bc8bb63-3c80-4f97-9945-41a9e2b91cad">
+				<reportElement x="195" y="0" width="90" height="26" uuid="8bc8bb63-3c80-4f97-9945-41a9e2b91cad">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="2105bcc5-fade-4bc0-bb68-07be7de931c2"/>
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<box>
+				<box rightPadding="1">
 					<pen lineWidth="0.5"/>
 				</box>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
@@ -255,11 +300,12 @@ from(
 				<textFieldExpression><![CDATA[$F{tt}]]></textFieldExpression>
 			</textField>
 			<textField pattern="#,##0" isBlankWhenNull="true">
-				<reportElement x="333" y="0" width="111" height="26" uuid="c6578e90-6522-4d51-9428-b9bd31ad2864">
+				<reportElement x="285" y="0" width="90" height="26" uuid="c6578e90-6522-4d51-9428-b9bd31ad2864">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="d22b6345-c602-4fb8-ad5e-b68d9dcc9c8c"/>
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<box>
+				<box rightPadding="1">
 					<pen lineWidth="0.5"/>
 				</box>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
@@ -268,17 +314,32 @@ from(
 				<textFieldExpression><![CDATA[$F{dt_ngao}]]></textFieldExpression>
 			</textField>
 			<textField pattern="#,##0" isBlankWhenNull="true">
-				<reportElement x="444" y="0" width="111" height="26" uuid="258bcbc2-157e-4171-93b8-bd1049f2ca88">
+				<reportElement x="375" y="0" width="90" height="26" uuid="258bcbc2-157e-4171-93b8-bd1049f2ca88">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="cdd1209c-fdab-4c41-a054-a6e9c0dc4d1b"/>
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<box>
+				<box rightPadding="1">
 					<pen lineWidth="0.5"/>
 				</box>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
 					<font fontName="Arial"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{dt_tom}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="465" y="0" width="90" height="26" uuid="780cc253-0ffb-4237-ba9a-32a4317092ba">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="cdd1209c-fdab-4c41-a054-a6e9c0dc4d1b"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box rightPadding="1">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{tudau}]]></textFieldExpression>
 			</textField>
 		</band>
 	</detail>

@@ -61,7 +61,7 @@ from(
 	join c_invoice ci on ci.c_invoice_id = civ.c_invoice_id 
 	join m_attributesetinstance ma on ma.m_attributesetinstance_id  = civ.m_attributesetinstance_id 
 	join m_lot ml on ma.m_lot_id = ml.m_lot_id and ml.m_lotctl_id =1000026
-	where fa.ad_client_id = $P{AD_CLIENT_ID} and fa.ad_table_id = 318 
+	where fa.ad_client_id = $P{AD_CLIENT_ID} and fa.ad_table_id = 318 and ci.docstatus in ('CL','CO')
 	and  ml.datefrom  >= $P{StartDate} and ml.datefrom <= $P{EndDate}
 	group by ml.name,ml.datefrom
 	
@@ -76,13 +76,13 @@ from(
 					sum(case when ci.issotrx = 'Y'  then  -1 * (fa.amtacctdr-fa.amtacctcr ) end) as code_dthu,
 					sum(case when ci.issotrx = 'N'  and civ.c_charge_id =1001264 and ci.c_doctype_id =1001045 then (fa.amtacctdr-fa.amtacctcr ) end) as da_chiho,
 					sum(case when ci.issotrx = 'N'  and civ.c_charge_id =1001264 and ci.c_doctype_id =1001046 then (fa.amtacctcr -fa.amtacctdr ) end) as da_thuho,
-					sum(case when ci.issotrx = 'N'  and civ.C_Charge_ID =1001378 and ci.c_doctype_id =1001045 then  (fa.amtacctdr -fa.amtacctcr) end) + coalesce(sum(case when ci.issotrx = 'N'  and civ.C_Charge_ID =1001378 and ci.c_doctype_id =1001046 then  (fa.amtacctdr -fa.amtacctcr) end),0) as cp_xuat
+					coalesce(sum(case when ci.issotrx = 'N'  and civ.C_Charge_ID =1001378 and ci.c_doctype_id =1001045 then  (fa.amtacctdr -fa.amtacctcr) end),0) + coalesce(sum(case when ci.issotrx = 'N'  and civ.C_Charge_ID =1001378 and ci.c_doctype_id =1001046 then  (fa.amtacctdr -fa.amtacctcr) end),0) as cp_xuat
 					, 0 as ntt, 0 as tt
 	from fact_acct fa 
 	join c_invoiceline civ on fa.line_id  = civ.c_invoiceline_id  
 	join c_invoice ci on ci.c_invoice_id = civ.c_invoice_id 
 	join m_lot ml on civ.m_lot_id = ml.m_lot_id and  ml.m_lotctl_id =1000026
-	where fa.ad_client_id = $P{AD_CLIENT_ID} and fa.ad_table_id = 318 
+	where fa.ad_client_id = $P{AD_CLIENT_ID} and fa.ad_table_id = 318 and ci.docstatus in ('CL','CO')
 	and ci.docstatus in ('CL','CO') and ml.datefrom  >= $P{StartDate} and ml.datefrom <= $P{EndDate} 
 	and civ.m_product_id is null
 	group by ml.name,ml.datefrom
@@ -107,6 +107,7 @@ from(
 	join m_lot ml on cp.m_lot_id = ml.m_lot_id and ml.m_lotctl_id =1000026
 	join c_elementvalue ev on fa.account_id=ev.c_elementvalue_id and ev.ad_client_id=$P{AD_CLIENT_ID} and left(ev.value,4) in ('1317')
 	where fa.ad_client_id = $P{AD_CLIENT_ID}  and cp.isreceipt ='Y' and cp.c_charge_id is null and cp.c_currency_id =100 and ml.datefrom  >= $P{StartDate} and ml.datefrom <= $P{EndDate}
+	and cp.docstatus in ('CL','CO')
 	group by ml.name,ml.datefrom
 ) as k group by name, datefrom]]>
 	</queryString>
@@ -503,14 +504,14 @@ from(
 				<textFieldExpression><![CDATA[$F{stt}]]></textFieldExpression>
 			</textField>
 			<textField>
-				<reportElement x="30" y="0" width="88" height="30" uuid="ffc345db-f18f-47cd-89a4-82d465e868ad">
+				<reportElement stretchType="RelativeToTallestObject" x="30" y="0" width="88" height="30" uuid="ffc345db-f18f-47cd-89a4-82d465e868ad">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c14ca5de-1db0-47b3-af24-1711906bc0f5"/>
 				</reportElement>
 				<box topPadding="0" leftPadding="2" bottomPadding="0" rightPadding="0">
 					<pen lineWidth="0.5"/>
 				</box>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
-					<font fontName="Arial"/>
+					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{name}]]></textFieldExpression>
 			</textField>

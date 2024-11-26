@@ -13,6 +13,7 @@
 	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="psql"/>
 	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="0"/>
 	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="1000"/>
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
 	<import value="org.compiere.util.Msg"/>
 	<import value="org.compiere.util.Language"/>
 	<parameter name="RECORD_ID" class="java.lang.Integer"/>
@@ -31,8 +32,9 @@
       ,(c_payment.payamt*c_conversion_rate.multiplyrate)  as tienqd
       ,c_conversion_rate.dividerate,dckh.name as dckh,(case when c_invoice.documentno is not null then 'Thanh toán phân bổ vào hóa đơn ' else case when c_charge.name  is not null then c_charge.name else case when c_order.documentno  is not null then concat(' Trả trước cho đơn hàng số : ',c_order.documentno,' ngày: ',c_order.dateordered) 
       else case when c_doctype.docbasetype IN ('APP') then 'TK- 3317 chi trả tiền NCC' else 'TK -1317 thu tiền hàng' end  end end end ) as chiphi
-      ,ad_user.description as ten,ad_org.name as bp,c_invoice.grandtotal as tienhd,c_invoice.documentno as sohd,c_payment.processed,ad_user.name as tennd,c_payment.documentno as so,upper(c_doctype.name) as lpm,c_bankaccount.value as manh,c_bankaccount.name as tennh,c_bpartner.value as mkh,c_bpartner.name as tenkh,c_currency.iso_code as tiente,c_payment.overunderamt cl,c_payment.payamt as tien
-      ,c_payment.discountamt as giamgia,c_payment.writeoffamt as bodi,c_payment.taxamt as thue,c_payment.description as ld,c_payment.dateacct as ngay,c_order.documentno as sdh,c_order.grandtotal as tiendh,c_activity.name as hd 
+      ,ad_user.description as ten,bp.name as bp,c_invoice.grandtotal as tienhd,c_invoice.documentno as sohd,c_payment.processed,ad_user.name as tennd,c_payment.documentno as so,upper(c_doctype.name) as lpm,c_bankaccount.value as manh,c_bankaccount.name as tennh,c_bpartner.value as mkh,c_bpartner.name as tenkh,c_currency.iso_code as tiente,c_payment.overunderamt cl,c_payment.payamt as tien
+      ,c_payment.discountamt as giamgia,c_payment.writeoffamt as bodi,c_payment.taxamt as thue,c_payment.description as ld,c_payment.dateacct as ngay,c_order.documentno as sdh,c_order.grandtotal as tiendh,hv.name as hd 
+      ,sk.name as sk_name, c_payment.loaithuchi 
       ,case when c_doctype.docbasetype IN ('APP') then 'Người nhận' else 'Người nộp' end as nguoi
       
 	       ,case when c_payment.docstatus in ('CO') then 'Đã hoàn thành' else case when c_payment.docstatus in ('CL') then 'Đã đóng' else 
@@ -66,56 +68,223 @@ left  join c_charge on c_payment.c_charge_id=c_charge.c_charge_id
  join c_doctype on c_payment.c_doctype_id=c_doctype.c_doctype_id 
 left join c_invoice on c_payment.c_invoice_id=c_invoice.c_invoice_id 
 left join c_bpartner_location dckh on c_payment.c_bpartner_id=dckh.c_bpartner_id 
- left join ad_org on c_payment.ad_org_id=ad_org.ad_org_id 
+left join hsv_lophoc bp on bp.hsv_lophoc_id = c_payment.hsv_lophoc_id 
 left join c_order on c_payment.c_order_id=c_order.c_order_id  
-left join c_activity on c_payment.c_activity_id=c_activity.c_activity_id 
+left join hsv_lophocLIne lhl on lhl.hsv_lophocLIne_ID = c_payment.hsv_lophocLIne_ID 
+left join hsv_hocvien hv on hv.hsv_hocvien_id = lhl.hsv_hocvien_id 
+left join hsv_sukien sk on sk.hsv_sukien_id = c_payment.hsv_sukien_id 
 left join c_conversiontype on c_payment.c_conversiontype_id=c_conversiontype.c_conversiontype_id
- left join c_conversion_rate  on c_payment.c_conversiontype_id=c_conversion_rate.c_conversiontype_id and c_payment.c_currency_id=c_conversion_rate.c_currency_id and c_payment.dateacct>=c_conversion_rate.validfrom and c_payment.dateacct<=c_conversion_rate.validto and c_conversion_rate.AD_CLIENT_ID=$P{AD_CLIENT_ID}
+left join c_conversion_rate  on c_payment.c_conversiontype_id=c_conversion_rate.c_conversiontype_id and c_payment.c_currency_id=c_conversion_rate.c_currency_id and c_payment.dateacct>=c_conversion_rate.validfrom and c_payment.dateacct<=c_conversion_rate.validto and c_conversion_rate.AD_CLIENT_ID=$P{AD_CLIENT_ID}
+where c_payment.c_payment_id=$P{RECORD_ID}
 
-where c_payment.c_payment_id=$P{RECORD_ID}]]>
+
+
+]]>
 	</queryString>
-	<field name="ld" class="java.lang.String"/>
-	<field name="mkh" class="java.lang.String"/>
-	<field name="tenkh" class="java.lang.String"/>
-	<field name="tiente" class="java.lang.String"/>
-	<field name="tien" class="java.math.BigDecimal"/>
-	<field name="tennd" class="java.lang.String"/>
-	<field name="so" class="java.lang.String"/>
-	<field name="lpm" class="java.lang.String"/>
-	<field name="manh" class="java.lang.String"/>
-	<field name="tennh" class="java.lang.String"/>
-	<field name="thue" class="java.math.BigDecimal"/>
-	<field name="chiphi" class="java.lang.String"/>
-	<field name="ngay" class="java.sql.Timestamp"/>
-	<field name="processed" class="java.lang.String"/>
-	<field name="giamgia" class="java.math.BigDecimal"/>
-	<field name="bodi" class="java.math.BigDecimal"/>
-	<field name="sohd" class="java.lang.String"/>
-	<field name="bp" class="java.lang.String"/>
-	<field name="cl" class="java.math.BigDecimal"/>
-	<field name="tienhd" class="java.math.BigDecimal"/>
-	<field name="sdh" class="java.lang.String"/>
-	<field name="tiendh" class="java.math.BigDecimal"/>
-	<field name="hd" class="java.lang.String"/>
-	<field name="ten" class="java.lang.String"/>
-	<field name="dckh" class="java.lang.String"/>
-	<field name="c_conversiontype_id" class="java.math.BigDecimal"/>
-	<field name="name" class="java.lang.String"/>
-	<field name="c_currency_id" class="java.math.BigDecimal"/>
-	<field name="c_currency_id_to" class="java.math.BigDecimal"/>
-	<field name="multiplyrate" class="java.math.BigDecimal"/>
-	<field name="c_payment_id" class="java.math.BigDecimal"/>
-	<field name="validfrom" class="java.sql.Timestamp"/>
-	<field name="validto" class="java.sql.Timestamp"/>
-	<field name="tienqd" class="java.math.BigDecimal"/>
-	<field name="dividerate" class="java.math.BigDecimal"/>
-	<field name="nguoi" class="java.lang.String"/>
-	<field name="ttct" class="java.lang.String"/>
-	<field name="tkn" class="java.lang.String"/>
-	<field name="tkc" class="java.lang.String"/>
-	<field name="tentkdu" class="java.lang.String"/>
+	<field name="c_conversiontype_id" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="c_conversiontype_id"/>
+		<property name="com.jaspersoft.studio.field.label" value="c_conversiontype_id"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_payment"/>
+	</field>
+	<field name="name" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="name"/>
+		<property name="com.jaspersoft.studio.field.label" value="name"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_conversiontype"/>
+	</field>
+	<field name="c_currency_id" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="c_currency_id"/>
+		<property name="com.jaspersoft.studio.field.label" value="c_currency_id"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_conversion_rate"/>
+	</field>
+	<field name="c_currency_id_to" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="c_currency_id_to"/>
+		<property name="com.jaspersoft.studio.field.label" value="c_currency_id_to"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_conversion_rate"/>
+	</field>
+	<field name="multiplyrate" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="multiplyrate"/>
+		<property name="com.jaspersoft.studio.field.label" value="multiplyrate"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_conversion_rate"/>
+	</field>
+	<field name="c_payment_id" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="c_payment_id"/>
+		<property name="com.jaspersoft.studio.field.label" value="c_payment_id"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_payment"/>
+	</field>
+	<field name="validfrom" class="java.sql.Timestamp">
+		<property name="com.jaspersoft.studio.field.name" value="validfrom"/>
+		<property name="com.jaspersoft.studio.field.label" value="validfrom"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_conversion_rate"/>
+	</field>
+	<field name="validto" class="java.sql.Timestamp">
+		<property name="com.jaspersoft.studio.field.name" value="validto"/>
+		<property name="com.jaspersoft.studio.field.label" value="validto"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_conversion_rate"/>
+	</field>
+	<field name="tienqd" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="tienqd"/>
+		<property name="com.jaspersoft.studio.field.label" value="tienqd"/>
+	</field>
+	<field name="dividerate" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="dividerate"/>
+		<property name="com.jaspersoft.studio.field.label" value="dividerate"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_conversion_rate"/>
+	</field>
+	<field name="dckh" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="dckh"/>
+		<property name="com.jaspersoft.studio.field.label" value="dckh"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_bpartner_location"/>
+	</field>
+	<field name="chiphi" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="chiphi"/>
+		<property name="com.jaspersoft.studio.field.label" value="chiphi"/>
+	</field>
+	<field name="ten" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="ten"/>
+		<property name="com.jaspersoft.studio.field.label" value="ten"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="ad_user"/>
+	</field>
+	<field name="bp" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="bp"/>
+		<property name="com.jaspersoft.studio.field.label" value="bp"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="hsv_lophoc"/>
+	</field>
+	<field name="tienhd" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="tienhd"/>
+		<property name="com.jaspersoft.studio.field.label" value="tienhd"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_invoice"/>
+	</field>
+	<field name="sohd" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="sohd"/>
+		<property name="com.jaspersoft.studio.field.label" value="sohd"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_invoice"/>
+	</field>
+	<field name="processed" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="processed"/>
+		<property name="com.jaspersoft.studio.field.label" value="processed"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_payment"/>
+	</field>
+	<field name="tennd" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="tennd"/>
+		<property name="com.jaspersoft.studio.field.label" value="tennd"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="ad_user"/>
+	</field>
+	<field name="so" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="so"/>
+		<property name="com.jaspersoft.studio.field.label" value="so"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_payment"/>
+	</field>
+	<field name="lpm" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="lpm"/>
+		<property name="com.jaspersoft.studio.field.label" value="lpm"/>
+	</field>
+	<field name="manh" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="manh"/>
+		<property name="com.jaspersoft.studio.field.label" value="manh"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_bankaccount"/>
+	</field>
+	<field name="tennh" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="tennh"/>
+		<property name="com.jaspersoft.studio.field.label" value="tennh"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_bankaccount"/>
+	</field>
+	<field name="mkh" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="mkh"/>
+		<property name="com.jaspersoft.studio.field.label" value="mkh"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_bpartner"/>
+	</field>
+	<field name="tenkh" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="tenkh"/>
+		<property name="com.jaspersoft.studio.field.label" value="tenkh"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_bpartner"/>
+	</field>
+	<field name="tiente" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="tiente"/>
+		<property name="com.jaspersoft.studio.field.label" value="tiente"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_currency"/>
+	</field>
+	<field name="cl" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="cl"/>
+		<property name="com.jaspersoft.studio.field.label" value="cl"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_payment"/>
+	</field>
+	<field name="tien" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="tien"/>
+		<property name="com.jaspersoft.studio.field.label" value="tien"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_payment"/>
+	</field>
+	<field name="giamgia" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="giamgia"/>
+		<property name="com.jaspersoft.studio.field.label" value="giamgia"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_payment"/>
+	</field>
+	<field name="bodi" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="bodi"/>
+		<property name="com.jaspersoft.studio.field.label" value="bodi"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_payment"/>
+	</field>
+	<field name="thue" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="thue"/>
+		<property name="com.jaspersoft.studio.field.label" value="thue"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_payment"/>
+	</field>
+	<field name="ld" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="ld"/>
+		<property name="com.jaspersoft.studio.field.label" value="ld"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_payment"/>
+	</field>
+	<field name="ngay" class="java.sql.Timestamp">
+		<property name="com.jaspersoft.studio.field.name" value="ngay"/>
+		<property name="com.jaspersoft.studio.field.label" value="ngay"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_payment"/>
+	</field>
+	<field name="sdh" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="sdh"/>
+		<property name="com.jaspersoft.studio.field.label" value="sdh"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_order"/>
+	</field>
+	<field name="tiendh" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="tiendh"/>
+		<property name="com.jaspersoft.studio.field.label" value="tiendh"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_order"/>
+	</field>
+	<field name="hd" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="hd"/>
+		<property name="com.jaspersoft.studio.field.label" value="hd"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="hsv_hocvien"/>
+	</field>
+	<field name="sk_name" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="sk_name"/>
+		<property name="com.jaspersoft.studio.field.label" value="sk_name"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="hsv_sukien"/>
+	</field>
+	<field name="loaithuchi" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="loaithuchi"/>
+		<property name="com.jaspersoft.studio.field.label" value="loaithuchi"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_payment"/>
+	</field>
+	<field name="nguoi" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="nguoi"/>
+		<property name="com.jaspersoft.studio.field.label" value="nguoi"/>
+	</field>
+	<field name="ttct" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="ttct"/>
+		<property name="com.jaspersoft.studio.field.label" value="ttct"/>
+	</field>
+	<field name="tkn" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="tkn"/>
+		<property name="com.jaspersoft.studio.field.label" value="tkn"/>
+	</field>
+	<field name="tkc" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="tkc"/>
+		<property name="com.jaspersoft.studio.field.label" value="tkc"/>
+	</field>
+	<field name="tentkdu" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="tentkdu"/>
+		<property name="com.jaspersoft.studio.field.label" value="tentkdu"/>
+	</field>
 	<pageHeader>
-		<band height="284" splitType="Stretch">
+		<band height="279" splitType="Stretch">
 			<staticText>
 				<reportElement x="89" y="87" width="65" height="18" uuid="d0f79c8b-b9b3-48ee-8949-d1d12b7dcc76">
 					<property name="local_mesure_unitheight" value="pixel"/>
@@ -177,7 +346,7 @@ where c_payment.c_payment_id=$P{RECORD_ID}]]>
 				<textFieldExpression><![CDATA[$F{tenkh}]]></textFieldExpression>
 			</textField>
 			<staticText>
-				<reportElement x="0" y="264" width="119" height="18" isRemoveLineWhenBlank="true" isPrintInFirstWholeBand="true" uuid="f99459d1-23dd-4e7e-b953-7a01a1e07f95">
+				<reportElement x="0" y="261" width="119" height="18" isRemoveLineWhenBlank="true" isPrintInFirstWholeBand="true" uuid="f99459d1-23dd-4e7e-b953-7a01a1e07f95">
 					<property name="local_mesure_unity" value="pixel"/>
 					<property name="local_mesure_unitheight" value="pixel"/>
 					<property name="com.jaspersoft.studio.unit.x" value="px"/>
@@ -189,7 +358,7 @@ where c_payment.c_payment_id=$P{RECORD_ID}]]>
 				<text><![CDATA[Tài khoản đối ứng :]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="0" y="176" width="71" height="18" uuid="a2ea22fe-3eae-46a5-922e-e477127d5612">
+				<reportElement x="0" y="173" width="71" height="18" uuid="a2ea22fe-3eae-46a5-922e-e477127d5612">
 					<property name="local_mesure_unity" value="pixel"/>
 					<property name="local_mesure_unitheight" value="pixel"/>
 					<property name="com.jaspersoft.studio.unit.x" value="px"/>
@@ -200,7 +369,7 @@ where c_payment.c_payment_id=$P{RECORD_ID}]]>
 				<text><![CDATA[Nội dung:]]></text>
 			</staticText>
 			<textField isBlankWhenNull="true">
-				<reportElement x="71" y="176" width="494" height="18" uuid="49a8d708-896b-41a0-828a-66c0140aab78">
+				<reportElement x="71" y="173" width="494" height="18" uuid="49a8d708-896b-41a0-828a-66c0140aab78">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 				</reportElement>
 				<textElement verticalAlignment="Middle">
@@ -209,7 +378,7 @@ where c_payment.c_payment_id=$P{RECORD_ID}]]>
 				<textFieldExpression><![CDATA[$F{ld}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
-				<reportElement x="260" y="198" width="28" height="18" uuid="ccc1531a-e0c4-4640-bf4e-457761e48885">
+				<reportElement x="260" y="195" width="28" height="18" uuid="ccc1531a-e0c4-4640-bf4e-457761e48885">
 					<property name="com.jaspersoft.studio.unit.x" value="px"/>
 				</reportElement>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
@@ -241,14 +410,14 @@ where c_payment.c_payment_id=$P{RECORD_ID}]]>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{lpm}]]></textFieldExpression>
 			</textField>
-			<textField>
+			<textField isBlankWhenNull="true">
 				<reportElement x="154" y="87" width="85" height="18" uuid="71b11207-635a-4613-acac-405a53558b7f"/>
 				<textElement verticalAlignment="Middle">
 					<font fontName="Arial" size="12"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{so}]]></textFieldExpression>
 			</textField>
-			<textField pattern="dd/MM/yyyy">
+			<textField pattern="dd/MM/yyyy" isBlankWhenNull="true">
 				<reportElement x="358" y="87" width="207" height="18" uuid="224773f4-47b5-4db8-b728-64f551bd9d4e">
 					<property name="local_mesure_unitheight" value="pixel"/>
 				</reportElement>
@@ -257,7 +426,7 @@ where c_payment.c_payment_id=$P{RECORD_ID}]]>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{ngay}]]></textFieldExpression>
 			</textField>
-			<textField>
+			<textField isBlankWhenNull="true">
 				<reportElement x="154" y="65" width="243" height="18" uuid="0daca10b-4300-4dc3-8a6a-c428509de4fd"/>
 				<textElement verticalAlignment="Middle">
 					<font fontName="Arial" size="12"/>
@@ -308,15 +477,17 @@ where c_payment.c_payment_id=$P{RECORD_ID}]]>
 					<property name="local_mesure_unitheight" value="pixel"/>
 					<property name="com.jaspersoft.studio.unit.x" value="px"/>
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<printWhenExpression><![CDATA[$F{loaithuchi}.equals("hp")==true]]></printWhenExpression>
 				</reportElement>
 				<textElement verticalAlignment="Middle">
 					<font fontName="Arial" size="12" isBold="true"/>
 				</textElement>
-				<text><![CDATA[Bộ phận:]]></text>
+				<text><![CDATA[Lớp học:]]></text>
 			</staticText>
-			<textField>
+			<textField isBlankWhenNull="true">
 				<reportElement x="61" y="110" width="230" height="18" uuid="d5fff962-c771-4bde-bedb-4ab4d0a36ff4">
 					<property name="local_mesure_unitheight" value="pixel"/>
+					<printWhenExpression><![CDATA[$F{loaithuchi}.equals("hp")==true]]></printWhenExpression>
 				</reportElement>
 				<textElement verticalAlignment="Middle">
 					<font fontName="Arial" size="12"/>
@@ -324,7 +495,7 @@ where c_payment.c_payment_id=$P{RECORD_ID}]]>
 				<textFieldExpression><![CDATA[$F{bp}]]></textFieldExpression>
 			</textField>
 			<staticText>
-				<reportElement x="288" y="198" width="49" height="18" uuid="81201471-c676-487e-99c1-9742aa102603">
+				<reportElement x="288" y="195" width="49" height="18" uuid="81201471-c676-487e-99c1-9742aa102603">
 					<property name="local_mesure_unitwidth" value="pixel"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
@@ -337,7 +508,7 @@ where c_payment.c_payment_id=$P{RECORD_ID}]]>
 				<text><![CDATA[G.Giá:]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="420" y="198" width="67" height="18" uuid="501640f7-104d-40c9-becc-14ddd0191db3">
+				<reportElement x="420" y="195" width="67" height="18" uuid="501640f7-104d-40c9-becc-14ddd0191db3">
 					<property name="local_mesure_unity" value="pixel"/>
 					<property name="local_mesure_unitwidth" value="pixel"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
@@ -349,7 +520,7 @@ where c_payment.c_payment_id=$P{RECORD_ID}]]>
 				<text><![CDATA[Tiền bỏ đi:]]></text>
 			</staticText>
 			<textField pattern="#,##0.###;(#,##0.###-)" isBlankWhenNull="true">
-				<reportElement x="67" y="198" width="193" height="18" uuid="08820df8-1585-4f67-bfbb-6bc72f2a3596">
+				<reportElement x="67" y="195" width="193" height="18" uuid="08820df8-1585-4f67-bfbb-6bc72f2a3596">
 					<property name="local_mesure_unitheight" value="pixel"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
@@ -361,7 +532,7 @@ where c_payment.c_payment_id=$P{RECORD_ID}]]>
 				<textFieldExpression><![CDATA[$F{tien}]]></textFieldExpression>
 			</textField>
 			<textField pattern="#,##0.###;(#,##0.###-)" isBlankWhenNull="true">
-				<reportElement x="338" y="198" width="79" height="18" uuid="75254d7a-3b2e-41e3-9dc3-b476ca21b257">
+				<reportElement x="338" y="195" width="79" height="18" uuid="75254d7a-3b2e-41e3-9dc3-b476ca21b257">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					<property name="local_mesure_unity" value="pixel"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
@@ -373,7 +544,7 @@ where c_payment.c_payment_id=$P{RECORD_ID}]]>
 				<textFieldExpression><![CDATA[$F{giamgia}]]></textFieldExpression>
 			</textField>
 			<textField pattern="#,##0.###;(#,##0.###-)" isBlankWhenNull="true">
-				<reportElement x="487" y="198" width="78" height="18" uuid="814bc488-c778-4b80-8b78-5118962f873a">
+				<reportElement x="487" y="195" width="78" height="18" uuid="814bc488-c778-4b80-8b78-5118962f873a">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box rightPadding="10"/>
@@ -383,7 +554,7 @@ where c_payment.c_payment_id=$P{RECORD_ID}]]>
 				<textFieldExpression><![CDATA[$F{bodi}]]></textFieldExpression>
 			</textField>
 			<staticText>
-				<reportElement x="0" y="198" width="67" height="18" uuid="0ca32caf-7398-4d7f-be2e-f69816f3be0e">
+				<reportElement x="0" y="195" width="67" height="18" uuid="0ca32caf-7398-4d7f-be2e-f69816f3be0e">
 					<property name="local_mesure_unity" value="pixel"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 					<property name="local_mesure_unitheight" value="pixel"/>
@@ -396,16 +567,19 @@ where c_payment.c_payment_id=$P{RECORD_ID}]]>
 				<text><![CDATA[Số tiền TT:]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="291" y="110" width="67" height="18" uuid="74f19799-3241-47fb-a531-9fe30f68a5fc">
+				<reportElement x="291" y="110" width="77" height="18" uuid="74f19799-3241-47fb-a531-9fe30f68a5fc">
 					<property name="local_mesure_unitheight" value="pixel"/>
+					<printWhenExpression><![CDATA[$F{loaithuchi}.equals("hp")==true]]></printWhenExpression>
 				</reportElement>
 				<textElement verticalAlignment="Middle">
 					<font fontName="Arial" size="12" isBold="true"/>
 				</textElement>
-				<text><![CDATA[Hoạt động:]]></text>
+				<text><![CDATA[Học viên:]]></text>
 			</staticText>
 			<textField isBlankWhenNull="true">
-				<reportElement x="358" y="110" width="207" height="18" uuid="a569948f-df24-4a94-9379-0f54e98bbf12"/>
+				<reportElement x="358" y="110" width="207" height="18" uuid="a569948f-df24-4a94-9379-0f54e98bbf12">
+					<printWhenExpression><![CDATA[$F{loaithuchi}.equals("hp")==true]]></printWhenExpression>
+				</reportElement>
 				<textElement verticalAlignment="Middle">
 					<font fontName="Arial" size="12"/>
 				</textElement>
@@ -421,7 +595,7 @@ where c_payment.c_payment_id=$P{RECORD_ID}]]>
 				<text><![CDATA[Từ nguồn:]]></text>
 			</staticText>
 			<textField isBlankWhenNull="true">
-				<reportElement x="122" y="264" width="171" height="18" isRemoveLineWhenBlank="true" isPrintInFirstWholeBand="true" uuid="5ddd1a7e-5089-4d9f-9bd0-aacd5dc106bc">
+				<reportElement x="122" y="261" width="171" height="18" isRemoveLineWhenBlank="true" isPrintInFirstWholeBand="true" uuid="5ddd1a7e-5089-4d9f-9bd0-aacd5dc106bc">
 					<property name="local_mesure_unitheight" value="pixel"/>
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 				</reportElement>
@@ -439,30 +613,7 @@ where c_payment.c_payment_id=$P{RECORD_ID}]]>
 				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"CompanyHeader.jasper"]]></subreportExpression>
 			</subreport>
 			<staticText>
-				<reportElement x="0" y="154" width="80" height="18" uuid="3ef22e12-b158-4a4f-9da2-d2a2e28d263e">
-					<property name="com.jaspersoft.studio.unit.y" value="px"/>
-					<property name="local_mesure_unitheight" value="pixel"/>
-					<property name="com.jaspersoft.studio.unit.x" value="px"/>
-					<property name="com.jaspersoft.studio.unit.height" value="px"/>
-				</reportElement>
-				<textElement verticalAlignment="Middle">
-					<font fontName="Arial" size="12" isBold="true"/>
-				</textElement>
-				<text><![CDATA[Địa chỉ KH:]]></text>
-			</staticText>
-			<textField isBlankWhenNull="true">
-				<reportElement x="81" y="154" width="484" height="18" uuid="121fb3e3-3030-4668-8b0c-747dd49bba78">
-					<property name="local_mesure_unity" value="pixel"/>
-					<property name="com.jaspersoft.studio.unit.y" value="px"/>
-					<property name="com.jaspersoft.studio.unit.height" value="px"/>
-				</reportElement>
-				<textElement verticalAlignment="Middle">
-					<font fontName="Arial" size="12"/>
-				</textElement>
-				<textFieldExpression><![CDATA[$F{dckh}]]></textFieldExpression>
-			</textField>
-			<staticText>
-				<reportElement x="0" y="242" width="67" height="18" isRemoveLineWhenBlank="true" isPrintInFirstWholeBand="true" uuid="13e7f884-2d18-4c04-9431-774aa422a265">
+				<reportElement x="0" y="239" width="67" height="18" isRemoveLineWhenBlank="true" isPrintInFirstWholeBand="true" uuid="13e7f884-2d18-4c04-9431-774aa422a265">
 					<property name="local_mesure_unity" value="pixel"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 					<property name="local_mesure_unitheight" value="pixel"/>
@@ -476,7 +627,7 @@ where c_payment.c_payment_id=$P{RECORD_ID}]]>
 				<text><![CDATA[Tỷ giá HT:]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="198" y="242" width="119" height="18" isRemoveLineWhenBlank="true" isPrintInFirstWholeBand="true" uuid="b4993db8-568c-4295-baf9-338a1ae13b72">
+				<reportElement x="198" y="239" width="119" height="18" isRemoveLineWhenBlank="true" isPrintInFirstWholeBand="true" uuid="b4993db8-568c-4295-baf9-338a1ae13b72">
 					<property name="local_mesure_unity" value="pixel"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 					<printWhenExpression><![CDATA[$F{c_currency_id}!=null]]></printWhenExpression>
@@ -488,7 +639,7 @@ where c_payment.c_payment_id=$P{RECORD_ID}]]>
 				<text><![CDATA[Số tiền quy đổi:]]></text>
 			</staticText>
 			<textField pattern="#,##0.###;(#,##0.###-)" isBlankWhenNull="true">
-				<reportElement x="317" y="242" width="248" height="18" isRemoveLineWhenBlank="true" isPrintInFirstWholeBand="true" uuid="59f06895-1077-4213-9319-a98abe2b1ae0">
+				<reportElement x="317" y="239" width="248" height="18" isRemoveLineWhenBlank="true" isPrintInFirstWholeBand="true" uuid="59f06895-1077-4213-9319-a98abe2b1ae0">
 					<property name="local_mesure_unitheight" value="pixel"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					<printWhenExpression><![CDATA[$F{c_currency_id}!=null]]></printWhenExpression>
@@ -499,7 +650,7 @@ where c_payment.c_payment_id=$P{RECORD_ID}]]>
 				<textFieldExpression><![CDATA[$F{tienqd}]]></textFieldExpression>
 			</textField>
 			<textField pattern="#,##0.###;(#,##0.###-)" isBlankWhenNull="true">
-				<reportElement x="67" y="242" width="131" height="18" isRemoveLineWhenBlank="true" isPrintInFirstWholeBand="true" uuid="0ff1a565-283a-4386-a734-9105f78003d5">
+				<reportElement x="67" y="239" width="131" height="18" isRemoveLineWhenBlank="true" isPrintInFirstWholeBand="true" uuid="0ff1a565-283a-4386-a734-9105f78003d5">
 					<property name="local_mesure_unitheight" value="pixel"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
@@ -511,7 +662,7 @@ where c_payment.c_payment_id=$P{RECORD_ID}]]>
 				<textFieldExpression><![CDATA[$F{multiplyrate}]]></textFieldExpression>
 			</textField>
 			<staticText>
-				<reportElement x="0" y="220" width="119" height="18" uuid="6477cf58-d786-45a3-8fc0-9e2a213266ca">
+				<reportElement x="0" y="217" width="119" height="18" uuid="6477cf58-d786-45a3-8fc0-9e2a213266ca">
 					<property name="local_mesure_unity" value="pixel"/>
 					<property name="local_mesure_unitheight" value="pixel"/>
 					<property name="com.jaspersoft.studio.unit.x" value="px"/>
@@ -523,7 +674,7 @@ where c_payment.c_payment_id=$P{RECORD_ID}]]>
 				<text><![CDATA[Số tiền bằng chữ:]]></text>
 			</staticText>
 			<textField pattern="#,##0.###;(#,##0.###-)" isBlankWhenNull="true">
-				<reportElement x="126" y="220" width="439" height="18" uuid="d1b15f7d-4fe0-42db-afa9-b1e7084a8a60">
+				<reportElement x="126" y="217" width="439" height="18" uuid="d1b15f7d-4fe0-42db-afa9-b1e7084a8a60">
 					<property name="local_mesure_unitheight" value="pixel"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
@@ -584,7 +735,7 @@ where c_payment.c_payment_id=$P{RECORD_ID}]]>
 				<textFieldExpression><![CDATA[$F{tkc}]]></textFieldExpression>
 			</textField>
 			<staticText>
-				<reportElement x="294" y="264" width="86" height="18" isRemoveLineWhenBlank="true" isPrintInFirstWholeBand="true" uuid="55e25945-1301-4641-b149-e3306f86b3f1">
+				<reportElement x="294" y="261" width="86" height="18" isRemoveLineWhenBlank="true" isPrintInFirstWholeBand="true" uuid="55e25945-1301-4641-b149-e3306f86b3f1">
 					<property name="local_mesure_unity" value="pixel"/>
 					<property name="local_mesure_unitheight" value="pixel"/>
 				</reportElement>
@@ -594,13 +745,61 @@ where c_payment.c_payment_id=$P{RECORD_ID}]]>
 				<text><![CDATA[Tên TK Đ.ứng :]]></text>
 			</staticText>
 			<textField isBlankWhenNull="true">
-				<reportElement x="384" y="264" width="181" height="18" isRemoveLineWhenBlank="true" isPrintInFirstWholeBand="true" uuid="4fcc1e43-f034-41d2-8b1e-7006448fc2fc">
+				<reportElement x="384" y="261" width="181" height="18" isRemoveLineWhenBlank="true" isPrintInFirstWholeBand="true" uuid="4fcc1e43-f034-41d2-8b1e-7006448fc2fc">
 					<property name="local_mesure_unitheight" value="pixel"/>
 				</reportElement>
 				<textElement verticalAlignment="Middle">
 					<font fontName="Arial" size="12"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{tentkdu}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="0" y="152" width="80" height="18" uuid="e8eb6074-e06c-4847-80b3-7f3abc54ea16">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="local_mesure_unitheight" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Địa chỉ KH:]]></text>
+			</staticText>
+			<textField isBlankWhenNull="true">
+				<reportElement x="81" y="152" width="484" height="18" uuid="5147e3e8-9e1d-43b9-a1fa-c03baa533930">
+					<property name="local_mesure_unity" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" size="12"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{dckh}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="0" y="110" width="61" height="18" uuid="b6595fd0-c193-4c91-8e65-e1f402d41ba4">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="local_mesure_unitheight" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<printWhenExpression><![CDATA[$F{loaithuchi}.equals("sk")==true]]></printWhenExpression>
+				</reportElement>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Sự kiện:]]></text>
+			</staticText>
+			<textField isBlankWhenNull="true">
+				<reportElement x="61" y="110" width="504" height="18" uuid="d2d8161c-3f4c-474d-bc76-0112e0ee9d1e">
+					<property name="local_mesure_unity" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<printWhenExpression><![CDATA[$F{loaithuchi}.equals("sk")==true]]></printWhenExpression>
+				</reportElement>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" size="12"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{sk_name}]]></textFieldExpression>
 			</textField>
 		</band>
 	</pageHeader>

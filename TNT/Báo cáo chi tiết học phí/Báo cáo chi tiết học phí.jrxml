@@ -36,52 +36,56 @@
 	</parameter>
 	<parameter name="check" class="java.lang.String"/>
 	<queryString>
-		<![CDATA[
-
-	select ROW_NUMBER() OVER (PARTITION BY lophoc order  by lophoc,hocvien) as stt, lophoc, hocvien,sum(phaithu) phaithu,sum(giam) giam, sum(thanhtoan) thanhtoan , sum(phaithu-giam-thanhtoan) as chuathu,bo_me,dienthoai
+		<![CDATA[select row_number() over(order by lophoc, hocvien) as stt, * from
+(
+	select 	lophoc, hocvien,sum(phaithu) phaithu,sum(giam) giam, sum(thanhtoan) thanhtoan , sum(phaithu-giam-thanhtoan) as chuathu,bo_me,dienthoai
 	from(
-	
+	-- da lớp đã hoàn thành thu---
 		select  lh.name as lophoc,hv."name" as hocvien , lh.amount as phaithu,
 		coalesce(lh.amount * lhl.amount_loai/100,0) as giam, 0 as thanhtoan,
 		hv.name2 as bo_me,hv.phone as dienthoai
 		from hsv_lophoc lh
 		join hsv_lophocline lhl on lh.hsv_lophoc_id = lhl.hsv_lophoc_id 
 		join hsv_hocvien hv on hv.hsv_hocvien_id = lhl.hsv_hocvien_id 		
-		where lh.ad_client_id = $P{AD_CLIENT_ID} and  lh.dateto <= $P{EndDate} 
-			and  $P{check}='Y' ---
+		where lh.ad_client_id = $P{AD_CLIENT_ID} 
+			and  $P{check}='Y' --- 
+			and lh.dateto is not null
 			and (lhl.hsv_hocvien_id = $P{HSV_HocVien_ID} or $P{HSV_HocVien_ID} is null)
 			and (lh.hsv_lophoc_id = $P{HSV_LopHoc_ID} or $P{HSV_LopHoc_ID} is null) 
 		
 		union all 
-		
-		
+						
 		select  lh.name as lophoc,hv."name" as hocvien , 0 as phaithu,
-		0 as giam, coalesce(cp.payamt,0) as thanhtoan,
-		hv.name2 as bo_me,hv.phone as dienthoai 
+		0 as giam ,cp.payamt as thanhtoan ,hv.name2 as bo_me,hv.phone as dienthoai 
 		from hsv_lophoc lh
 		join hsv_lophocline lhl on lh.hsv_lophoc_id= lhl.hsv_lophoc_id 
-		join hsv_hocvien hv on hv.hsv_hocvien_id = lhl.hsv_hocvien_id 	
 		join c_payment cp on cp.hsv_lophocline_id  = lhl.hsv_lophocline_id and cp.hsv_lophoc_id = lh.hsv_lophoc_id 
+		join hsv_hocvien hv on hv.hsv_hocvien_id = lhl.hsv_hocvien_id 	
 		where lh.ad_client_id = $P{AD_CLIENT_ID}
 				and cp.dateacct  <= $P{EndDate} 
 				and cp.payamt  > 0 
 				and cp.docstatus in ('CL','CO') and cp.isreceipt  = 'Y' and  $P{check}='Y'
 				and (lhl.hsv_hocvien_id = $P{HSV_HocVien_ID} or $P{HSV_HocVien_ID} is null)
 				and (lh.hsv_lophoc_id = $P{HSV_LopHoc_ID} or $P{HSV_LopHoc_ID} is null) 
-		
-		
-		union all 
-		
+	
+	) as k		
+	group by lophoc, hocvien,bo_me,dienthoai
+	
+	union all 
+		--chưa thu---
+	select 	lophoc, hocvien,sum(phaithu) phaithu,sum(giam) giam, sum(thanhtoan) thanhtoan , sum(phaithu-giam-thanhtoan) as chuathu,bo_me,dienthoai
+	from(
 		select  lh.name as lophoc,hv."name" as hocvien , lh.amount as phaithu,
-		coalesce(lh.amount * lhl.amount_loai/100,0) as giam, coalesce(cp.payamt,0) as thanhtoan,
+		coalesce(lh.amount * lhl.amount_loai/100,0) as giam, 0 as thanhtoan,
 		hv.name2 as bo_me,hv.phone as dienthoai
 		from hsv_lophoc lh
 		join hsv_lophocline lhl on lh.hsv_lophoc_id = lhl.hsv_lophoc_id 
-		join hsv_hocvien hv on hv.hsv_hocvien_id = lhl.hsv_hocvien_id 
-		left join c_payment cp on cp.hsv_lophoc_id = lh.hsv_lophoc_id and cp.hsv_hocvien_id = lhl.hsv_hocvien_id  and cp.docstatus in ('CL','CO')
-		where lh.ad_client_id = $P{AD_CLIENT_ID} and  cp.isreceipt  = 'N' and (lh.dateto >= $P{EndDate} or lh.dateto is null) and  $P{check}='N' --- 
+		join hsv_hocvien hv on hv.hsv_hocvien_id = lhl.hsv_hocvien_id 		
+		where lh.ad_client_id = $P{AD_CLIENT_ID} 
+		and   $P{check}='N' --- 
 		and (lhl.hsv_hocvien_id = $P{HSV_HocVien_ID} or $P{HSV_HocVien_ID} is null)
 		and (lh.hsv_lophoc_id = $P{HSV_LopHoc_ID} or $P{HSV_LopHoc_ID} is null) 
+		
 		union all 
 		
 		select  lh.name as lophoc,hv."name" as hocvien , 0 as phaithu,
@@ -92,12 +96,15 @@
 		join hsv_hocvien hv on hv.hsv_hocvien_id = lhl.hsv_hocvien_id 	
 		join c_payment cp on cp.hsv_lophocline_id  = lhl.hsv_lophocline_id and cp.hsv_lophoc_id = lh.hsv_lophoc_id 
 		where lh.ad_client_id = $P{AD_CLIENT_ID}
-				and cp.dateacct  <= $P{EndDate} 
 				and cp.payamt  > 0 
-				and cp.docstatus in ('CL','CO') and cp.isreceipt  = 'N' and  $P{check}='N'
+				and cp.docstatus in ('CL','CO') 
+				and cp.isreceipt  = 'Y' 	and (lh.dateto > $P{EndDate} or lh.dateto is null) and  $P{check}='N' --- 
 				and (lhl.hsv_hocvien_id = $P{HSV_HocVien_ID} or $P{HSV_HocVien_ID} is null)
 				and (lh.hsv_lophoc_id = $P{HSV_LopHoc_ID} or $P{HSV_LopHoc_ID} is null) 
-	) as k group by lophoc, hocvien,bo_me,dienthoai]]>
+	) as k 
+ 	where phaithu-giam-thanhtoan <> 0
+	group by lophoc, hocvien,bo_me,dienthoai
+	) as k]]>
 	</queryString>
 	<field name="stt" class="java.lang.Long">
 		<property name="com.jaspersoft.studio.field.name" value="stt"/>
