@@ -1,68 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Created with Jaspersoft Studio version 6.20.0.final using JasperReports Library version 6.20.0-2bc7ab61c56f459e8176eb05c7705e145cd400ad  -->
-<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="sub_ketqua" pageWidth="555" pageHeight="842" columnWidth="555" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="a9de5214-9bb3-4f03-b349-e421d1f3d823">
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="sub_ketqua" pageWidth="555" pageHeight="842" columnWidth="555" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" isFloatColumnFooter="true" uuid="a9de5214-9bb3-4f03-b349-e421d1f3d823">
 	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
 	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="psql"/>
 	<parameter name="kq" class="java.lang.Double"/>
 	<parameter name="tyle" class="java.lang.Double"/>
 	<parameter name="M_Lot_ID" class="java.lang.Integer"/>
 	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
-	<parameter name="tong_sl" class="java.lang.Double" isForPrompting="false"/>
+	<parameter name="tong_sl" class="java.lang.Double"/>
 	<parameter name="sl_dm" class="java.lang.Double"/>
-	<parameter name="sl_rac" class="java.lang.Double" isForPrompting="false"/>
+	<parameter name="sl_rac" class="java.lang.Double"/>
+	<parameter name="kl_tp" class="java.lang.Double"/>
+	<parameter name="gia_rac" class="java.lang.Double" isForPrompting="false"/>
 	<queryString language="SQL">
-		<![CDATA[select row_number() over(order by stt) as stt, dm_name , tyle ,kq
-from(
-	select 1 as stt,'Hiệu quả (4+5+6+7+8)-(1+2+3)' as dm_name,null::int4 as tyle, ($P{kq}+  ($P{sl_rac}*600)) as kq
-	union all 
-	select 2 as stt, 'Tỷ lệ thu hồi (Kg gỗ/m3' as dm_name, $P{tyle} as tyle, null as kq
-
-	union all
+		<![CDATA[select 1 as stt,'Hiệu quả ((4+5+6+7+8)-(1+2+3))' as dm_name,null::int4 as tyle,coalesce(k.hsv_dinhmuc,0) as dg, coalesce(($P{kq}+  ($P{sl_rac}*k.hsv_dinhmuc)),0) as kq,k.hsv_dinhmuc
+from (
+	select 1 as id, hsv_dg.startdate , hsv_dg.enddate, dgl.m_product_id,coalesce(hsv_dinhmuc,0) as hsv_dinhmuc
+	from hsv_nkdongialine dgl
+	join hsv_dongia hsv_dg on hsv_dg.hsv_dongia_id = dgl.hsv_dongia_id and hsv_dg.hsv_loaidongia_id  in (1000000,1000042)
+	where hsv_dg.ad_client_id = $P{AD_CLIENT_ID} and dgl.m_product_id in (1019234,1019240)
+) as k join
+(
+	select 1 as id, ml.datefrom  
+	from m_lot ml 
+	where ml.ad_client_id =$P{AD_CLIENT_ID} and ml.m_lot_id = $P{M_Lot_ID}
 	
-	select 3 as stt, 'Tỷ lệ thu hồi ván A (%)' as dm_name, case when  $P{tong_sl} <>0 then  100*sum(civ.productionqty)/ $P{tong_sl}else 0 end as tyle, null as kq
-	from m_production ci
-	join m_productionplan civ on ci.m_production_id = civ.m_production_id and ci.docstatus in ('CL','CO')	
-	join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id and  (att.m_lot_id = $P{M_Lot_ID} )
-	where ci.ad_client_id = $P{AD_CLIENT_ID} and civ.m_product_id in (1004077,1018331,1019040,1019059) 
-
-	union all
-	select 4 as stt, 'Tỷ lệ thu hồi ván B (%)' as dm_name,  case when  $P{tong_sl}  <>0 then 100* sum(civ.productionqty)/ $P{tong_sl}else 0 end as tyle, null as kq
-	from m_production ci
-	join m_productionplan civ on ci.m_production_id = civ.m_production_id and ci.docstatus in ('CL','CO')	
-	join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id and  (att.m_lot_id = $P{M_Lot_ID} )
-	where  ci.ad_client_id = $P{AD_CLIENT_ID}  and civ.m_product_id in (1004076,1018332,1019041,1019060)
-	
-	union all
-	select 5 as stt, 'Tỷ lệ thu hồi ván C (%)' as dm_name, case when  $P{tong_sl} <>0 then 100* sum(civ.productionqty)/ $P{tong_sl} else 0 end as tyle, null as kq
-	from m_production ci
-	join m_productionplan civ on ci.m_production_id = civ.m_production_id and ci.docstatus in ('CL','CO')	
-	join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id and  (att.m_lot_id = $P{M_Lot_ID} )
-	where  ci.ad_client_id = $P{AD_CLIENT_ID} and civ.m_product_id in (1004079,1018333,1019043,1019058)	
-	
-	
-	union all
-	
-	select 6 as stt, 'Tỷ lệ thu hồi ván AB (%)' as dm_name, case when  $P{tong_sl} <>0 then 100* sum(civ.productionqty)/ $P{tong_sl} else 0 end as tyle, null as kq
-	from m_production ci
-	join m_productionplan civ on ci.m_production_id = civ.m_production_id and ci.docstatus in ('CL','CO')
-	join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id and  (att.m_lot_id = $P{M_Lot_ID} )
-	where ci.ad_client_id = $P{AD_CLIENT_ID} and civ.m_product_id in (1018871,1018870)
-
-	
-	union all
-	
-	select 7 as stt, 'Tỷ lệ thu hồi ván BC (%)' as dm_name, case when  $P{tong_sl} <>0 then 100* sum(civ.productionqty)/ $P{tong_sl} else 0 end as tyle, null as kq
-	from m_production ci
-	join m_productionplan civ on ci.m_production_id = civ.m_production_id and ci.docstatus in ('CL','CO')	
-	join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id and  (att.m_lot_id = $P{M_Lot_ID} )
-	where ci.ad_client_id = $P{AD_CLIENT_ID} and civ.m_product_id in (1018893,1018903)
-
-	union all 
-	select 8 as stt,'Hiệu quả /m3 ván bóc' as dm_name,null as tyle, case when $P{tong_sl} <> 0 then  ($P{kq}+  ($P{sl_rac}*600))/$P{tong_sl}  else 0 end as kq
-) as k 
-where (kq<>0 or tyle<>0)]]>
+) as t on k.id = t.id
+where  t.datefrom >= k.startdate  and  t.datefrom <= k.enddate 
+union all
+select 2 as stt, 'Tỷ lệ thu hồi (Kg gỗ/kg chip)' as dm_name, $P{tyle} as tyle, null::int4 as dg,null as kq,null::int4 as hsv_dinhmuc]]>
 	</queryString>
-	<field name="stt" class="java.lang.Long">
+	<field name="stt" class="java.lang.Integer">
 		<property name="com.jaspersoft.studio.field.name" value="stt"/>
 		<property name="com.jaspersoft.studio.field.label" value="stt"/>
 	</field>
@@ -74,17 +42,28 @@ where (kq<>0 or tyle<>0)]]>
 		<property name="com.jaspersoft.studio.field.name" value="tyle"/>
 		<property name="com.jaspersoft.studio.field.label" value="tyle"/>
 	</field>
+	<field name="dg" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="dg"/>
+		<property name="com.jaspersoft.studio.field.label" value="dg"/>
+	</field>
 	<field name="kq" class="java.lang.Double">
 		<property name="com.jaspersoft.studio.field.name" value="kq"/>
 		<property name="com.jaspersoft.studio.field.label" value="kq"/>
 	</field>
+	<field name="hsv_dinhmuc" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="hsv_dinhmuc"/>
+		<property name="com.jaspersoft.studio.field.label" value="hsv_dinhmuc"/>
+	</field>
+	<variable name="gia_rac" class="java.lang.Double" calculation="First">
+		<variableExpression><![CDATA[$F{hsv_dinhmuc}.doubleValue()]]></variableExpression>
+	</variable>
 	<background>
 		<band splitType="Stretch"/>
 	</background>
 	<title>
-		<band height="22">
-			<textField pattern="#,##0.##" isBlankWhenNull="true">
-				<reportElement x="444" y="0" width="111" height="22" uuid="ab833d73-d2ce-41bc-96fb-8b3c9d89786d">
+		<band height="26">
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="444" y="0" width="111" height="26" uuid="ab833d73-d2ce-41bc-96fb-8b3c9d89786d">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="08cf5d23-f333-401e-872e-85328fa73ba4"/>
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 				</reportElement>
@@ -94,10 +73,10 @@ where (kq<>0 or tyle<>0)]]>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
 					<font fontName="Arial" size="11" isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$P{sl_rac}*600]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$P{sl_rac} * $F{hsv_dinhmuc}.doubleValue()]]></textFieldExpression>
 			</textField>
-			<textField pattern="#,##0.##" isBlankWhenNull="true">
-				<reportElement x="333" y="0" width="111" height="22" uuid="fb3522b9-b1d0-498b-ad30-393662625dd0">
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="333" y="0" width="111" height="26" uuid="fb3522b9-b1d0-498b-ad30-393662625dd0">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="82a08de7-0af8-4496-9b8c-d70b7a8c9da1"/>
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 				</reportElement>
@@ -107,10 +86,10 @@ where (kq<>0 or tyle<>0)]]>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
 					<font fontName="Arial" size="11" isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA[600]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{hsv_dinhmuc}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
-				<reportElement x="0" y="0" width="222" height="22" uuid="05639d40-3a87-4116-a623-0d82254c7478">
+				<reportElement x="0" y="0" width="222" height="26" uuid="05639d40-3a87-4116-a623-0d82254c7478">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="8ca16c01-d717-4d98-b446-5a8045a26b46"/>
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 				</reportElement>
@@ -120,10 +99,10 @@ where (kq<>0 or tyle<>0)]]>
 				<textElement textAlignment="Left" verticalAlignment="Middle">
 					<font fontName="Arial" size="11" isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA["8. Phụ phẩm rác (ĐM : 94 % N L- SL TP)"]]></textFieldExpression>
+				<textFieldExpression><![CDATA["8.  Rác : Định mức 25 % N.L keo đen * 0,8"]]></textFieldExpression>
 			</textField>
-			<textField pattern="#,##0.##" isBlankWhenNull="true">
-				<reportElement x="222" y="0" width="111" height="22" uuid="9f739c7e-f6eb-481d-af1a-a3ce22f10a0b">
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="222" y="0" width="111" height="26" uuid="9f739c7e-f6eb-481d-af1a-a3ce22f10a0b">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="e2ae3ff5-5944-48bb-ade7-0d3e13bf1229"/>
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 				</reportElement>
@@ -201,7 +180,7 @@ where (kq<>0 or tyle<>0)]]>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 				</reportElement>
-				<box rightPadding="2">
+				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
@@ -213,13 +192,13 @@ where (kq<>0 or tyle<>0)]]>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{tyle}]]></textFieldExpression>
 			</textField>
-			<textField pattern="#,##0.##" isBlankWhenNull="true">
+			<textField pattern="#,##0" isBlankWhenNull="true">
 				<reportElement x="444" y="0" width="111" height="22" uuid="9ec3af48-3024-4e61-b2f9-71b59c38720f">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="b57a3c22-27ba-4b76-b550-dd281a825536"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 				</reportElement>
-				<box rightPadding="2">
+				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
@@ -231,13 +210,13 @@ where (kq<>0 or tyle<>0)]]>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{kq}]]></textFieldExpression>
 			</textField>
-			<textField pattern="#,##0.##" isBlankWhenNull="true">
+			<textField pattern="#,##0" isBlankWhenNull="true">
 				<reportElement x="333" y="0" width="111" height="22" uuid="a5d7cc2b-ec68-40e0-963f-e4573e043adc">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="9ee2dc6c-41f0-4654-9ab4-335030ed21fb"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 				</reportElement>
-				<box>
+				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
 					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
@@ -251,9 +230,9 @@ where (kq<>0 or tyle<>0)]]>
 		</band>
 	</detail>
 	<summary>
-		<band height="39">
+		<band height="64">
 			<staticText>
-				<reportElement key="staticText-8" positionType="Float" stretchType="RelativeToTallestObject" x="0" y="23" width="222" height="16" uuid="f943af67-38db-461c-9951-a9a18a971026"/>
+				<reportElement key="staticText-8" positionType="Float" stretchType="RelativeToTallestObject" x="0" y="48" width="222" height="16" uuid="f943af67-38db-461c-9951-a9a18a971026"/>
 				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.25"/>
 					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
@@ -267,7 +246,7 @@ where (kq<>0 or tyle<>0)]]>
 				<text><![CDATA[Lập biểu]]></text>
 			</staticText>
 			<staticText>
-				<reportElement key="staticText-8" positionType="Float" stretchType="RelativeToTallestObject" x="222" y="23" width="111" height="16" uuid="aa5f1c31-ebfe-44ec-94bd-87a1d71dff0d"/>
+				<reportElement key="staticText-8" positionType="Float" stretchType="RelativeToTallestObject" x="222" y="48" width="111" height="16" uuid="aa5f1c31-ebfe-44ec-94bd-87a1d71dff0d"/>
 				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.25"/>
 					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
@@ -281,7 +260,7 @@ where (kq<>0 or tyle<>0)]]>
 				<text><![CDATA[Kiểm soát]]></text>
 			</staticText>
 			<staticText>
-				<reportElement key="staticText-8" positionType="Float" stretchType="RelativeToTallestObject" x="333" y="23" width="222" height="16" uuid="bb2cf1f0-337f-4252-bb7b-d35a3b143eef"/>
+				<reportElement key="staticText-8" positionType="Float" stretchType="RelativeToTallestObject" x="333" y="48" width="222" height="16" uuid="bb2cf1f0-337f-4252-bb7b-d35a3b143eef"/>
 				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.25"/>
 					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
@@ -295,7 +274,7 @@ where (kq<>0 or tyle<>0)]]>
 				<text><![CDATA[Giám đốc]]></text>
 			</staticText>
 			<textField pattern="" isBlankWhenNull="false">
-				<reportElement key="textField-4" x="0" y="1" width="555" height="22" forecolor="#000000" backcolor="#FFFFFF" uuid="5f46b385-4426-4509-bd2e-67e135c4b3c0"/>
+				<reportElement key="textField-4" x="0" y="26" width="555" height="22" forecolor="#000000" backcolor="#FFFFFF" uuid="5f46b385-4426-4509-bd2e-67e135c4b3c0"/>
 				<box>
 					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
@@ -306,6 +285,94 @@ where (kq<>0 or tyle<>0)]]>
 					<font fontName="Arial" size="10"/>
 				</textElement>
 				<textFieldExpression><![CDATA["Ngày in: " + new SimpleDateFormat("dd/MM/yyyy hh:mm").format(new Date())]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="0" y="0" width="50" height="22" uuid="dd222ca5-fdac-40cc-bbe8-75ca8399c3ee">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="13a4be22-a19d-47ed-bf89-9e16bc00bbec"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA["3"]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="50" y="0" width="172" height="22" uuid="cd4053ba-2226-4a18-a317-205b42840079">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="54de2f58-f5ad-4046-ac28-a4642746de17"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Hiệu quả/1kg thành phẩm"]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.##" isBlankWhenNull="true">
+				<reportElement x="333" y="0" width="111" height="22" uuid="e11bf837-e8d1-42b8-b242-9c8d58c09a3b">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="9ee2dc6c-41f0-4654-9ab4-335030ed21fb"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[($P{kl_tp} != 0 || $P{kl_tp} !=null) ?  ($P{kq}+  ($P{sl_rac}*$V{gia_rac}))/$P{kl_tp}:0]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.##" isBlankWhenNull="true">
+				<reportElement x="444" y="0" width="111" height="22" uuid="bba0a2d2-ba11-4138-987d-c3bfc3d2001d">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="b57a3c22-27ba-4b76-b550-dd281a825536"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+			</textField>
+			<textField pattern="#,##0.##" isBlankWhenNull="true">
+				<reportElement x="222" y="0" width="111" height="22" uuid="2a0f3611-764e-4f7c-8c34-3139c7fbecac">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="9ee2dc6c-41f0-4654-9ab4-335030ed21fb"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
 			</textField>
 		</band>
 	</summary>

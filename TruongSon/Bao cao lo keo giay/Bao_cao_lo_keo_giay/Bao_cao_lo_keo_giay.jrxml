@@ -32,148 +32,219 @@
 	<parameter name="SUBREPORT_DIR" class="java.lang.String">
 		<defaultValueExpression><![CDATA["dev/"]]></defaultValueExpression>
 	</parameter>
+	<parameter name="dg_vc" class="java.lang.Integer" isForPrompting="false">
+		<defaultValueExpression><![CDATA[$P{AD_CLIENT_ID}==1000036?0:110]]></defaultValueExpression>
+	</parameter>
 	<queryString>
-		<![CDATA[select row_number() over(PARTITION BY k.dm_name ORDER BY name) as stt,k.danhmuc, dm_name,name,qty as sl,case when qty=0 or qty is  null then 0 else tt/qty end as dg,tt as tt, sl_thanhpham as sl_thanhpham , tong_van as tong_van  
+		<![CDATA[select row_number() over(PARTITION BY k.dm_name ORDER BY name) as stt,k.danhmuc, dm_name,name,qty as sl,case when qty=0 then 0 else tt/qty end as dg,
+tt as tt, sl_thanhpham as sl_thanhpham , tong_van as tong_van,sl_gonl as sl_gonl,  mua_keo_da_boc as mua_keo_da_boc
 from(
 	select 1 as danhmuc, 'Nguyên liệu gỗ keo chuyển từ lô khác' as dm_name
 	union all
 	select 2 as danhmuc, 'Nguyên liệu nhập mua' as dm_name
 	union all 
-	select 3 as danhmuc, 'Chi phí bóc (định mức)' as dm_name
+	select 3 as danhmuc, 'CP băm, Vận chuyển (Định mức)' as dm_name
 	union all 
-	select 4 as danhmuc, 'Thành phẩm bóc ' as dm_name
+	select 4 as danhmuc, 'Thành phẩm băm chíp, bóc vỏ' as dm_name
 	union all 
-	select 5 as danhmuc, 'Gỗ chuyển lô khác' as dm_name
+	select 5 as danhmuc, 'keo cọc , giấy chuyển lô khác' as dm_name
 	union all 
 	select 6 as danhmuc, 'Keo loại đóng falet' as dm_name
-	union all
-	select 7 as danhmuc, 'Keo cọc xuất bán' as dm_name
+	union  all
+	select 7 as danhmuc, 'Keo, chíp xuất bán' as dm_name
 
 ) as k  join 
 (
+--- keo giay---
 
-	select 1 as danhmuc,  hh.name, sum(fa.qty) as qty,sum(case when qty >0 then fa.amtacctdr else -1 * fa.amtacctcr end) as tt, 0 as sl_thanhpham,  0 as tong_van 
-	from fact_acct fa 
-	join m_product hh on hh.m_product_id = fa.m_product_id and (hh.m_product_category_id in (1000562,1000084) or hh.m_product_id in (1008358,1018344))
-	join m_productionline  civ on fa.line_id = civ.m_productionline_id 
-	join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id and  (att.m_lot_id = $P{M_Lot_ID} )
-	join c_elementvalue acct on fa.account_id = acct.c_elementvalue_id and (LEFT(acct.value, 2) in ('15'))
-	where fa.ad_table_id = 325 and fa.ad_client_id = $P{AD_CLIENT_ID}   and fa.c_campaign_id in (1000090,1000088)
-	group by hh.name
+	select 1 as danhmuc, name,sum(qty) as qty, sum(tt) as tt, 0 as sl_thanhpham,0 as tong_van, sum(sl_gonl) as sl_gonl,0 as mua_keo_da_boc 
+	from(
+		select   hh.name, fa.qty as qty, case when qty >0 then fa.amtacctdr else -1 * fa.amtacctcr end as tt, fa.qty as sl_gonl
+		from fact_acct fa 
+		join m_product hh on hh.m_product_id = fa.m_product_id and (hh.m_product_category_id in (1000084,1000562,1000588,1000589) or hh.m_product_id in (1008358,1018344))
+		join m_productionline  civ on fa.line_id = civ.m_productionline_id 
+		join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id  and  (att.m_lot_id = $P{M_Lot_ID} )
+		join c_elementvalue acct on fa.account_id = acct.c_elementvalue_id and (LEFT(acct.value, 2) in ('15'))
+		where fa.ad_table_id = 325 and fa.ad_client_id = $P{AD_CLIENT_ID} and fa.c_campaign_id in (1000090,1000088)
+	) as k 
+	group by name
 	
+	
+
 	union all
 	
-	select 2 as danhmuc, hh.name,  sum(civ.qtyentered) as qty, sum(civ.linenetamt) as tt,0 as sl_thanhpham,0 as tong_van 
-	from c_invoice ci  
-	join c_invoiceline civ  on ci.c_invoice_id  = civ.c_invoice_id  and ci.issotrx = 'N'
-	join M_AttributeSetInstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
-	join m_lot lot on lot.m_lot_id = att.m_lot_id and (att.m_lot_id = $P{M_Lot_ID})
-	join m_product hh on hh.m_product_id = civ.m_product_id 
-	where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.docstatus in ('CO','CL')
-	group by hh.name
-
+	select 2 as danhmuc, name,  sum(qty) as qty, sum(tt) as tt,0 as sl_thanhpham,0 as tong_van , sum(sl_gonl) as sl_gonl,sum(nl_keo_boc) as mua_keo_da_boc 
+	from(
+		select  hh.name,  civ.qtyentered as qty, civ.linenetamt as tt,0 as sl_gonl, 0 as nl_keo_boc
+		from c_invoice ci  
+		join c_invoiceline civ  on ci.c_invoice_id  = civ.c_invoice_id  and ci.issotrx = 'N'
+		join M_AttributeSetInstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
+		join m_lot lot on lot.m_lot_id = att.m_lot_id and (att.m_lot_id = $P{M_Lot_ID})
+		join m_product hh on hh.m_product_id = civ.m_product_id 
+		where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.docstatus in ('CO','CL')
+		
+		
+		union all
+		
+		select  hh.name,  0 as qty, null::int4 as tt,civ.qtyentered as sl_gonl, 0 as nl_keo_boc
+		from c_invoice ci  
+		join c_invoiceline civ  on ci.c_invoice_id  = civ.c_invoice_id  and ci.issotrx = 'N'
+		join M_AttributeSetInstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
+		join m_lot lot on lot.m_lot_id = att.m_lot_id and (att.m_lot_id = $P{M_Lot_ID})
+		join m_product hh on hh.m_product_id = civ.m_product_id  and hh.m_product_category_id in (1000562,1000084)
+		where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.docstatus in ('CO','CL')
+	
+		union all
+		
+		select  hh.name,  0 as qty, null::int4 as tt,0 as sl_gonl, civ.qtyentered as nl_keo_boc
+		from c_invoice ci  
+		join c_invoiceline civ  on ci.c_invoice_id  = civ.c_invoice_id  and ci.issotrx = 'N'
+		join M_AttributeSetInstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
+		join m_lot lot on lot.m_lot_id = att.m_lot_id and (att.m_lot_id = $P{M_Lot_ID})
+		join m_product hh on hh.m_product_id = civ.m_product_id  and hh.m_product_id in (1018340,1018219)
+		where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.docstatus in ('CO','CL')
+	
+	) as k group by name
+	
 	union all 
 	
-	select  3 as danhmuc, name, sum(qty) as qty, sum(tt) as tt, 0 as sl_thanhpham,0 as tong_van 
+	select  3 as danhmuc, dm_name as name, sum(qty) as qty, sum(tt) as tt, 0 as sl_thanhpham,0 as tong_van, 0 as sl_gonl,0 as mua_keo_da_boc  
 	from(
-		select  'Nhân công (210.000/m3)' as name,qty,qty * 210000 as tt 
+		select  'CP điện , nhân công' as dm_name,qty,qty * coalesce(hsv_dinhmuc,0)  as tt 
 		from(
-			select civ.productionqty as qty 
+			select civ.productionqty as qty,z.hsv_dinhmuc  
 			from m_production ci 
 			join m_productionplan civ on ci.m_production_id = civ.m_production_id 
-			join m_product hh on hh.m_product_id = civ.m_product_id  and hh.m_product_category_id in (1000569,1000085) and hh.m_attributeset_id in (1000065,1000160)
+			join m_product hh on hh.m_product_id = civ.m_product_id  and (hh.m_product_category_id in (1000569,1000085) or hh.m_product_id in (1018826,1018827))
 			join M_AttributeSetInstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
 			join m_lot lot on lot.m_lot_id = att.m_lot_id and (att.m_lot_id = $P{M_Lot_ID} ) 
+			left join (
+				select 1 as id,hsv_dg.startdate , hsv_dg.enddate, dgl.m_product_id,coalesce(hsv_dinhmuc,0) as hsv_dinhmuc
+				from hsv_nkdongialine dgl
+				join hsv_dongia hsv_dg on hsv_dg.hsv_dongia_id = dgl.hsv_dongia_id and hsv_dg.hsv_loaidongia_id  in (1000000,1000042)
+				where hsv_dg.ad_client_id = $P{AD_CLIENT_ID} and dgl.m_product_id in (1019232 ,1019239)
+			) as z on z.id = 1 
 			where ci.ad_client_id= $P{AD_CLIENT_ID} and ci.docstatus in ('CO','CL')
-			
+			and lot.datefrom >= z.startdate  and  lot.datefrom <= z.enddate 
 		) as k
 		
 		union all 
-		select  'Khac (100.000/m3)' as name,qty,qty * 100000 as tt 
+		
+		select  'Chi phí vận chuyển' as dm_name,qty,qty * coalesce(hsv_dinhmuc,0)  as tt 
 		from(
-			select civ.productionqty as qty 
+			select civ.productionqty as qty,z.hsv_dinhmuc  
 			from m_production ci 
 			join m_productionplan civ on ci.m_production_id = civ.m_production_id 
-			join m_product hh on hh.m_product_id = civ.m_product_id  and hh.m_product_category_id in (1000569,1000085) and hh.m_attributeset_id in (1000065,1000160)
-			join M_AttributeSetInstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id and att.m_lot_id = $P{M_Lot_ID} 
-			where ci.ad_client_id= $P{AD_CLIENT_ID} and ci.docstatus in ('CO','CL')			
+			join m_product hh on hh.m_product_id = civ.m_product_id  and (hh.m_product_category_id in (1000569,1000085) or hh.m_product_id in (1018826,1018827))
+			join M_AttributeSetInstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
+			join m_lot lot on lot.m_lot_id = att.m_lot_id and (att.m_lot_id = $P{M_Lot_ID} ) 
+			left join (
+				select 1 as id,hsv_dg.startdate , hsv_dg.enddate, dgl.m_product_id,coalesce(hsv_dinhmuc,0) as hsv_dinhmuc
+				from hsv_nkdongialine dgl
+				join hsv_dongia hsv_dg on hsv_dg.hsv_dongia_id = dgl.hsv_dongia_id and hsv_dg.hsv_loaidongia_id  in (1000000,1000042)
+				where hsv_dg.ad_client_id = $P{AD_CLIENT_ID} and dgl.m_product_id in (1019233,1019238)			
+			) as z on z.id = 1 
+			where ci.ad_client_id= $P{AD_CLIENT_ID} and ci.docstatus in ('CO','CL')
+			and lot.datefrom >= z.startdate  and  lot.datefrom <= z.enddate 	
 		) as k
 	) as k
+	
 	group by name
 	
 	union all
 
-	select 4 as danhmuc , name, sum(qty) as qty, sum(tt) as tt, sum(sl_thanhpham) as sl_thanhpham,sum(tong_van) as tong_van 
+	select 4 as danhmuc , name, sum(qty) as qty, sum(tt) as tt, sum(sl_thanhpham) as sl_thanhpham,sum(sl_thanhpham)  as tong_van,sum(sl_gonl) as sl_gonl,0 as mua_keo_da_boc  
 	from(
-		select   hh.name, civ.productionqty as qty,dgl.hsv_dinhmuc *civ.productionqty  as tt	,civ.productionqty*dgl.amountdg1 as sl_thanhpham,0 as tong_van 
+		select   hh.name, coalesce(civ.productionqty,0) as qty,k.hsv_dinhmuc *civ.productionqty  as tt	,civ.productionqty*k.amountdg1 as sl_thanhpham, 0 as sl_gonl 
 		from m_production ci 	 
-		join m_productionplan  civ on ci.m_production_id  = civ.m_production_id and ci.docstatus in ('CO','CL')	
+		join m_productionplan  civ on ci.m_production_id  = civ.m_production_id and ci.docstatus in ('CL','CO')	
 		join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id and  (att.m_lot_id = $P{M_Lot_ID} ) 
-		join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_category_id in (1000569,1000085,1000565,1000470 )
-		join hsv_nkdongialine dgl on hh.m_product_id = dgl.m_product_id 
-		join hsv_dongia hsv_dg on hsv_dg.hsv_dongia_id = dgl.hsv_dongia_id and hsv_dg.hsv_loaidongia_id  in (1000000,1000042)				
-		where ci.ad_client_id =$P{AD_CLIENT_ID}  and ci.movementdate >= hsv_dg.startdate and ci.movementdate <= hsv_dg.enddate 
-
-		union  all 
-		select hh.name,0 as qty, 0 as tt, 0 as sl_thanhpham, coalesce(civ.productionqty,0) as tong_van
-		from m_production ci 
-		join m_productionplan civ on ci.m_production_id = civ.m_production_id 
-		join m_product hh on hh.m_product_id = civ.m_product_id  and hh.m_product_category_id in (1000569,1000085) and hh.m_attributeset_id in (1000065,1000160)
-		join M_AttributeSetInstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id and att.m_lot_id = $P{M_Lot_ID} 
-		where ci.ad_client_id= $P{AD_CLIENT_ID} and ci.docstatus in ('CO','CL')		
+		join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_category_id in (1000569,1000085,1000565,1000470,1000558,1000570)
+		left join (
+			select hsv_dg.startdate , hsv_dg.enddate, dgl.m_product_id,coalesce(hsv_dinhmuc,0) as hsv_dinhmuc,coalesce(amountdg1,0) as amountdg1
+			from hsv_nkdongialine dgl  
+			join hsv_dongia hsv_dg on hsv_dg.hsv_dongia_id = dgl.hsv_dongia_id and hsv_dg.hsv_loaidongia_id  in (1000000,1000042)
+			where hsv_dg.ad_client_id = $P{AD_CLIENT_ID}
+		) as k on k.m_product_id = civ.m_product_id 
+		where ci.ad_client_id =$P{AD_CLIENT_ID}  and ci.movementdate >= k.startdate and ci.movementdate <= k.enddate 
+		
+		union all
+		
+		
+		select   hh.name, 0 as qty,0  as tt	,0 as sl_thanhpham , civ.productionqty as sl_gonl 
+		from m_production ci 	 
+		join m_productionplan  civ on ci.m_production_id  = civ.m_production_id and ci.docstatus in ('CL','CO')	
+		join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id and  (att.m_lot_id = $P{M_Lot_ID} ) 
+		join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_category_id in (1000569,1000085)
+		left join (
+			select hsv_dg.startdate , hsv_dg.enddate, dgl.m_product_id,coalesce(hsv_dinhmuc,0) as hsv_dinhmuc,coalesce(amountdg1,0) as amountdg1
+			from hsv_nkdongialine dgl  
+			join hsv_dongia hsv_dg on hsv_dg.hsv_dongia_id = dgl.hsv_dongia_id and hsv_dg.hsv_loaidongia_id  in (1000000,1000042)
+			where hsv_dg.ad_client_id = $P{AD_CLIENT_ID}
+		) as k on k.m_product_id = civ.m_product_id 
+		where ci.ad_client_id =$P{AD_CLIENT_ID}  and ci.movementdate >= k.startdate and ci.movementdate <= k.enddate 
 	
- 	) as k 
-	group by name
+		
+ 	) as k group by name
+
 	
 	union all	
 		---keo boc chuyen bam chip
 		
 	
 			
-		select 5 as danhmuc, hh.name , sum(-1*fa.qty) as qty , sum(case when fa.qty > 0 then -1*fa.amtacctdr else fa.amtacctcr end ) as tt, 0 as sl_thanhpham,0 as tong_van  
+		select 5 as danhmuc, hh.name , sum(-1*fa.qty) as qty , sum(case when fa.qty  > 0 then -1*fa.amtacctdr else  fa.amtacctcr end) as tt, 0 as sl_thanhpham,0 as tong_van, sum(-1*fa.qty) as sl_gonl,0 as mua_keo_da_boc  
 		from m_inventory mi
-		join m_inventoryline miv on mi.m_inventory_id  = miv.m_inventory_id  
+		join m_inventoryline miv on mi.m_inventory_id  = miv.m_inventory_id  and mi.docstatus in ('CL','CO')
 		join m_attributesetinstance att on att.m_attributesetinstance_id = miv.m_attributesetinstance_id  and  (att.m_lot_id = $P{M_Lot_ID} )
-		join m_product hh on miv.m_product_id = hh.m_product_id and hh.m_product_category_id in (1000562,1000084)
+		join m_product hh on miv.m_product_id = hh.m_product_id and hh.m_product_category_id in (1000562,1000084,1000589,1000588)
 		join fact_acct fa on fa.record_id = miv.m_inventory_id and fa.line_id = miv.m_inventoryline_id and fa.ad_table_id = 321
 		join c_elementvalue acct on fa.account_id = acct.c_elementvalue_id and (LEFT(acct.value, 2) in ('15'))
-		where  mi.ad_client_id = $P{AD_CLIENT_ID}  and fa.c_campaign_id in (1000088,1000090)		
-	    group by hh.name
-
+		where  fa.ad_client_id = $P{AD_CLIENT_ID}  and fa.c_campaign_id in (1000036,1000091,1000088,1000090)
+		group by hh.name
+	
 
 	
 		union all
 		
 
 		
-		select 6 as danhmuc, hh.name , sum(-1*fa.qty) as qty , sum(case when fa.qty > 0 then -1*fa.amtacctdr else fa.amtacctcr end ) as tt , 0 as sl_thanhpham,0 as tong_van 
+		select 6 as danhmuc, hh.name , sum(fa.qty) as qty , sum(fa.amtacctdr) as tt , 0 as sl_thanhpham,0 as tong_van , sum(fa.qty) as sl_gonl ,0 as mua_keo_da_boc
 		from m_inventory mi
-		join m_inventoryline miv on mi.m_inventory_id  = miv.m_inventory_id  
+		join m_inventoryline miv on mi.m_inventory_id  = miv.m_inventory_id and mi.docstatus in ('CL','CO') 
 		join m_attributesetinstance att on att.m_attributesetinstance_id = miv.m_attributesetinstance_id and  (att.m_lot_id = $P{M_Lot_ID} )
 		join m_product hh on miv.m_product_id = hh.m_product_id and hh.m_product_category_id in (1000562,1000084)
 		join fact_acct fa on fa.record_id = miv.m_inventory_id and fa.line_id = miv.m_inventoryline_id and fa.ad_table_id = 321
-		join c_elementvalue acct on fa.account_id = acct.c_elementvalue_id and (LEFT(acct.value, 2) in ('15'))
-		where  mi.ad_client_id = $P{AD_CLIENT_ID}  and fa.c_campaign_id in (1000036,1000091)
-		group by hh.name
+		where  fa.ad_client_id = $P{AD_CLIENT_ID}  and fa.c_campaign_id in (1000036,1000091)
+		and fa.amtacctcr =0 
+		group by name
 
 		
 		
 		
 		union all 
 		
-		select 7 as danhmuc, hh.name, sum(civ.qtyinvoiced) as qty, sum(civ.linenetamt) as tt, 0 as sl_thanhpham,0 as tong_van 
+		select 7 as danhmuc, name , sum(k.qty) as qty , sum(k.tt) as tt , 0 as sl_thanhpham,sum(k.tong_van) as tong_van, sum(k.tong_van) as sl_gonl ,0 as mua_keo_da_boc
+		from (
+		select  hh.name, civ.qtyinvoiced as qty, civ.linenetamt as tt, civ.qtyinvoiced  as sl_thanhpham,0 as tong_van 
 		from c_invoice ci 
 		join c_invoiceline civ on ci.c_invoice_id = civ.c_invoice_id 
 		join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id and  (att.m_lot_id = $P{M_Lot_ID} )
-		join m_product hh on civ.m_product_id = hh.m_product_id and hh.M_Product_Category_ID in (1000562,1000084)
+		join m_product hh on civ.m_product_id = hh.m_product_id and (hh.M_Product_Category_ID in (1000562,1000084) or hh.m_product_id in (1018826,1018827,1018340,1018219))
 		where ci.issotrx = 'Y' and ci.ad_client_id = $P{AD_CLIENT_ID} and ci.docstatus in ('CO','CL')
-		group by hh.name
-		
+
+		union all
+		select hh.name, 0 as qty, 0 as tt, 0 as sl_thanhpham,civ.qtyinvoiced as tong_van 
+		from c_invoice ci 
+		join c_invoiceline civ on ci.c_invoice_id = civ.c_invoice_id 
+		join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id and  (att.m_lot_id = $P{M_Lot_ID} )
+		join m_product hh on civ.m_product_id = hh.m_product_id and hh.M_Product_Category_ID in (1000562,1000084)  and hh.m_product_id not in (1018340,1018219) 
+		where ci.issotrx = 'Y' and ci.ad_client_id = $P{AD_CLIENT_ID} and ci.docstatus in ('CO','CL')
+	) as k 		group by name
+
 	) as m on k.danhmuc = m.danhmuc 
-	where m.tt+m.qty <> 0
-	order by danhmuc,name
-	
-	]]>
+	where (m.qty + m.tt) <> 0
+	order by danhmuc,name]]>
 	</queryString>
 	<field name="stt" class="java.lang.Long">
 		<property name="com.jaspersoft.studio.field.name" value="stt"/>
@@ -211,6 +282,14 @@ from(
 		<property name="com.jaspersoft.studio.field.name" value="tong_van"/>
 		<property name="com.jaspersoft.studio.field.label" value="tong_van"/>
 	</field>
+	<field name="sl_gonl" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="sl_gonl"/>
+		<property name="com.jaspersoft.studio.field.label" value="sl_gonl"/>
+	</field>
+	<field name="mua_keo_da_boc" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="mua_keo_da_boc"/>
+		<property name="com.jaspersoft.studio.field.label" value="mua_keo_da_boc"/>
+	</field>
 	<variable name="sum_sl" class="java.lang.Double" resetType="Group" resetGroup="Group1" calculation="Sum">
 		<variableExpression><![CDATA[$F{sl}]]></variableExpression>
 		<initialValueExpression><![CDATA[new Double(0)]]></initialValueExpression>
@@ -236,16 +315,37 @@ from(
 		<initialValueExpression><![CDATA[new Double(0)]]></initialValueExpression>
 	</variable>
 	<variable name="sl2" class="java.lang.Double" calculation="Sum">
-		<variableExpression><![CDATA[$F{danhmuc}.equals(5)||$F{danhmuc}.equals(6)||$F{danhmuc}.equals(7)?$F{sl}.doubleValue():0]]></variableExpression>
+		<variableExpression><![CDATA[$F{danhmuc}.equals(5)||$F{danhmuc}.equals(6)?$F{sl}.doubleValue():0]]></variableExpression>
 		<initialValueExpression><![CDATA[new Double(0)]]></initialValueExpression>
 	</variable>
 	<variable name="tong_thanhpham" class="java.lang.Double" calculation="Sum">
 		<variableExpression><![CDATA[$F{sl_thanhpham}]]></variableExpression>
 		<initialValueExpression><![CDATA[new Double(0)]]></initialValueExpression>
 	</variable>
-	<variable name="tong_van" class="java.lang.Double" calculation="Sum">
-		<variableExpression><![CDATA[$F{tong_van}]]></variableExpression>
+	<variable name="sl3" class="java.lang.Double" calculation="Sum">
+		<variableExpression><![CDATA[$F{danhmuc}.equals(7)?$F{tong_van}:0]]></variableExpression>
 		<initialValueExpression><![CDATA[new Double(0)]]></initialValueExpression>
+	</variable>
+	<variable name="tyle_1" class="java.lang.Double" calculation="Sum">
+		<variableExpression><![CDATA[$F{danhmuc}.equals(1)||$F{danhmuc}.equals(2)?$F{sl_gonl}:0]]></variableExpression>
+		<initialValueExpression><![CDATA[new Double(0)]]></initialValueExpression>
+	</variable>
+	<variable name="tyle_2" class="java.lang.Double" calculation="Sum">
+		<variableExpression><![CDATA[$F{danhmuc}.equals(5)||$F{danhmuc}.equals(6)||$F{danhmuc}.equals(7)?$F{sl_gonl}:0]]></variableExpression>
+		<initialValueExpression><![CDATA[new Double(0)]]></initialValueExpression>
+	</variable>
+	<variable name="tong_go" class="java.lang.Double">
+		<variableExpression><![CDATA[$V{tyle_1}-$V{tyle_2}]]></variableExpression>
+		<initialValueExpression><![CDATA[new Double(0)]]></initialValueExpression>
+	</variable>
+	<variable name="kl_tp" class="java.lang.Double" calculation="Sum">
+		<variableExpression><![CDATA[$F{danhmuc}.equals(7)?$F{sl}:0]]></variableExpression>
+	</variable>
+	<variable name="sum_keo_da_boc" class="java.lang.Double" calculation="Sum">
+		<variableExpression><![CDATA[$F{mua_keo_da_boc}]]></variableExpression>
+	</variable>
+	<variable name="tyle_x" class="java.lang.Double">
+		<variableExpression><![CDATA[$V{tong_thanhpham}==0?0:($V{sl1}-$V{sl2}-$V{sl3})/$V{tong_thanhpham}]]></variableExpression>
 	</variable>
 	<group name="Group1">
 		<groupExpression><![CDATA[$F{dm_name}]]></groupExpression>
@@ -334,7 +434,7 @@ from(
 				<textElement textAlignment="Center">
 					<font fontName="Arial" size="16" isBold="true"/>
 				</textElement>
-				<text><![CDATA[BÁO CÁO THEO LÔ NGUYÊN LIỆU BÓC]]></text>
+				<text><![CDATA[BÁO CÁO LÔ KEO GIẤY]]></text>
 			</staticText>
 			<subreport>
 				<reportElement x="0" y="71" width="555" height="29" uuid="519b9770-98fc-49ca-8b48-f63d0ba54fa1"/>
@@ -499,16 +599,34 @@ from(
 		</band>
 	</detail>
 	<pageFooter>
-		<band height="46" splitType="Stretch">
+		<band height="30" splitType="Stretch">
 			<property name="com.jaspersoft.studio.unit.height" value="px"/>
+			<textField>
+				<reportElement x="0" y="0" width="333" height="30" uuid="d51e26cb-5dee-45e8-b528-9d92280abf92">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{PAGE_NUMBER}]]></textFieldExpression>
+			</textField>
+			<textField evaluationTime="Report">
+				<reportElement x="333" y="0" width="222" height="30" uuid="d761fa0c-a839-4c9c-8205-77b0cbb69d8f">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[($V{sl1}-$V{sl2}-$V{sl3})]]></textFieldExpression>
+			</textField>
 		</band>
 	</pageFooter>
 	<summary>
 		<band height="29" splitType="Stretch">
-			<subreport isUsingCache="true">
+			<subreport>
 				<reportElement x="0" y="0" width="555" height="29" uuid="9e730ff1-f198-4952-a7de-4f97041bf05a">
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
-					<property name="com.jaspersoft.studio.unit.height" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
 				</reportElement>
 				<subreportParameter name="AD_CLIENT_ID">
 					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
@@ -519,17 +637,20 @@ from(
 				<subreportParameter name="SUBREPORT_DIR">
 					<subreportParameterExpression><![CDATA[$P{SUBREPORT_DIR}]]></subreportParameterExpression>
 				</subreportParameter>
-				<subreportParameter name="kq">
-					<subreportParameterExpression><![CDATA[$V{kq}==null ?0:$V{kq}]]></subreportParameterExpression>
-				</subreportParameter>
 				<subreportParameter name="tyle">
-					<subreportParameterExpression><![CDATA[$V{tong_van}==0?0:($V{sl1}-$V{sl2})/$V{tong_van}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="tong_sl">
-					<subreportParameterExpression><![CDATA[$V{tong_van}]]></subreportParameterExpression>
+					<subreportParameterExpression><![CDATA[$V{tyle_x}]]></subreportParameterExpression>
 				</subreportParameter>
 				<subreportParameter name="sl_rac">
-					<subreportParameterExpression><![CDATA[($V{sl1}-$V{sl2})*0.94-$V{tong_thanhpham}]]></subreportParameterExpression>
+					<subreportParameterExpression><![CDATA[($V{tyle_1}-$V{tyle_2}-$V{sum_keo_da_boc})*0.25*0.8]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="kq">
+					<subreportParameterExpression><![CDATA[$V{kq}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="kl_tp">
+					<subreportParameterExpression><![CDATA[$V{kl_tp}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="keo_da_boc">
+					<subreportParameterExpression><![CDATA[$V{sum_keo_da_boc}]]></subreportParameterExpression>
 				</subreportParameter>
 				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
 				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"sub_ketqua.jasper"]]></subreportExpression>

@@ -44,286 +44,293 @@
 		<defaultValueExpression><![CDATA["dev/"]]></defaultValueExpression>
 	</parameter>
 	<queryString>
-		<![CDATA[select 'go' as nhom,c1,c2,c3,c4,c5,c6,c7,c8,c16,b1,b2,b3,b4,b55,sl_rac*0.94-tong_tp as sl_rac,(sl_rac*0.94-tong_tp)*600  as tt_pp,
-case when sl_van <> 0 then sl_rac/sl_van else 0 end as tyle,
-ztt + (sl_rac*0.94-tong_tp)*600 as hq, case when sl_van <> 0 then (ztt + (sl_rac*0.94-tong_tp)*600)/sl_van else 0 end as hgm3,sl_van
-FROM (
-
-	select  coalesce(t.c2,0) as c2, coalesce(t.c3,0) as c3, coalesce(t.c4,0) as c4, coalesce(t.c5,0) as c5, coalesce(t.c6, 0) as c6, coalesce(t.c7,0) as c7, coalesce(t.c8,0) as c8, coalesce(t.c16,0) as c16, k.c1, k.b1,k.b2,  k.b3, k.b4, k.b55, k.sl_rac, k.tong_tp, k.sl_van, k.ztt
+		<![CDATA[with data1 as (
+	select  lot as c1, sum(b1) as b1,  sum(b2) as b2,  sum(b3) as b3, sum(b4) as b4,sum(b55) as  b55, sum(sl_rac) as sl_rac,sum(tong_tp) as tong_tp, sum(sl_van) as sl_van, sum(ztt) as ztt
 	from(
-		select  lot as c1, sum(b1) as b1,  sum(b2) as b2,  sum(b3) as b3, sum(b4) as b4,sum(b55) as  b55, sum(sl_rac) as sl_rac,sum(tong_tp) as tong_tp, sum(sl_van) as sl_van, sum(ztt) as ztt
-		from(
 		----tinh so luong loi go-----------------
-			select ci.movementdate as dateacct ,   att.lot , sum(civ.productionqty) as b1,  0 as b2 , 0 as b3, 0 as b4,0 as b55,0 as sl_rac,0 as tong_tp,0 as sl_van, 0 as ztt
-			from m_production ci
-			join m_productionplan civ on ci.m_production_id  = civ.m_production_id and civ.m_product_id  in (1018344,1008358)
-			join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id
-			where ci.ad_client_id = $P{AD_CLIENT_ID}  
-		  	group by ci.movementdate , att.lot
+		select ci.movementdate as dateacct, att.lot , sum(civ.productionqty) as b1,  0 as b2 , 0 as b3, 0 as b4,0 as b55,0 as sl_rac,0 as tong_tp,0 as sl_van, 0 as ztt
+		from m_production ci
+		join m_productionplan civ on ci.m_production_id  = civ.m_production_id and civ.m_product_id  in (1018344,1008358)
+		join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id
+		where ci.ad_client_id = $P{AD_CLIENT_ID}
+		group by ci.movementdate , att.lot
 		
-			union all
-			----xuat chuyen ----
-			
-				select mi.movementdate as dateacct, att.lot, 0 as b1,  sum(miv.qtyinternaluse) as b2 ,  0 as b3, 0 as b4 ,0 as b55,0 as sl_rac,0 as tong_tp,0 as sl_van, 0 as ztt
-				from m_inventory mi
-				join m_inventoryline miv on mi.m_inventory_id  = miv.m_inventory_id  
-				join m_attributesetinstance att on att.m_attributesetinstance_id = miv.m_attributesetinstance_id 
-				join m_product hh on miv.m_product_id = hh.m_product_id and hh.m_product_category_id in (1000084,1000562)
-				where  mi.ad_client_id = $P{AD_CLIENT_ID}  and mi.c_campaign_id in (1000036,1000088,1000090,1000091) 
-				group by att.lot,mi.movementdate 
+		union all
+		----xuat chuyen ----
 		
-			union all
-			---- xuat ban ----
+		select mi.movementdate as dateacct, att.lot, 0 as b1,  sum(miv.qtyinternaluse) as b2 ,  0 as b3, 0 as b4 ,0 as b55,0 as sl_rac,0 as tong_tp,0 as sl_van, 0 as ztt
+		from m_inventory mi
+		join m_inventoryline miv on mi.m_inventory_id  = miv.m_inventory_id
+		join m_attributesetinstance att on att.m_attributesetinstance_id = miv.m_attributesetinstance_id
+		join m_product hh on miv.m_product_id = hh.m_product_id and hh.m_product_category_id in (1000084,1000562)
+		where  mi.ad_client_id = $P{AD_CLIENT_ID}  and mi.c_campaign_id in (1000036,1000088,1000090,1000091)
+		group by att.lot,mi.movementdate
 		
-			select ci.dateacct, att.lot,0 as b1,0 as b2, sum(civ.qtyentered) as b3, 0 as b4,0 as b55,0 as sl_rac,0 as tong_tp,0 as sl_van, 0 as ztt
-			from c_invoice ci  
-			join c_invoiceline civ  on ci.c_invoice_id  = civ.c_invoice_id  and ci.issotrx = 'Y'
-			join M_AttributeSetInstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
-			join m_lot lot on lot.m_lot_id = att.m_lot_id 
-			join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_category_id in (1000562,1000084) 
-			where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.docstatus in ('CO','CL') 		
-			group by att.lot,dateacct
+		union all
+		---- xuat ban ----
 		
-			union all
-			-------------------1-- sl_1--------------------------------
-			select fa.dateacct ,att.lot,0 as b1,0 as b2,0 as b3, sum(fa.qty) as b4,0 as b55,0 as sl_rac,0 as tong_tp,0 as sl_van, 0   as ztt 
-			from fact_acct fa 
-			join m_product hh on hh.m_product_id = fa.m_product_id and hh.m_product_category_id in (1000562,1000084) 
-			join m_productionline  civ on fa.line_id = civ.m_productionline_id 
-			join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
-			join c_elementvalue acct on fa.account_id = acct.c_elementvalue_id and (LEFT(acct.value, 2) in ('15'))
-			where fa.ad_table_id = 325 and fa.ad_client_id = $P{AD_CLIENT_ID}  
-			group by lot,dateacct 
-			
-			union all
-			---chi phi---
+		select ci.dateacct, att.lot,0 as b1,0 as b2, sum(civ.qtyentered) as b3, 0 as b4,0 as b55,0 as sl_rac,0 as tong_tp,0 as sl_van, 0 as ztt
+		from c_invoice ci
+		join c_invoiceline civ  on ci.c_invoice_id  = civ.c_invoice_id  and ci.issotrx = 'Y'
+		join M_AttributeSetInstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id
+		join m_lot lot on lot.m_lot_id = att.m_lot_id
+		join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_category_id in (1000562,1000084)
+		where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.docstatus in ('CO','CL')
+		group by att.lot,dateacct
+		
+		union all
+		-------------------1-- sl_1--------------------------------
+		select fa.dateacct ,att.lot,0 as b1,0 as b2,0 as b3, sum(fa.qty) as b4,0 as b55,0 as sl_rac,0 as tong_tp,0 as sl_van, 0   as ztt
+		from fact_acct fa
+		join m_product hh on hh.m_product_id = fa.m_product_id and hh.m_product_category_id in (1000562,1000084)
+		join m_productionline  civ on fa.line_id = civ.m_productionline_id
+		join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id
+		join c_elementvalue acct on fa.account_id = acct.c_elementvalue_id and (LEFT(acct.value, 2) in ('15'))
+		where fa.ad_table_id = 325 and fa.ad_client_id = $P{AD_CLIENT_ID}
+		group by lot,dateacct
+		
+		union all
+		---chi phi---
 		------tt 3-----
-			select  dateacct,lot ,0 as b1,0 as b2,0 as b3,0 as b4,  sum(tt) as b55,0 as sl_rac,0 as tong_tp,0 as sl_van, 0 as ztt
-			from(
-					select att.lot,ci.movementdate  as dateacct , civ.productionqty as qty,civ.productionqty *310000 as tt
-					from m_production ci 
-					join m_productionplan civ on ci.m_production_id = civ.m_production_id 
-					join m_product hh on hh.m_product_id = civ.m_product_id  and hh.m_product_category_id in (1000569,1000085) 
-					join M_AttributeSetInstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id
-					where ci.ad_client_id= $P{AD_CLIENT_ID} and ci.docstatus in ('CO','CL')	
-				) as k where k.lot is not null
-				group by lot,dateacct 
-		
-			union all 
-		-----rac2----
-	
+		select  dateacct,lot ,0 as b1,0 as b2,0 as b3,0 as b4,  sum(tt) as b55,0 as sl_rac,0 as tong_tp,0 as sl_van, 0 as ztt
+		from(
+			select att.lot,ci.movementdate  as dateacct , civ.productionqty as qty,civ.productionqty *z.hsv_dinhmuc  as tt
+			from m_production ci
+			join m_productionplan civ on ci.m_production_id = civ.m_production_id
+			join m_product hh on hh.m_product_id = civ.m_product_id  and hh.m_product_category_id in (1000569,1000085)
+			join M_AttributeSetInstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id
+			left join (
+				select 1 as id,hsv_dg.startdate , hsv_dg.enddate,sum(coalesce(hsv_dinhmuc,0)) as hsv_dinhmuc
+				from hsv_nkdongialine dgl
+				join hsv_dongia hsv_dg on hsv_dg.hsv_dongia_id = dgl.hsv_dongia_id and hsv_dg.hsv_loaidongia_id in (1000000,1000042)
+				where hsv_dg.ad_client_id = $P{AD_CLIENT_ID} and dgl.m_product_id in (1019235,10192421019236 ,1019241) and hsv_dg.hsv_dongia_id = case when $P{AD_CLIENT_ID}=1000006 then 1000068 else 1000072 end
+				group by hsv_dg.startdate , hsv_dg.enddate
+			) as z on z.id = 1
+			where ci.ad_client_id= $P{AD_CLIENT_ID} and ci.docstatus in ('CO','CL')
+			and att.lot is not null
+		) as t
+		 group by t.dateacct, t.lot
+			union all
+			-----rac2----
+			
 			select dateacct ,lot,0 as b1,0 as b2,0 as b3,0 as b4,0 as b55, sum(qty) as sl_rac,sum(tong_tp) as tong_tp, sum(tong_van) as sl_van,sum(tt) as ztt
-			from
-			( ---nhap khac--
-		
-			----------------------------tt_1-----------------
-		
-			select  att.lot,fa.dateacct, sum(fa.qty) as qty,-1 *sum(case when qty >0 then fa.amtacctdr else -1 * fa.amtacctcr end) as tt,0 as tong_tp,    null::int4 as tong_van 
-				from fact_acct fa 
-				join m_product hh on hh.m_product_id = fa.m_product_id and hh.m_product_category_id in (1000562,1000084) 
-				join m_productionline  civ on fa.line_id = civ.m_productionline_id 
-				join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
+			from( ---nhap khac-
+				----------------------------tt_1-----------------
+				select  att.lot,fa.dateacct, sum(fa.qty) as qty,-1 *sum(case when qty >0 then fa.amtacctdr else -1 * fa.amtacctcr end) as tt,0 as tong_tp,    null::int4 as tong_van
+				from fact_acct fa
+				join m_product hh on hh.m_product_id = fa.m_product_id and hh.m_product_category_id in (1000562,1000084)
+				join m_productionline  civ on fa.line_id = civ.m_productionline_id
+				join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id
 				join c_elementvalue acct on fa.account_id = acct.c_elementvalue_id and (LEFT(acct.value, 2) in ('15'))
 				where fa.ad_table_id = 325 and fa.ad_client_id = $P{AD_CLIENT_ID}
-				group by att.lot,dateacct 
-	
+				group by att.lot,dateacct
+				
 				
 				union all
 				---nhap mua--
 				-----------tt_2---------------------
-			
-				select att.lot, ci.dateacct , sum(civ.qtyentered) as qty, -1* sum(civ.linenetamt) as tt,0 as tong_tp,null::int4 as tong_van 
-				from c_invoice ci  
+				
+				select att.lot, ci.dateacct , sum(civ.qtyentered) as qty, -1* sum(civ.linenetamt) as tt,0 as tong_tp,null::int4 as tong_van
+				from c_invoice ci
 				join c_invoiceline civ  on ci.c_invoice_id  = civ.c_invoice_id  and ci.issotrx = 'N'
-				join M_AttributeSetInstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
-				join m_lot lot on lot.m_lot_id = att.m_lot_id 
-				join m_product hh on hh.m_product_id = civ.m_product_id 
-				where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.docstatus in ('CO','CL') 
-				group by att.lot,dateacct 
-		
+				join M_AttributeSetInstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id
+				join m_lot lot on lot.m_lot_id = att.m_lot_id
+				join m_product hh on hh.m_product_id = civ.m_product_id
+				where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.docstatus in ('CO','CL')
+				group by att.lot,dateacct
 				
 				
 				
 				
-				union all 
-		---- chi phi----
-				-----tt_3--------------
-				select att.lot, ci.movementdate  as dateacct ,0 as qty, -1*sum(civ.productionqty)*310000 as tt, 0 as tong_tp, 0 as tong_van 
-				from m_production ci 
-				join m_productionplan civ on ci.m_production_id = civ.m_production_id 
-				join m_product hh on hh.m_product_id = civ.m_product_id  and hh.m_product_category_id in (1000569,1000085) and hh.m_attributeset_id in (1000065,1000160)
-				join M_AttributeSetInstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
-				where ci.ad_client_id= $P{AD_CLIENT_ID} and ci.docstatus in ('CO','CL')	
-				group by lot, movementdate 
-		
+				
 				union all
-		
+				---- chi phi----
+				-----tt_3--------------
+				select att.lot, ci.movementdate  as dateacct ,0 as qty, -1*sum(civ.productionqty)*310000 as tt, 0 as tong_tp, 0 as tong_van
+				from m_production ci
+				join m_productionplan civ on ci.m_production_id = civ.m_production_id
+				join m_product hh on hh.m_product_id = civ.m_product_id  and hh.m_product_category_id in (1000569,1000085) and hh.m_attributeset_id in (1000065,1000160)
+				join M_AttributeSetInstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id
+				where ci.ad_client_id= $P{AD_CLIENT_ID} and ci.docstatus in ('CO','CL')
+				group by lot, movementdate
+				
+				union all
+				
 				------tt_4---------
-				select lot ,  dateacct ,0 as qty,  sum(tt) as tt,sum(tong_tp) as tong_tp,sum(tong_van) as tong_van 
-				from(	
-					select   ci.movementdate as dateacct , att.lot,dgl.hsv_dinhmuc *civ.productionqty  as tt,civ.productionqty*dgl.amountdg1 as tong_tp,0 as tong_van 
-					from m_production ci 	 
-					join m_productionplan  civ on ci.m_production_id  = civ.m_production_id 	
+				select lot ,  dateacct ,0 as qty,  sum(tt) as tt,sum(tong_tp) as tong_tp,sum(tong_van) as tong_van
+				from(
+					select   ci.movementdate as dateacct , att.lot,dgl.hsv_dinhmuc *civ.productionqty  as tt,civ.productionqty*dgl.amountdg1 as tong_tp,0 as tong_van
+					from m_production ci
+					join m_productionplan  civ on ci.m_production_id  = civ.m_production_id
 					join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id
 					join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_category_id in (1000569,1000085,1000565,1000470 )
-					join hsv_nkdongialine dgl on hh.m_product_id = dgl.m_product_id 
-					join hsv_dongia hsv_dg on hsv_dg.hsv_dongia_id = dgl.hsv_dongia_id and hsv_dg.hsv_loaidongia_id  in (1000000,1000042)				
-					where ci.ad_client_id =$P{AD_CLIENT_ID}  and ci.movementdate >= hsv_dg.startdate and ci.movementdate <= hsv_dg.enddate 
+					join hsv_nkdongialine dgl on hh.m_product_id = dgl.m_product_id
+					join hsv_dongia hsv_dg on hsv_dg.hsv_dongia_id = dgl.hsv_dongia_id and hsv_dg.hsv_loaidongia_id  in (1000000,1000042)
+					where ci.ad_client_id =$P{AD_CLIENT_ID}  and ci.movementdate >= hsv_dg.startdate and ci.movementdate <= hsv_dg.enddate
 					
 					
-					union  all 
-			
+					union  all
+					
 					select  ci.movementdate as dateacct , att.lot,0 as tt,0 as tong_tp , civ.productionqty as tong_van
-					from m_production ci 	 
-					join m_productionplan  civ on ci.m_production_id  = civ.m_production_id 	
-					join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id  
-					join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_category_id in (1000569,1000085) and hh.m_attributeset_id in (1000065,1000160)								
-					where ci.ad_client_id =$P{AD_CLIENT_ID}  
-																
-			 	) as k group by k.lot,dateacct 
-				
-				union all	
-				---keo boc chuyen bam chip
-				-------tt_5-----------
+					from m_production ci
+					join m_productionplan  civ on ci.m_production_id  = civ.m_production_id
+					join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id
+					join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_category_id in (1000569,1000085) and hh.m_attributeset_id in (1000065,1000160)
+					where ci.ad_client_id =$P{AD_CLIENT_ID}
+				) as k group by k.lot,dateacct
 			
-				select att.lot ,mi.movementdate as dateacct , sum(fa.qty) as qty ,sum(case when fa.qty > 0 then -1*fa.amtacctdr else fa.amtacctcr end) as tt, 0 as tong_tp,null::int4 as tong_van  
+				union all
+			---keo boc chuyen bam chip
+			-------tt_5-----------
+			
+				select att.lot ,mi.movementdate as dateacct , sum(fa.qty) as qty ,sum(case when fa.qty > 0 then -1*fa.amtacctdr else fa.amtacctcr end) as tt, 0 as tong_tp,null::int4 as tong_van
 				from m_inventory mi
-				join m_inventoryline miv on mi.m_inventory_id  = miv.m_inventory_id  
-				join m_attributesetinstance att on att.m_attributesetinstance_id = miv.m_attributesetinstance_id 
+				join m_inventoryline miv on mi.m_inventory_id  = miv.m_inventory_id
+				join m_attributesetinstance att on att.m_attributesetinstance_id = miv.m_attributesetinstance_id
 				join m_product hh on miv.m_product_id = hh.m_product_id and hh.m_product_category_id in (1000562,1000084)
 				join fact_acct fa on fa.record_id = miv.m_inventory_id and fa.line_id = miv.m_inventoryline_id and fa.ad_table_id = 321
 				join c_elementvalue acct on fa.account_id = acct.c_elementvalue_id and (LEFT(acct.value, 2) in ('15'))
-				where  mi.ad_client_id = $P{AD_CLIENT_ID}  and fa.c_campaign_id in (1000088,1000090) 			
-				group by att.lot,movementdate 
+				where  mi.ad_client_id = $P{AD_CLIENT_ID}  and fa.c_campaign_id in (1000088,1000090)
+				group by att.lot,movementdate
 				
 				union all
-		--------------	tt_6-------------
-			
-				select att.lot ,mi.movementdate as dateacct , sum(fa.qty) as qty ,sum(case when fa.qty > 0 then -1*fa.amtacctdr else fa.amtacctcr end ) as tt,0 as tong_tp, null::int4 as tong_van 
+				--------------	tt_6-------------
+				
+				select att.lot ,mi.movementdate as dateacct , sum(fa.qty) as qty ,sum(case when fa.qty > 0 then -1*fa.amtacctdr else fa.amtacctcr end ) as tt,0 as tong_tp, null::int4 as tong_van
 				from m_inventory mi
-				join m_inventoryline miv on mi.m_inventory_id  = miv.m_inventory_id  
-				join m_attributesetinstance att on att.m_attributesetinstance_id = miv.m_attributesetinstance_id 
+				join m_inventoryline miv on mi.m_inventory_id  = miv.m_inventory_id
+				join m_attributesetinstance att on att.m_attributesetinstance_id = miv.m_attributesetinstance_id
 				join m_product hh on miv.m_product_id = hh.m_product_id and hh.m_product_category_id in (1000562,1000084)
 				join fact_acct fa on fa.record_id = miv.m_inventory_id and fa.line_id = miv.m_inventoryline_id and fa.ad_table_id = 321
 				join c_elementvalue acct on fa.account_id = acct.c_elementvalue_id and (LEFT(acct.value, 2) in ('15'))
-				where  mi.ad_client_id = $P{AD_CLIENT_ID}  and fa.c_campaign_id in (1000036,1000091) 			
-				group by att.lot,movementdate 
-			
-				union all 
+				where  mi.ad_client_id = $P{AD_CLIENT_ID}  and fa.c_campaign_id in (1000036,1000091)
+				group by att.lot,movementdate
 				
-				select att.lot,ci.dateacct ,-1* sum(civ.qtyinvoiced) as qty, sum(civ.linenetamt) as tt, 0 as tong_tp, null::int4 as tong_van 
-				from c_invoice ci 
-				join c_invoiceline civ on ci.c_invoice_id = civ.c_invoice_id 
-				join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
+				union all
+				
+				select att.lot,ci.dateacct ,-1* sum(civ.qtyinvoiced) as qty, sum(civ.linenetamt) as tt, 0 as tong_tp, null::int4 as tong_van
+				from c_invoice ci
+				join c_invoiceline civ on ci.c_invoice_id = civ.c_invoice_id
+				join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id
 				join m_product hh on civ.m_product_id = hh.m_product_id and hh.M_Product_Category_ID in (1000562,1000084)
-				where ci.issotrx = 'Y' and ci.ad_client_id = $P{AD_CLIENT_ID} and ci.docstatus in ('CO','CL')	
-				group by att.lot,dateacct 
-			
-			) as k
+				where ci.issotrx = 'Y' and ci.ad_client_id = $P{AD_CLIENT_ID} and ci.docstatus in ('CO','CL')
+				group by att.lot,dateacct
+			) as t
 			group by lot, dateacct  ---rac2
 			
-		) as t JOIN m_lot lo ON lo.name = t.lot	
+		) as t JOIN m_lot lo ON lo.name = t.lot
 		WHERE  (lo.m_lot_id = $P{M_Lot_ID} or $P{M_Lot_ID} is null) and lo.m_lotctl_id  in (1000022,1000037)  and lo.DateTo >= $P{StartDate} and lo.dateto <= $P{EndDate}
-		group by t.lot	
-	) as k 
-	left join (
-	-----##############################################################################################################################-----
-		select c1,  sum(c2) as c2, sum(c3) as c3, sum(c4) as c4, sum(c5) as c5, sum(c6) as c6, sum(c7) as c7, sum(c8) as c8, sum(c16) as c16
-		from(
-			SELECT t.lot as c1, sum(t.sl) AS c2, sum(t.tt) AS c3, case when sum(sl)<>0 then sum(tt)/sum(sl) else 0 end as c4, 0 as c5, 0 AS c6, 0 AS c7, 0 AS c8,  0 as c16
-			FROM (
-					SELECT att.lot, civ.qtyinvoiced AS sl, civ.priceactual * civ.qtyinvoiced AS tt
-					FROM c_invoiceline civ
-					JOIN c_invoice ci ON civ.c_invoice_id = ci.c_invoice_id AND ci.issotrx = 'N' AND ci.docstatus IN ('CO', 'CL')
-					JOIN m_product hh ON hh.m_product_id = civ.m_product_id AND hh.m_product_category_id in (1000084,1000562)  AND  hh.M_Product_ID NOT IN (1013026)
-					JOIN m_attributesetinstance att ON civ.m_attributesetinstance_id = att.m_attributesetinstance_id AND att.lot IS NOT NULL
-					WHERE civ.ad_client_id = $P{AD_CLIENT_ID} 
-				) AS t
-				group by lot
-		--group by k.lot
-			UNION ALL
-		--- Tổng SL SX C5
-			SELECT k.lot AS c1, 0 c2, 0 AS c3, 0 AS c4, sum(k.sl) AS c5, 0 AS c6, 0 AS c7, 0 AS c8,   0 as c16
-			FROM (
-					select att.m_attributesetinstance_id, att.lot, civ.productionqty as sl
-					from m_production ci 	 
-					join m_productionplan  civ on ci.m_production_id  = civ.m_production_id 	
-					join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id 
-					join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_category_id in (1000569,1000085) and hh.m_attributeset_id in (1000065,1000160)		
-					where ci.ad_client_id =$P{AD_CLIENT_ID}  
-				
-					
-					union all
-					SELECT att.m_attributesetinstance_id, att.lot, (civ.productionqty * hh.shelfwidth * hh.shelfdepth * hh.shelfheight)/1000000000 AS sl
-					FROM m_productionplan civ
-					JOIN m_production pro ON civ.m_production_id = pro.m_production_id AND pro.docstatus IN ('CO', 'CL')
-					JOIN m_product hh ON hh.m_product_id = civ.m_product_id AND  hh.M_Product_ID in (1017248,1017259,1018746)
-					JOIN m_attributesetinstance att ON civ.m_attributesetinstance_id = att.m_attributesetinstance_id  AND att.M_AttributeSet_ID in  (1000065,1000160)  AND att.lot IS NOT NULL
-					WHERE civ.ad_client_id = $P{AD_CLIENT_ID}  
-			) AS k
-			group by lot
-		
-			UNION ALL
-		 
-		--số lượng ván A ,column C6
-	
-			SELECT att.lot as c1, 0 c2, 0 AS c3, 0 AS c4, 0 as c5, sum(civ.productionqty) AS c6, 0 AS c7, 0 AS c8, 0 as c16
-			FROM m_productionplan civ
-			JOIN m_production ci ON civ.m_production_id = ci.m_production_id AND ci.docstatus IN ('CO', 'CL')
-			JOIN m_product hh ON civ.m_product_id = hh.m_product_id AND hh.m_product_id in (1004077,1018331,1019040,1019059)
-			JOIN m_attributesetinstance att ON civ.m_attributesetinstance_id = att.m_attributesetinstance_id 
-			WHERE civ.ad_client_id = $P{AD_CLIENT_ID}  
-		
-			GROUP BY lot
-		--số lượng van B(C7)
-		
-			UNION ALL
-		
-	
-			SELECT att.lot as c1 , 0 c2, 0 AS c3, 0 AS c4, 0 as c5, 0 AS c6, sum(civ.productionqty) AS c7, 0 AS c8,0 as c16
-			FROM m_productionplan civ
-			JOIN m_production ci ON civ.m_production_id = ci.m_production_id AND ci.docstatus IN ('CO', 'CL')
-			JOIN m_product hh ON civ.m_product_id = hh.m_product_id AND hh.m_product_id in (1004076,1018332,1019041,1019060)
-			JOIN m_attributesetinstance att ON civ.m_attributesetinstance_id = att.m_attributesetinstance_id 
-			WHERE civ.ad_client_id = $P{AD_CLIENT_ID}  
-			GROUP BY lot
-		
-		
-			UNION ALL
-		-- số lượng van C(c8)
-		
-			SELECT att.lot as c1,0 c2, 0 AS c3, 0 AS c4,0 as c5,  0 AS c6, 0 AS c7,sum(civ.productionqty) AS c8, 0 as c16
-			FROM m_productionplan civ
-			JOIN m_production ci ON civ.m_production_id = ci.m_production_id AND ci.docstatus IN ('CO', 'CL')
-			JOIN m_product hh ON civ.m_product_id = hh.m_product_id AND hh.m_product_id in (1004079,1018333,1019043,1019058)
-			JOIN m_attributesetinstance att ON civ.m_attributesetinstance_id = att.m_attributesetinstance_id 
-			WHERE civ.ad_client_id = $P{AD_CLIENT_ID} 
-			GROUP BY lot
-		
-			union ALL
-		--- SL ván lot C16 ---
-	
-			SELECT att.lot as c1,0 as c2, 0 AS c3, 0 AS c4, 0 as c5, 0 AS c6, 0 AS c7, 0 AS c8, sum(civ.productionqty)  AS c16
-			FROM m_productionplan civ
-			JOIN m_production ci ON civ.m_production_id = ci.m_production_id AND ci.docstatus IN ('CO', 'CL')
-			JOIN m_product hh ON civ.m_product_id = hh.m_product_id AND hh.M_Product_ID in (1018870,1018871) 
-			JOIN m_attributesetinstance att ON civ.m_attributesetinstance_id = att.m_attributesetinstance_id
-			WHERE civ.ad_client_id = $P{AD_CLIENT_ID}
-			GROUP BY lot
-		) AS k join m_lot lo on k.c1= lo.name
-		where (lo.m_lot_id = $P{M_Lot_ID} or $P{M_Lot_ID} is null)
-		and lo.m_lotctl_id in  (1000022,1000037) and  lo.DateTo >= $P{StartDate} and lo.dateto <= $P{EndDate}
-		GROUP BY k.c1
-	) as t on  t.c1= k.c1
-) as k]]>
+		group by t.lot
+),
+data2 as (
+
+-----##############################################################################################################################-----
+select c1,  sum(c2) as c2, sum(c3) as c3, sum(c4) as c4, sum(c5) as c5, sum(c6) as c6, sum(c7) as c7, sum(c8) as c8, sum(c16) as c16
+from(
+SELECT t.lot as c1, sum(t.sl) AS c2, sum(t.tt) AS c3, case when sum(sl)<>0 then sum(tt)/sum(sl) else 0 end as c4, 0 as c5, 0 AS c6, 0 AS c7, 0 AS c8,  0 as c16
+FROM (
+SELECT att.lot, civ.qtyinvoiced AS sl, civ.priceactual * civ.qtyinvoiced AS tt
+FROM c_invoiceline civ
+JOIN c_invoice ci ON civ.c_invoice_id = ci.c_invoice_id AND ci.issotrx = 'N' AND ci.docstatus IN ('CO', 'CL')
+JOIN m_product hh ON hh.m_product_id = civ.m_product_id AND hh.m_product_category_id in (1000084,1000562)  AND  hh.M_Product_ID NOT IN (1013026)
+JOIN m_attributesetinstance att ON civ.m_attributesetinstance_id = att.m_attributesetinstance_id AND att.lot IS NOT NULL
+WHERE civ.ad_client_id = $P{AD_CLIENT_ID}
+) AS t
+group by lot
+--group by k.lot
+UNION ALL
+--- Tổng SL SX C5
+SELECT k.lot AS c1, 0 c2, 0 AS c3, 0 AS c4, sum(k.sl) AS c5, 0 AS c6, 0 AS c7, 0 AS c8,   0 as c16
+FROM (
+select att.m_attributesetinstance_id, att.lot, civ.productionqty as sl
+from m_production ci
+join m_productionplan  civ on ci.m_production_id  = civ.m_production_id
+join m_attributesetinstance att on att.m_attributesetinstance_id = civ.m_attributesetinstance_id
+join m_product hh on hh.m_product_id = civ.m_product_id and hh.m_product_category_id in (1000569,1000085) and hh.m_attributeset_id in (1000065,1000160)
+where ci.ad_client_id =$P{AD_CLIENT_ID}
+
+
+union all
+SELECT att.m_attributesetinstance_id, att.lot, (civ.productionqty * hh.shelfwidth * hh.shelfdepth * hh.shelfheight)/1000000000 AS sl
+FROM m_productionplan civ
+JOIN m_production pro ON civ.m_production_id = pro.m_production_id AND pro.docstatus IN ('CO', 'CL')
+JOIN m_product hh ON hh.m_product_id = civ.m_product_id AND  hh.M_Product_ID in (1017248,1017259,1018746)
+JOIN m_attributesetinstance att ON civ.m_attributesetinstance_id = att.m_attributesetinstance_id  AND att.M_AttributeSet_ID in  (1000065,1000160)  AND att.lot IS NOT NULL
+WHERE civ.ad_client_id = $P{AD_CLIENT_ID}
+) AS k
+group by lot
+
+UNION ALL
+
+--số lượng ván A ,column C6
+
+SELECT att.lot as c1, 0 c2, 0 AS c3, 0 AS c4, 0 as c5, sum(civ.productionqty) AS c6, 0 AS c7, 0 AS c8, 0 as c16
+FROM m_productionplan civ
+JOIN m_production ci ON civ.m_production_id = ci.m_production_id AND ci.docstatus IN ('CO', 'CL')
+JOIN m_product hh ON civ.m_product_id = hh.m_product_id AND hh.m_product_id in (1004077,1018331,1019040,1019059)
+JOIN m_attributesetinstance att ON civ.m_attributesetinstance_id = att.m_attributesetinstance_id
+WHERE civ.ad_client_id = $P{AD_CLIENT_ID}
+
+GROUP BY lot
+--số lượng van B(C7)
+
+UNION ALL
+
+
+SELECT att.lot as c1 , 0 c2, 0 AS c3, 0 AS c4, 0 as c5, 0 AS c6, sum(civ.productionqty) AS c7, 0 AS c8,0 as c16
+FROM m_productionplan civ
+JOIN m_production ci ON civ.m_production_id = ci.m_production_id AND ci.docstatus IN ('CO', 'CL')
+JOIN m_product hh ON civ.m_product_id = hh.m_product_id AND hh.m_product_id in (1004076,1018332,1019041,1019060)
+JOIN m_attributesetinstance att ON civ.m_attributesetinstance_id = att.m_attributesetinstance_id
+WHERE civ.ad_client_id = $P{AD_CLIENT_ID}
+GROUP BY lot
+
+
+UNION ALL
+-- số lượng van C(c8)
+
+SELECT att.lot as c1,0 c2, 0 AS c3, 0 AS c4,0 as c5,  0 AS c6, 0 AS c7,sum(civ.productionqty) AS c8, 0 as c16
+FROM m_productionplan civ
+JOIN m_production ci ON civ.m_production_id = ci.m_production_id AND ci.docstatus IN ('CO', 'CL')
+JOIN m_product hh ON civ.m_product_id = hh.m_product_id AND hh.m_product_id in (1004079,1018333,1019043,1019058)
+JOIN m_attributesetinstance att ON civ.m_attributesetinstance_id = att.m_attributesetinstance_id
+WHERE civ.ad_client_id = $P{AD_CLIENT_ID}
+GROUP BY lot
+
+union ALL
+--- SL ván lot C16 ---
+
+SELECT att.lot as c1,0 as c2, 0 AS c3, 0 AS c4, 0 as c5, 0 AS c6, 0 AS c7, 0 AS c8, sum(civ.productionqty)  AS c16
+FROM m_productionplan civ
+JOIN m_production ci ON civ.m_production_id = ci.m_production_id AND ci.docstatus IN ('CO', 'CL')
+JOIN m_product hh ON civ.m_product_id = hh.m_product_id AND hh.M_Product_ID in (1018870,1018871)
+JOIN m_attributesetinstance att ON civ.m_attributesetinstance_id = att.m_attributesetinstance_id
+WHERE civ.ad_client_id = $P{AD_CLIENT_ID}
+GROUP BY lot
+) AS k join m_lot lo on k.c1= lo.name
+where (lo.m_lot_id = $P{M_Lot_ID} or $P{M_Lot_ID} is null)
+and lo.m_lotctl_id in  (1000022,1000037) and  lo.DateTo >= $P{StartDate} and lo.dateto <= $P{EndDate}
+GROUP BY k.c1
+),
+rac_dg as (
+select 1 as id,hsv_dg.startdate , hsv_dg.enddate,coalesce(hsv_dinhmuc,0) as hsv_dinhmuc
+from hsv_nkdongialine dgl
+join hsv_dongia hsv_dg on hsv_dg.hsv_dongia_id = dgl.hsv_dongia_id and hsv_dg.hsv_loaidongia_id in (1000000,1000042)
+where hsv_dg.ad_client_id = $P{AD_CLIENT_ID} and dgl.m_product_id in (1019237,1019243) and hsv_dg.hsv_dongia_id = case when $P{AD_CLIENT_ID}=1000006 then 1000068 else 1000072 end
+)
+
+
+select 'go' as nhom, coalesce(t.c2,0) as c2, coalesce(t.c3,0) as c3, coalesce(t.c4,0) as c4, coalesce(t.c5,0) as c5, coalesce(t.c6, 0) as c6, coalesce(t.c7,0) as c7,
+coalesce(t.c8,0) as c8, coalesce(t.c16,0) as c16, k.c1, k.b1,k.b2,  k.b3, k.b4, k.b55, k.sl_rac*0.94-tong_tp as sl_rac ,(k.sl_rac*0.94-tong_tp)*z.hsv_dinhmuc as tt_pp,
+case when k.sl_van <> 0 then sl_rac/k.sl_van else 0 end as tyle,
+k.ztt + (sl_rac*0.94-tong_tp)*z.hsv_dinhmuc as hq, case when sl_van <> 0 then (ztt + (sl_rac*0.94-tong_tp)*z.hsv_dinhmuc)/sl_van else 0 end as hgm3,sl_van
+from data1 k
+join data2 t on t.c1=k.c1
+join rac_dg z on z.id =1]]>
 	</queryString>
 	<field name="nhom" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="nhom"/>
 		<property name="com.jaspersoft.studio.field.label" value="nhom"/>
-	</field>
-	<field name="c1" class="java.lang.String">
-		<property name="com.jaspersoft.studio.field.name" value="c1"/>
-		<property name="com.jaspersoft.studio.field.label" value="c1"/>
 	</field>
 	<field name="c2" class="java.math.BigDecimal">
 		<property name="com.jaspersoft.studio.field.name" value="c2"/>
@@ -356,6 +363,10 @@ FROM (
 	<field name="c16" class="java.math.BigDecimal">
 		<property name="com.jaspersoft.studio.field.name" value="c16"/>
 		<property name="com.jaspersoft.studio.field.label" value="c16"/>
+	</field>
+	<field name="c1" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="c1"/>
+		<property name="com.jaspersoft.studio.field.label" value="c1"/>
 	</field>
 	<field name="b1" class="java.math.BigDecimal">
 		<property name="com.jaspersoft.studio.field.name" value="b1"/>

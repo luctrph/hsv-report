@@ -41,15 +41,14 @@ from(
 	select  case when dateto <= $P{EndDate} then 'Lớp đã kết thúc' else 'Lớp chưa kết thúc' end as danhmuc,
 	name,sum(phaithu) as phaithu , sum(giam) as giam,sum(thanhtoan) as thanhtoan 
 	from(
-		select lh.dateto as dateto, lh.name,lh.hsv_lophoc_id, coalesce(lh.amount * count(lhl.hsv_hocvien_id),0) as phaithu, 0 as giam, 0 as thanhtoan
+		select lh.dateto as dateto, lh.name,lh.hsv_lophoc_id, coalesce(lhl.amount * count(lhl.hsv_hocvien_id),0) as phaithu, 0 as giam, 0 as thanhtoan
 		from hsv_lophoc lh
 		join hsv_lophocline lhl on lh.hsv_lophoc_id = lhl.hsv_lophoc_id 
 		where lh.ad_client_id = $P{AD_CLIENT_ID}  
-		group by lh.name,lh.hsv_lophoc_id
-		
+		group by lh.dateto,lh.name,lh.hsv_lophoc_id,lhl.amount
 		union all 
 		
-		select lh.dateto as dateto, lh.name, lh.hsv_lophoc_id, 0 as phaithu,   coalesce((lh.amount *  lhl.Amount_loai/100),0) as giam, 0 as thanhtoan
+		select lh.dateto as dateto, lh.name, lh.hsv_lophoc_id, 0 as phaithu,   coalesce((lhl.Amount_loai),0) as giam, 0 as thanhtoan
 		from hsv_lophoc lh
 		join hsv_lophocline lhl on lh.hsv_lophoc_id = lhl.hsv_lophoc_id 
 		where lh.ad_client_id = $P{AD_CLIENT_ID} 
@@ -67,7 +66,8 @@ from(
 		group by lh.name,lh.dateto,lh.hsv_lophoc_id
 	) as k
 	group by name,dateto
-) as k]]>
+) as k
+]]>
 	</queryString>
 	<field name="stt" class="java.lang.Long">
 		<property name="com.jaspersoft.studio.field.name" value="stt"/>
