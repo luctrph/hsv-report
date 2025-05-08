@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.20.0.final using JasperReports Library version 6.20.0-2bc7ab61c56f459e8176eb05c7705e145cd400ad  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Bao cao ket qua 1 lô" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="1557dfb1-8811-4fb9-bec7-d4d173b9f6df">
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="psql"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.keep.first.band.1" value="columnHeader"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.keep.first.band.1" value="columnHeader"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.2" value="pageFooter"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.3" value="groupHeader"/>
+	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.rows" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.columns" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.white.page.background" value="false"/>
+	<property name="net.sf.jasperreports.export.xls.detect.cell.type" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.ignore.graphics" value="false"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.1" value="pageHeader"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.group.3" value="ProductGroup"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.report.3" value="ProductReport"/>
+	<property name="net.sf.jasperreports.export.xls.ignore.cell.border" value="false"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.summary" value="summary"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.2" value="pageFooter"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.3" value="groupHeader"/>
+	<property name="net.sf.jasperreports.export.xlsx.remove.empty.space.between.rows" value="true"/>
+	<property name="net.sf.jasperreports.export.xlsx.remove.empty.space.between.columns" value="true"/>
+	<property name="net.sf.jasperreports.export.xlsx.white.page.background" value="false"/>
+	<property name="net.sf.jasperreports.export.xlsx.detect.cell.type" value="true"/>
+	<property name="net.sf.jasperreports.export.xlsx.ignore.graphics" value="false"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.1" value="pageHeader"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.group.3" value="ProductGroup"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.report.3" value="ProductReport"/>
+	<property name="net.sf.jasperreports.export.xlsx.ignore.cell.border" value="false"/>
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
+	<parameter name="hsv_lovansay_ID" class="java.lang.Integer"/>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String">
+		<defaultValueExpression><![CDATA["dev/"]]></defaultValueExpression>
+	</parameter>
+	<queryString>
+		<![CDATA[WITH nk_aggregated AS (
+    SELECT 
+        hsv_lovansay_id,
+        SUM(CASE WHEN hsv_sanpham_ID = 1000563 THEN amount ELSE 0 END) AS a1,
+        SUM(CASE WHEN hsv_sanpham_ID = 1000564 THEN amount ELSE 0 END) AS a2,
+        SUM(CASE WHEN hsv_sanpham_ID = 1000567 THEN amount ELSE 0 END) AS a3,
+        SUM(CASE WHEN hsv_sanpham_ID = 1000566 THEN amount ELSE 0 END) AS a4
+    FROM hsv_nkxulyngao
+    WHERE hsv_sanpham_ID IN (1000563,1000564, 1000567, 1000566)
+      AND hsv_lovansay_id = $P{hsv_lovansay_ID} and ad_client_id = $P{AD_CLIENT_ID}
+    GROUP BY hsv_lovansay_id
+),
+nhap_data AS (
+    SELECT 
+        hsv_lovansay_id,
+        SUM(miv.qtyentered) AS qty, 
+        SUM(cov.linenetamt) AS tt
+    FROM m_inout mi 
+    JOIN m_inoutline miv ON mi.m_inout_id = miv.m_inout_id  
+    JOIN c_orderline cov ON mi.c_order_id = cov.c_order_id 
+    WHERE mi.ad_client_id = $P{AD_CLIENT_ID}
+      AND mi.issotrx = 'N' and mi.docstatus in ('CL','CO')
+      AND miv.hsv_lovansay_id = $P{hsv_lovansay_ID}
+    GROUP BY hsv_lovansay_id
+),
+final_data AS (
+    SELECT 
+        n.hsv_lovansay_id,
+        n.a1,
+        n.a2,
+        n.a3,
+        n.a4,
+        COALESCE(d.qty, 0) AS qty,
+        COALESCE(d.tt, 0) AS tt
+    FROM nk_aggregated n
+    LEFT JOIN nhap_data d ON n.hsv_lovansay_id = d.hsv_lovansay_id
+  
+)
+SELECT 'Ngao mua dãi cát' as noidung, 
+    -- Dòng 1: Tính toán từ a1 và dữ liệu nhập
+    a1,
+    NULL AS tyle,
+    CASE WHEN qty <> 0 THEN tt / qty ELSE 0 END AS dg,
+    CASE WHEN qty <> 0 THEN (tt / qty) * a1 ELSE 0 END AS tt
+FROM final_data
+
+UNION ALL
+
+SELECT 'Ngao yếu, nổi' as noidung, 
+    a2,
+    CASE WHEN a1 <> 0 THEN 100*(a2 / a1) ELSE 0 END AS tyle,
+    NULL::int4 AS dg,
+    NULL::int4 AS tt
+FROM final_data
+union all
+SELECT 'Tạp chất, nổi' as noidung,
+    a3,
+    CASE WHEN a1 <> 0 THEN 100*(a3 / a1) ELSE 0 END AS tyle,
+    NULL::int4 AS dg,
+    NULL::int4 AS tt
+FROM final_data
+union all
+SELECT 'Ngao làm sạch' as noidung ,
+    a4,
+    CASE WHEN a1 <> 0 THEN 100*(a4 / a1) ELSE 0 END AS tyle,
+    NULL::int4 AS dg,
+    NULL::int4 AS tt
+FROM final_data
+union all 
+SELECT 'Hao hụt do TM sơ chế (4+2-1)' as noidung,
+    coalesce(a1,0)-(coalesce(a4,0)+coalesce(a2,0)) as a5,
+    CASE WHEN a1 <> 0 THEN  100*(a1-(coalesce(a4,0)+coalesce(a2,0))) / a1 ELSE 0 END AS tyle,
+    NULL::int4 AS dg,
+    NULL::int4 AS tt
+FROM final_data
+union all
+select 'Hao hụt định mức (2%*1)' as noidung, coalesce(a1,0)*0.02 as a6, 2 as tyle,    NULL::int4 AS dg,
+    NULL::int4 AS tt
+    FROM final_data
+union all 
+SELECT 'Hiệu quả (4+65%*2-1+6)' as noidung,
+    (coalesce(a4,0)+0.65*coalesce(a2,0))-coalesce(a1,0)+coalesce(a1,0)*0.02 as a7,
+    CASE WHEN a1 <> 0 THEN   ((coalesce(a4,0)+0.65*coalesce(a2,0))-coalesce(a1,0)) / a1 ELSE 0 END AS tyle,
+     CASE WHEN qty <> 0 THEN tt / qty ELSE 0 END AS dg,
+    CASE WHEN qty <> 0 THEN (tt / qty) *((coalesce(a4,0)+0.65*coalesce(a2,0))-coalesce(a1,0)+coalesce(a1,0)*0.02) ELSE 0 END AS tt
+FROM final_data]]>
+	</queryString>
+	<field name="noidung" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="noidung"/>
+		<property name="com.jaspersoft.studio.field.label" value="noidung"/>
+	</field>
+	<field name="a1" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="a1"/>
+		<property name="com.jaspersoft.studio.field.label" value="a1"/>
+	</field>
+	<field name="tyle" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="tyle"/>
+		<property name="com.jaspersoft.studio.field.label" value="tyle"/>
+	</field>
+	<field name="dg" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="dg"/>
+		<property name="com.jaspersoft.studio.field.label" value="dg"/>
+	</field>
+	<field name="tt" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="tt"/>
+		<property name="com.jaspersoft.studio.field.label" value="tt"/>
+	</field>
+	<variable name="stt" class="java.lang.Integer" calculation="Sum">
+		<variableExpression><![CDATA[$V{PAGE_NUMBER}]]></variableExpression>
+	</variable>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="94" splitType="Stretch">
+			<subreport>
+				<reportElement x="0" y="0" width="555" height="40" uuid="63d91537-523c-4162-b189-925cb5b300a5"/>
+				<subreportParameter name="AD_CLIENT_ID">
+					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"CompanyHeader.jasper"]]></subreportExpression>
+			</subreport>
+			<staticText>
+				<reportElement x="0" y="42" width="555" height="25" uuid="26b9ffe2-f81f-475e-950e-ec6d3ebc4f81"/>
+				<textElement textAlignment="Center">
+					<font fontName="Arial" size="16" isBold="true"/>
+				</textElement>
+				<text><![CDATA[BÁO CÁO KẾT QUẢ 1 LÔ]]></text>
+			</staticText>
+			<subreport>
+				<reportElement x="0" y="68" width="555" height="26" uuid="f567f6b9-161a-4384-8998-2024904c1372">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<subreportParameter name="AD_CLIENT_ID">
+					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="hsv_lovansay_ID">
+					<subreportParameterExpression><![CDATA[$P{hsv_lovansay_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="SUBREPORT_DIR">
+					<subreportParameterExpression><![CDATA[$P{SUBREPORT_DIR}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"Lo.jasper"]]></subreportExpression>
+			</subreport>
+		</band>
+	</title>
+	<pageHeader>
+		<band height="57">
+			<subreport>
+				<reportElement positionType="Float" isPrintRepeatedValues="false" x="0" y="0" width="555" height="26" uuid="052590e3-ca35-471b-8d48-caf7963ed9f9">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<subreportParameter name="AD_CLIENT_ID">
+					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="hsv_lovansay_ID">
+					<subreportParameterExpression><![CDATA[$P{hsv_lovansay_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="SUBREPORT_DIR">
+					<subreportParameterExpression><![CDATA[$P{SUBREPORT_DIR}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"hieu_qua.jasper"]]></subreportExpression>
+			</subreport>
+			<subreport>
+				<reportElement positionType="Float" isPrintRepeatedValues="false" x="0" y="31" width="555" height="26" uuid="ad3c2c4c-397e-455d-9bb4-24208a7aa8bf">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<subreportParameter name="AD_CLIENT_ID">
+					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="hsv_lovansay_ID">
+					<subreportParameterExpression><![CDATA[$P{hsv_lovansay_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="SUBREPORT_DIR">
+					<subreportParameterExpression><![CDATA[$P{SUBREPORT_DIR}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"liet_ke_ctu.jasper"]]></subreportExpression>
+			</subreport>
+		</band>
+	</pageHeader>
+	<summary>
+		<band height="44" splitType="Stretch">
+			<staticText>
+				<reportElement x="0" y="24" width="182" height="20" uuid="ad48a29a-80eb-4ea3-ab06-e3825b43f50c">
+					<property name="local_mesure_unity" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Người lập]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="182" y="24" width="262" height="20" uuid="c9c6cfbe-96d2-4a50-a4ac-ac5f63a3e53b">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Kiểm soát]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="444" y="24" width="110" height="20" uuid="83d8692f-1bff-412c-8cc1-af35083d866e">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Giám đốc]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="333" y="1" width="111" height="20" uuid="955449b9-f964-41db-8834-ce3ff77909c2"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="10" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Ngày in:]]></text>
+			</staticText>
+			<textField pattern="dd/MM/yyyy HH:mm">
+				<reportElement x="444" y="1" width="110" height="20" uuid="55228033-7947-4002-aa0f-73476bbed298">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="10"/>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA[new java.util.Date()]]></textFieldExpression>
+			</textField>
+		</band>
+	</summary>
+</jasperReport>
