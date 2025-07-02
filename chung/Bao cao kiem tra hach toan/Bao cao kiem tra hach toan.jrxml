@@ -3,6 +3,8 @@
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Bao cao kiem tra hach toan" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="f42e49ae-f945-4196-93ef-500de810ee0b">
 	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="psql"/>
 	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="470"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="523"/>
 	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
 	<parameter name="SUBREPORT_DIR" class="java.lang.String">
 		<defaultValueExpression><![CDATA["dev/"]]></defaultValueExpression>
@@ -10,24 +12,38 @@
 	<parameter name="StartDate" class="java.util.Date"/>
 	<parameter name="EndDate" class="java.util.Date"/>
 	<queryString>
-		<![CDATA[select ROW_NUMBER() OVER (PARTITION BY dm ORDER BY dm,ngay ) AS stt,* from
-(
-	select 'VND' as dm,concat(ce.value ,'-', ce.name) as tk, cp.documentno as so_ct,fa.dateacct as ngay,fa.amtsourcecr  as co , fa.amtsourcedr as "no"  
-	from fact_acct fa
-	join c_payment cp on cp.c_payment_id = fa.record_id and cp.docstatus in ('CO','CL')
-	join c_elementvalue  ce on fa.account_id = ce.c_elementvalue_id and ce.isbankaccount = 'Y'
-	join c_bankaccount cb on ce.c_bankaccount_id = cb.c_bankaccount_id and cb.c_currency_id = 100
-	where fa.ad_table_id = 335 and fa.ad_client_id =$P{AD_CLIENT_ID} and fa.c_currency_id <>100
-	and cp.hsv_kiemtra<>'Y' and  fa.dateacct <= $P{EndDate}
-	union all 
-	select 'USD' as dm,concat(ce.value ,'-', ce.name) as tk, cp.documentno as so_ct,fa.dateacct as ngay,fa.amtsourcecr as co , fa.amtsourcedr as "no"  
-	from fact_acct fa
-	join c_payment cp on cp.c_payment_id = fa.record_id and cp.docstatus in ('CO','CL')
-	join c_elementvalue  ce on fa.account_id = ce.c_elementvalue_id and ce.isbankaccount = 'Y'
-	join c_bankaccount cb on ce.c_bankaccount_id = cb.c_bankaccount_id and cb.c_currency_id = 234
-	where fa.ad_table_id = 335 and fa.ad_client_id =$P{AD_CLIENT_ID} and fa.c_currency_id <>234
-	and cp.hsv_kiemtra<>'Y' and fa.dateacct <= $P{EndDate}
-) as k]]>
+		<![CDATA[SELECT 
+    ROW_NUMBER() OVER (PARTITION BY dm ORDER BY dm, ngay) AS stt,
+    *
+FROM (
+    SELECT 
+        CASE 
+            WHEN cb.c_currency_id = 100 THEN 'Nội tệ'
+            ELSE 'Ngoại tệ'
+        END AS dm,
+        CONCAT(ce.value, '-', ce.name) AS tk,
+        cp.documentno AS so_ct,
+        fa.dateacct AS ngay,
+        fa.amtsourcecr AS co,
+        fa.amtsourcedr AS "no"
+    FROM fact_acct fa
+    JOIN c_payment cp 
+        ON cp.c_payment_id = fa.record_id 
+        AND cp.docstatus IN ('CO','CL')
+    JOIN c_elementvalue ce 
+        ON fa.account_id = ce.c_elementvalue_id 
+        AND ce.isbankaccount = 'Y'
+    JOIN c_bankaccount cb 
+        ON ce.c_bankaccount_id = cb.c_bankaccount_id 
+    WHERE fa.ad_table_id = 335 
+        AND fa.ad_client_id = $P{AD_CLIENT_ID}
+        AND (
+            (cb.c_currency_id = 100 AND fa.c_currency_id <> 100) OR
+            (cb.c_currency_id = 234 AND fa.c_currency_id <> 234)
+        )
+        AND fa.dateacct <= $P{EndDate}
+) AS k
+]]>
 	</queryString>
 	<field name="stt" class="java.lang.Long">
 		<property name="com.jaspersoft.studio.field.name" value="stt"/>
@@ -44,18 +60,22 @@
 	<field name="so_ct" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="so_ct"/>
 		<property name="com.jaspersoft.studio.field.label" value="so_ct"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_payment"/>
 	</field>
 	<field name="ngay" class="java.sql.Timestamp">
 		<property name="com.jaspersoft.studio.field.name" value="ngay"/>
 		<property name="com.jaspersoft.studio.field.label" value="ngay"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="fact_acct"/>
 	</field>
 	<field name="co" class="java.math.BigDecimal">
 		<property name="com.jaspersoft.studio.field.name" value="co"/>
 		<property name="com.jaspersoft.studio.field.label" value="co"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="fact_acct"/>
 	</field>
 	<field name="no" class="java.math.BigDecimal">
 		<property name="com.jaspersoft.studio.field.name" value="no"/>
 		<property name="com.jaspersoft.studio.field.label" value="no"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="fact_acct"/>
 	</field>
 	<group name="Group1">
 		<groupExpression><![CDATA[$F{dm}]]></groupExpression>
@@ -84,7 +104,7 @@
 	<title>
 		<band height="90" splitType="Stretch">
 			<subreport>
-				<reportElement x="0" y="0" width="375" height="49" uuid="a74d8ca2-d19a-4c57-9000-5511145e94f8"/>
+				<reportElement x="0" y="0" width="555" height="49" uuid="a74d8ca2-d19a-4c57-9000-5511145e94f8"/>
 				<subreportParameter name="AD_CLIENT_ID">
 					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
 				</subreportParameter>
@@ -314,7 +334,7 @@
 	<pageFooter>
 		<band height="25" splitType="Stretch">
 			<textField>
-				<reportElement x="-20" y="0" width="297" height="25" uuid="db85b10a-c786-4ce3-b6b8-a03df60608a6">
+				<reportElement x="0" y="0" width="290" height="25" uuid="db85b10a-c786-4ce3-b6b8-a03df60608a6">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
@@ -322,7 +342,7 @@
 				<textFieldExpression><![CDATA["- "+$V{PAGE_NUMBER}]]></textFieldExpression>
 			</textField>
 			<textField evaluationTime="Report">
-				<reportElement x="277" y="0" width="298" height="25" uuid="85b7ca8f-3be5-46d2-9d8f-a697f9b0c9ec">
+				<reportElement x="290" y="0" width="265" height="25" uuid="85b7ca8f-3be5-46d2-9d8f-a697f9b0c9ec">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
@@ -334,7 +354,7 @@
 	<summary>
 		<band height="42" splitType="Stretch">
 			<staticText>
-				<reportElement x="11" y="22" width="89" height="20" uuid="93a52767-8fce-4df5-ba20-244b571491dc">
+				<reportElement x="0" y="22" width="221" height="20" uuid="93a52767-8fce-4df5-ba20-244b571491dc">
 					<property name="local_mesure_unity" value="pixel"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
@@ -344,7 +364,7 @@
 				<text><![CDATA[Người lập]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="201" y="22" width="119" height="20" uuid="57fe958b-425e-40c5-b450-6d73926e5c78">
+				<reportElement x="221" y="22" width="150" height="20" uuid="57fe958b-425e-40c5-b450-6d73926e5c78">
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -353,7 +373,7 @@
 				<text><![CDATA[Kiểm soát]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="382" y="22" width="160" height="20" uuid="55cec62b-4178-4953-aab9-658914e39994">
+				<reportElement x="371" y="22" width="184" height="20" uuid="55cec62b-4178-4953-aab9-658914e39994">
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -362,14 +382,14 @@
 				<text><![CDATA[Giám đốc]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="406" y="2" width="50" height="20" uuid="8b887127-b0ee-4038-a00e-2de66c683623"/>
-				<textElement textAlignment="Left" verticalAlignment="Middle">
+				<reportElement x="371" y="2" width="92" height="20" uuid="8b887127-b0ee-4038-a00e-2de66c683623"/>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
 					<font fontName="Arial" size="10" isBold="true"/>
 				</textElement>
 				<text><![CDATA[Ngày in:]]></text>
 			</staticText>
 			<textField pattern="dd/MM/yyyy HH:mm">
-				<reportElement x="456" y="2" width="115" height="20" uuid="0b5458d2-e16b-49ba-8af2-c082cfa6262c">
+				<reportElement x="463" y="2" width="92" height="20" uuid="0b5458d2-e16b-49ba-8af2-c082cfa6262c">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 				</reportElement>
 				<textElement textAlignment="Left" verticalAlignment="Middle">

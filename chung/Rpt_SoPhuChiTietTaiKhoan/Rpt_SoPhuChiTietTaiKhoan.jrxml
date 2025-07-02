@@ -4,6 +4,7 @@
 	<property name="ireport.scriptlethandling" value="0"/>
 	<property name="net.sf.jasperreports.export.xls.exclude.origin.keep.first.band.1" value="columnHeader"/>
 	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.2" value="pageFooter"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.keep.first.band.1" value="columnHeader"/>
 	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.3" value="groupHeader"/>
 	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.rows" value="true"/>
 	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.columns" value="true"/>
@@ -14,6 +15,18 @@
 	<property name="net.sf.jasperreports.export.xls.exclude.origin.group.3" value="ProductGroup"/>
 	<property name="net.sf.jasperreports.export.xls.exclude.origin.report.3" value="ProductReport"/>
 	<property name="net.sf.jasperreports.export.xls.ignore.cell.border" value="false"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.summary" value="summary"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.2" value="pageFooter"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.3" value="groupHeader"/>
+	<property name="net.sf.jasperreports.export.xlsx.remove.empty.space.between.rows" value="true"/>
+	<property name="net.sf.jasperreports.export.xlsx.remove.empty.space.between.columns" value="true"/>
+	<property name="net.sf.jasperreports.export.xlsx.white.page.background" value="false"/>
+	<property name="net.sf.jasperreports.export.xlsx.detect.cell.type" value="true"/>
+	<property name="net.sf.jasperreports.export.xlsx.ignore.graphics" value="false"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.1" value="pageHeader"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.group.3" value="ProductGroup"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.report.3" value="ProductReport"/>
+	<property name="net.sf.jasperreports.export.xlsx.ignore.cell.border" value="false"/>
 	<property name="ireport.encoding" value="UTF-8"/>
 	<property name="ireport.zoom" value="1.0"/>
 	<property name="ireport.x" value="0"/>
@@ -31,7 +44,6 @@
 	<parameter name="EndDate" class="java.util.Date">
 		<defaultValueExpression><![CDATA[new Date()]]></defaultValueExpression>
 	</parameter>
-	<parameter name="C_AcctSchema_ID" class="java.lang.Integer"/>
 	<parameter name="AD_Org_ID" class="java.lang.Integer"/>
 	<parameter name="SUBREPORT_DIR" class="java.lang.String">
 		<defaultValueExpression><![CDATA["dev/"]]></defaultValueExpression>
@@ -42,513 +54,110 @@
 	<parameter name="TOTALS" class="java.util.HashMap" isForPrompting="false">
 		<defaultValueExpression><![CDATA[new java.util.HashMap()]]></defaultValueExpression>
 	</parameter>
-	<parameter name="EXPORT_TYPE" class="java.lang.String"/>
 	<parameter name="C_Activity_ID" class="java.lang.Integer"/>
 	<queryString language="SQL">
-		<![CDATA[select 
-	null as ngay,null as value,'Số dư đầu kỳ: '  as noidung,
-	null as psn,
-	null as psc,
-	sum(case when c_elementvalue.accountsign='N' then t.amtacctdr-t.amtacctcr else 
-	          case when c_elementvalue.accountsign='C' then t.amtacctcr-t.amtacctdr else t.amtacctdr-t.amtacctcr end end) as ps,null as soct
-from (   SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.account_id,fa.description ,a.documentno,bp.value
-          		FROM Fact_Acct fa 
-          	  join A_Asset_Addition a on fa.record_id=a.A_Asset_Addition_id	and a.docstatus in ('CO','CL')
-          	  left join C_BPartner bp on bp.c_bpartner_id = fa.c_bpartner_id 
-          WHERE  
-          				fa.dateacct<$P{StartDate}
-          				and  fa.AD_Client_ID=$P{AD_CLIENT_ID}
-          				and 	fa.C_AcctSchema_ID=$P{C_AcctSchema_ID} 
-          				and  (fa.AD_org_id=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-          				and fa.Account_ID=$P{Account_ID}
-          				and (fa.C_BPartner_ID=$P{C_BPartner_ID} or $P{C_BPartner_ID} is null)
-          				and fa.ad_table_id=53137
-          				and (fa.C_Activity_ID = $P{C_Activity_ID} or $P{C_Activity_ID} is null)
-	
-          union all
+		<![CDATA[WITH dau_ky AS (
+    SELECT 
+        fa.dateacct, fa.amtacctdr, fa.amtacctcr, fa.account_id, fa.description, 
+        fa.ad_table_id, fa.record_id, fa.c_bpartner_id,
+        CASE fa.ad_table_id
+            WHEN 53137 THEN (SELECT documentno FROM A_Asset_Addition WHERE A_Asset_Addition_ID = fa.record_id AND docstatus IN ('CO','CL'))
+            WHEN 53127 THEN (SELECT documentno FROM A_Asset_Disposed WHERE A_Asset_Disposed_ID = fa.record_id AND docstatus IN ('CO','CL'))
+            WHEN 53121 THEN (SELECT documentno FROM A_Depreciation_Entry WHERE A_Depreciation_Entry_ID = fa.record_id AND docstatus IN ('CO','CL'))
+            WHEN 735    THEN (SELECT documentno FROM C_AllocationHdr WHERE C_AllocationHdr_ID = fa.record_id AND docstatus IN ('CO','CL'))
+            WHEN 392    THEN (SELECT documentno FROM C_BankStatement WHERE C_BankStatement_ID = fa.record_id AND docstatus IN ('CO','CL'))
+            WHEN 407    THEN (SELECT documentno FROM C_Cash WHERE C_Cash_ID = fa.record_id AND docstatus IN ('CO','CL'))
+            WHEN 318    THEN (SELECT documentno FROM C_Invoice WHERE C_Invoice_ID = fa.record_id AND docstatus IN ('CO','CL'))
+            WHEN 335    THEN (SELECT documentno FROM C_Payment WHERE C_Payment_ID = fa.record_id AND docstatus IN ('CO','CL'))
+            WHEN 224    THEN (SELECT documentno FROM GL_Journal WHERE GL_Journal_ID = fa.record_id AND docstatus IN ('CO','CL'))
+            WHEN 319    THEN (SELECT documentno FROM M_InOut WHERE M_InOut_ID = fa.record_id AND docstatus IN ('CO','CL'))
+            WHEN 321    THEN (SELECT documentno FROM M_Inventory WHERE M_Inventory_ID = fa.record_id AND docstatus IN ('CO','CL'))
+            WHEN 472    THEN (SELECT documentno FROM M_MatchInv WHERE M_MatchInv_ID = fa.record_id)
+            WHEN 473    THEN (SELECT documentno FROM M_MatchPO WHERE M_MatchPO_ID = fa.record_id)
+            WHEN 323    THEN (SELECT documentno FROM M_Movement WHERE M_Movement_ID = fa.record_id AND docstatus IN ('CO','CL'))
+            WHEN 325    THEN (SELECT documentno FROM M_Production WHERE M_Production_ID = fa.record_id AND docstatus IN ('CO','CL'))
+        END AS documentno
+    FROM Fact_Acct fa
+    WHERE fa.dateacct < $P{StartDate}
+        AND fa.AD_Client_ID = $P{AD_CLIENT_ID}
+        AND (fa.AD_Org_ID = $P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)
+        AND fa.Account_ID = $P{Account_ID}
+        AND (fa.C_BPartner_ID = $P{C_BPartner_ID} OR $P{C_BPartner_ID} IS NULL)
+        AND (fa.C_Activity_ID = $P{C_Activity_ID} OR $P{C_Activity_ID} IS NULL)
+        AND fa.ad_table_id IN ( -- liệt kê các ID có thể
+            53137, 53127, 53121, 735, 392, 407, 318, 335, 224, 
+            319, 321, 472, 473, 323, 325
+        )
+),
+phat_sinh AS (
+    SELECT 
+        fa.dateacct, fa.amtacctdr, fa.amtacctcr, fa.account_id, fa.description, 
+        fa.ad_table_id, fa.record_id, fa.c_bpartner_id,cb.value,
+        CASE fa.ad_table_id
+            WHEN 53137 THEN (SELECT documentno FROM A_Asset_Addition WHERE A_Asset_Addition_ID = fa.record_id AND docstatus IN ('CO','CL'))
+            WHEN 53127 THEN (SELECT documentno FROM A_Asset_Disposed WHERE A_Asset_Disposed_ID = fa.record_id AND docstatus IN ('CO','CL'))
+            WHEN 53121 THEN (SELECT documentno FROM A_Depreciation_Entry WHERE A_Depreciation_Entry_ID = fa.record_id AND docstatus IN ('CO','CL'))
+            WHEN 735    THEN (SELECT documentno FROM C_AllocationHdr WHERE C_AllocationHdr_ID = fa.record_id AND docstatus IN ('CO','CL'))
+            WHEN 392    THEN (SELECT documentno FROM C_BankStatement WHERE C_BankStatement_ID = fa.record_id AND docstatus IN ('CO','CL'))
+            WHEN 407    THEN (SELECT documentno FROM C_Cash WHERE C_Cash_ID = fa.record_id AND docstatus IN ('CO','CL'))
+            WHEN 318    THEN (SELECT documentno FROM C_Invoice WHERE C_Invoice_ID = fa.record_id AND docstatus IN ('CO','CL'))
+            WHEN 335    THEN (SELECT documentno FROM C_Payment WHERE C_Payment_ID = fa.record_id AND docstatus IN ('CO','CL'))
+            WHEN 224    THEN (SELECT documentno FROM GL_Journal WHERE GL_Journal_ID = fa.record_id AND docstatus IN ('CO','CL'))
+            WHEN 319    THEN (SELECT documentno FROM M_InOut WHERE M_InOut_ID = fa.record_id AND docstatus IN ('CO','CL'))
+            WHEN 321    THEN (SELECT documentno FROM M_Inventory WHERE M_Inventory_ID = fa.record_id AND docstatus IN ('CO','CL'))
+            WHEN 472    THEN (SELECT documentno FROM M_MatchInv WHERE M_MatchInv_ID = fa.record_id)
+            WHEN 473    THEN (SELECT documentno FROM M_MatchPO WHERE M_MatchPO_ID = fa.record_id)
+            WHEN 323    THEN (SELECT documentno FROM M_Movement WHERE M_Movement_ID = fa.record_id AND docstatus IN ('CO','CL'))
+            WHEN 325    THEN (SELECT documentno FROM M_Production WHERE M_Production_ID = fa.record_id AND docstatus IN ('CO','CL'))
+        END AS documentno
+    FROM Fact_Acct fa
+    left join c_bpartner cb on cb.c_bpartner_id = fa.c_bpartner_id 
+    WHERE fa.dateacct>=$P{StartDate} and fa.dateacct<=$P{EndDate}
+        AND fa.AD_Client_ID = $P{AD_CLIENT_ID}
+        AND (fa.AD_Org_ID = $P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)
+        AND fa.Account_ID = $P{Account_ID}
+        AND (fa.C_BPartner_ID = $P{C_BPartner_ID} OR $P{C_BPartner_ID} IS NULL)
+        AND (fa.C_Activity_ID = $P{C_Activity_ID} OR $P{C_Activity_ID} IS NULL)
+        AND fa.ad_table_id IN ( -- liệt kê các ID có thể
+            53137, 53127, 53121, 735, 392, 407, 318, 335, 224, 
+            319, 321, 472, 473, 323, 325
+        )
+)
 
-          SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.account_id,fa.description ,a.documentno,bp.value
-          		FROM Fact_Acct fa 
-          	  join A_Asset_Disposed a on fa.record_id=a.A_Asset_Disposed_id	and a.docstatus in ('CO','CL')	
-          	  left join C_BPartner bp on bp.c_bpartner_id = fa.c_bpartner_id 
-          WHERE  
-          				fa.dateacct<$P{StartDate}
-          				and  fa.AD_Client_ID=$P{AD_CLIENT_ID}
-          				and 	fa.C_AcctSchema_ID=$P{C_AcctSchema_ID} 
-          				and  (fa.AD_org_id=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-          				and fa.Account_ID=$P{Account_ID}
-          				and (fa.C_BPartner_ID=$P{C_BPartner_ID} or $P{C_BPartner_ID} is null)
-          				and fa.ad_table_id=53127	
-          				and (fa.C_Activity_ID = $P{C_Activity_ID} or $P{C_Activity_ID} is null)
+SELECT 
+    NULL AS ngay, NULL AS value, 'Số dư đầu kỳ:' AS noidung,
+    NULL AS psn, NULL AS psc,
+    SUM(
+        CASE 
+            WHEN ev.accountsign = 'N' THEN d.amtacctdr - d.amtacctcr
+            WHEN ev.accountsign = 'C' THEN d.amtacctcr - d.amtacctdr
+            ELSE d.amtacctdr - d.amtacctcr
+        END
+    ) AS ps, 
+    NULL AS soct
+FROM dau_ky d
+JOIN c_elementvalue ev ON d.account_id = ev.c_elementvalue_id
+LEFT JOIN C_BPartner bp ON bp.c_bpartner_id = d.c_bpartner_id
 
-          union all
+union all 
 
-          SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.account_id,fa.description ,a.documentno,bp.value
-          		FROM Fact_Acct fa 
-          	  join A_Depreciation_Entry a on fa.record_id=a.A_Depreciation_Entry_id	and a.docstatus in ('CO','CL')	
-          	  left join C_BPartner bp on bp.c_bpartner_id = fa.c_bpartner_id 
-          WHERE  
-          				fa.dateacct<$P{StartDate}
-          				and  fa.AD_Client_ID=$P{AD_CLIENT_ID}
-          				and 	fa.C_AcctSchema_ID=$P{C_AcctSchema_ID} 
-          				and  (fa.AD_org_id=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-          				and fa.Account_ID=$P{Account_ID}
-          				and (fa.C_BPartner_ID=$P{C_BPartner_ID} or $P{C_BPartner_ID} is null)
-          				and fa.ad_table_id=53121
-          				and (fa.C_Activity_ID = $P{C_Activity_ID} or $P{C_Activity_ID} is null)
-
-          union all
-
-          SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.account_id,fa.description ,a.documentno,bp.value
-          		FROM Fact_Acct fa 
-          	  join C_AllocationHdr a on fa.record_id=a.C_AllocationHdr_id	and a.docstatus in ('CO','CL')		
-   	     	  left join C_BPartner bp on bp.c_bpartner_id = fa.c_bpartner_id 
-          WHERE  
-          				fa.dateacct<$P{StartDate}
-          				and  fa.AD_Client_ID=$P{AD_CLIENT_ID}
-          				and 	fa.C_AcctSchema_ID=$P{C_AcctSchema_ID} 
-          				and  (fa.AD_org_id=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-          				and fa.Account_ID=$P{Account_ID}
-          				and (fa.C_BPartner_ID=$P{C_BPartner_ID} or $P{C_BPartner_ID} is null)
-          				and fa.ad_table_id=735	
-          				and (fa.C_Activity_ID = $P{C_Activity_ID} or $P{C_Activity_ID} is null)
-
-          union all
-
-          SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.account_id,fa.description ,a.documentno,bp.value
-          		FROM Fact_Acct fa 
-          	  join C_BankStatement a on fa.record_id=a.C_BankStatement_id	and a.docstatus in ('CO','CL')
-   	     	  left join C_BPartner bp on bp.c_bpartner_id = fa.c_bpartner_id 
-          WHERE  
-          				fa.dateacct<$P{StartDate}
-          				and  fa.AD_Client_ID=$P{AD_CLIENT_ID}
-          				and 	fa.C_AcctSchema_ID=$P{C_AcctSchema_ID} 
-          				and  (fa.AD_org_id=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-          				and fa.Account_ID=$P{Account_ID}
-          				and (fa.C_BPartner_ID=$P{C_BPartner_ID} or $P{C_BPartner_ID} is null)
-          				and fa.ad_table_id=392
-         				and (fa.C_Activity_ID = $P{C_Activity_ID} or $P{C_Activity_ID} is null)
-
-          union all
-
-          SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.account_id,fa.description ,a.documentno,bp.value
-          		FROM Fact_Acct fa 
-          	  join C_Cash a on fa.record_id=a.C_Cash_id	and a.docstatus in ('CO','CL')
-          	  left join C_BPartner bp on bp.c_bpartner_id = fa.c_bpartner_id
-          WHERE  
-          				fa.dateacct<$P{StartDate}
-          				and  fa.AD_Client_ID=$P{AD_CLIENT_ID}
-          				and 	fa.C_AcctSchema_ID=$P{C_AcctSchema_ID} 
-          				and  (fa.AD_org_id=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-          				and fa.Account_ID=$P{Account_ID}
-          				and (fa.C_BPartner_ID=$P{C_BPartner_ID} or $P{C_BPartner_ID} is null)
-          				and fa.ad_table_id=407	
-          				and (fa.C_Activity_ID = $P{C_Activity_ID} or $P{C_Activity_ID} is null)
-				
-          union all
-
-          SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.account_id,fa.description ,a.documentno,bp.value
-          		FROM Fact_Acct fa 
-          	  join C_Invoice a on fa.record_id=a.C_Invoice_id	and a.docstatus in ('CO','CL')
-          	  left join C_BPartner bp on bp.c_bpartner_id = fa.c_bpartner_id
-          WHERE  
-          				fa.dateacct<$P{StartDate}
-          				and  fa.AD_Client_ID=$P{AD_CLIENT_ID}
-          				and 	fa.C_AcctSchema_ID=$P{C_AcctSchema_ID} 
-          				and  (fa.AD_org_id=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-          				and fa.Account_ID=$P{Account_ID}
-          				and (fa.C_BPartner_ID=$P{C_BPartner_ID} or $P{C_BPartner_ID} is null)
-          				and fa.ad_table_id=318	
-          				and (fa.C_Activity_ID = $P{C_Activity_ID} or $P{C_Activity_ID} is null)
-				
-          union all
-
-          SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.account_id,fa.description ,a.documentno,bp.value
-          		FROM Fact_Acct fa 
-          	  join C_Payment a on fa.record_id=a.C_Payment_id	and a.docstatus in ('CO','CL')
-          	  left join C_BPartner bp on bp.c_bpartner_id = fa.c_bpartner_id
-          WHERE  
-          				fa.dateacct<$P{StartDate}
-          				and  fa.AD_Client_ID=$P{AD_CLIENT_ID}
-          				and 	fa.C_AcctSchema_ID=$P{C_AcctSchema_ID} 
-          				and  (fa.AD_org_id=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-          				and fa.Account_ID=$P{Account_ID}
-          				and (fa.C_BPartner_ID=$P{C_BPartner_ID} or $P{C_BPartner_ID} is null)
-          				and fa.ad_table_id=335	
-          				and (fa.C_Activity_ID = $P{C_Activity_ID} or $P{C_Activity_ID} is null)
-				
-          union all
-
-          SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.account_id,fa.description ,a.documentno,bp.value
-          		FROM Fact_Acct fa 
-          	  join GL_Journal a on fa.record_id=a.GL_Journal_id	and a.docstatus in ('CO','CL')
-          	  left join C_BPartner bp on bp.c_bpartner_id = fa.c_bpartner_id
-          WHERE  
-          				fa.dateacct<$P{StartDate}
-          				and  fa.AD_Client_ID=$P{AD_CLIENT_ID}
-          				and 	fa.C_AcctSchema_ID=$P{C_AcctSchema_ID} 
-          				and  (fa.AD_org_id=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-          				and fa.Account_ID=$P{Account_ID}
-          				and (fa.C_BPartner_ID=$P{C_BPartner_ID} or $P{C_BPartner_ID} is null)
-          				and fa.ad_table_id=224	
-         				and (fa.C_Activity_ID = $P{C_Activity_ID} or $P{C_Activity_ID} is null)
-				
-          union all
-
-          SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.account_id,fa.description ,a.documentno,bp.value
-          		FROM Fact_Acct fa 
-          	  join 	M_InOut a on fa.record_id=a.M_InOut_id	and a.docstatus in ('CO','CL')
-          	  left join C_BPartner bp on bp.c_bpartner_id = fa.c_bpartner_id
-          WHERE  
-          				fa.dateacct<$P{StartDate}
-          				and  fa.AD_Client_ID=$P{AD_CLIENT_ID}
-          				and 	fa.C_AcctSchema_ID=$P{C_AcctSchema_ID} 
-          				and  (fa.AD_org_id=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-          				and fa.Account_ID=$P{Account_ID}
-          				and (fa.C_BPartner_ID=$P{C_BPartner_ID} or $P{C_BPartner_ID} is null)
-          				and fa.ad_table_id=319
-          				and (fa.C_Activity_ID = $P{C_Activity_ID} or $P{C_Activity_ID} is null)
-				
-          union all
-
-          SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.account_id,fa.description ,a.documentno,bp.value
-          		FROM Fact_Acct fa 
-          	  join 	M_Inventory a on fa.record_id=a.M_Inventory_id	and a.docstatus in ('CO','CL')
-          	  left join C_BPartner bp on bp.c_bpartner_id = fa.c_bpartner_id
-          WHERE  
-          				fa.dateacct<$P{StartDate}
-          				and  fa.AD_Client_ID=$P{AD_CLIENT_ID}
-          				and 	fa.C_AcctSchema_ID=$P{C_AcctSchema_ID} 
-          				and  (fa.AD_org_id=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-          				and fa.Account_ID=$P{Account_ID}
-          				and (fa.C_BPartner_ID=$P{C_BPartner_ID} or $P{C_BPartner_ID} is null)
-          				and fa.ad_table_id=321	
-        				and (fa.C_Activity_ID = $P{C_Activity_ID} or $P{C_Activity_ID} is null)
-				
-          union all
-
-          SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.account_id,fa.description ,a.documentno,bp.value
-          		FROM Fact_Acct fa 
-          	  join 	M_MatchInv a on fa.record_id=a.M_MatchInv_id
-          	  left join C_BPartner bp on bp.c_bpartner_id = fa.c_bpartner_id
-          WHERE  
-          				fa.dateacct<$P{StartDate}
-          				and  fa.AD_Client_ID=$P{AD_CLIENT_ID}
-          				and 	fa.C_AcctSchema_ID=$P{C_AcctSchema_ID} 
-          				and  (fa.AD_org_id=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-          				and fa.Account_ID=$P{Account_ID}
-          				and (fa.C_BPartner_ID=$P{C_BPartner_ID} or $P{C_BPartner_ID} is null)
-          				and fa.ad_table_id=472	
-          				and (fa.C_Activity_ID = $P{C_Activity_ID} or $P{C_Activity_ID} is null)
-				
-          union all
-
-          SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.account_id,fa.description ,a.documentno,bp.value
-          		FROM Fact_Acct fa 
-          	  join 	M_MatchPO a on fa.record_id=a.M_MatchPO_id
-          	  left join C_BPartner bp on bp.c_bpartner_id = fa.c_bpartner_id
-          WHERE  
-          				fa.dateacct<$P{StartDate}
-          				and  fa.AD_Client_ID=$P{AD_CLIENT_ID}
-          				and 	fa.C_AcctSchema_ID=$P{C_AcctSchema_ID} 
-          				and  (fa.AD_org_id=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-          				and fa.Account_ID=$P{Account_ID}
-          				and (fa.C_BPartner_ID=$P{C_BPartner_ID} or $P{C_BPartner_ID} is null)
-          				and fa.ad_table_id=473	
-          				and (fa.C_Activity_ID = $P{C_Activity_ID} or $P{C_Activity_ID} is null)
-				
-          union all
-
-          SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.account_id,fa.description ,a.documentno,bp.value
-          		FROM Fact_Acct fa 
-          	  join 	M_Movement a on fa.record_id=a.M_Movement_id	and a.docstatus in ('CO','CL')
-          	  left join C_BPartner bp on bp.c_bpartner_id = fa.c_bpartner_id
-          WHERE  
-          				fa.dateacct<$P{StartDate}
-          				and  fa.AD_Client_ID=$P{AD_CLIENT_ID}
-          				and 	fa.C_AcctSchema_ID=$P{C_AcctSchema_ID} 
-          				and  (fa.AD_org_id=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-          				and fa.Account_ID=$P{Account_ID}
-          				and (fa.C_BPartner_ID=$P{C_BPartner_ID} or $P{C_BPartner_ID} is null)
-          				and fa.ad_table_id=323	
-          				and (fa.C_Activity_ID = $P{C_Activity_ID} or $P{C_Activity_ID} is null)
-				
-          union all
-
-          SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.account_id,fa.description ,a.documentno,bp.value
-          		FROM Fact_Acct fa 
-          	  join 	M_Production a on fa.record_id=a.M_Production_id	and a.docstatus in ('CO','CL')
-          	  left join C_BPartner bp on bp.c_bpartner_id = fa.c_bpartner_id
-          WHERE  
-          				fa.dateacct<$P{StartDate}
-          				and  fa.AD_Client_ID=$P{AD_CLIENT_ID}
-          				and 	fa.C_AcctSchema_ID=$P{C_AcctSchema_ID} 
-          				and  (fa.AD_org_id=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-          				and fa.Account_ID=$P{Account_ID}
-          				and (fa.C_BPartner_ID=$P{C_BPartner_ID} or $P{C_BPartner_ID} is null)
-          				and fa.ad_table_id=325
-          				and (fa.C_Activity_ID = $P{C_Activity_ID} or $P{C_Activity_ID} is null)
-				
-				) as t
-inner join c_elementvalue on t.account_id=c_elementvalue.c_elementvalue_id 
-
-union all
-
-select 
-	t.dateacct as ngay,t.value,t.description  as noidung,
-	(case when t.amtacctcr  =0 then t.amtacctdr else 0 end) as psn,
-	(case when t.amtacctdr  =0 then t.amtacctcr else 0 end) as psc,
-	(CASE WHEN c_elementvalue.accountsign='N' then
-		                case when t.amtacctcr =0 then t.amtacctdr else -1*t.amtacctcr end
-     ELSE
-             case when c_elementvalue.accountsign='C' then
-                       case when t.amtacctdr  =0 then t.amtacctcr else -1*t.amtacctdr end
-             else 
-                       case when t.amtacctcr =0 then t.amtacctdr else -1*t.amtacctcr end
-             end
-     END
-	) as ps,t.documentno as soct
-from 
-
-			(          SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.account_id,fa.description ,a.documentno,bp.value
-          		FROM Fact_Acct fa 
-          	  join A_Asset_Addition a on fa.record_id=a.A_Asset_Addition_id	and a.docstatus in ('CO','CL')
-          	  left join C_BPartner bp on bp.c_bpartner_id = fa.c_bpartner_id
-          WHERE  
-          				fa.dateacct>=$P{StartDate}and fa.dateacct<=$P{EndDate}
-          				and  fa.AD_Client_ID=$P{AD_CLIENT_ID}
-          				and 	fa.C_AcctSchema_ID=$P{C_AcctSchema_ID} 
-          				and  (fa.AD_org_id=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-          				and fa.Account_ID=$P{Account_ID}
-          				and (fa.C_BPartner_ID=$P{C_BPartner_ID} or $P{C_BPartner_ID} is null)
-          				and fa.ad_table_id=53137
-          				and (fa.C_Activity_ID = $P{C_Activity_ID} or $P{C_Activity_ID} is null)
-	
-          union all
-
-          SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.account_id,fa.description ,a.documentno,bp.value
-          		FROM Fact_Acct fa 
-          	  join A_Asset_Disposed a on fa.record_id=a.A_Asset_Disposed_id	and a.docstatus in ('CO','CL')
-          	  left join C_BPartner bp on bp.c_bpartner_id = fa.c_bpartner_id
-          WHERE  
-          				fa.dateacct>=$P{StartDate}and fa.dateacct<=$P{EndDate}
-          				and  fa.AD_Client_ID=$P{AD_CLIENT_ID}
-          				and 	fa.C_AcctSchema_ID=$P{C_AcctSchema_ID} 
-          				and  (fa.AD_org_id=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-          				and fa.Account_ID=$P{Account_ID}
-          				and (fa.C_BPartner_ID=$P{C_BPartner_ID} or $P{C_BPartner_ID} is null)
-          				and fa.ad_table_id=53127
-          				and (fa.C_Activity_ID = $P{C_Activity_ID} or $P{C_Activity_ID} is null)
-
-          union all
-
-          SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.account_id,fa.description ,a.documentno,bp.value
-          		FROM Fact_Acct fa 
-          	  join A_Depreciation_Entry a on fa.record_id=a.A_Depreciation_Entry_id	and a.docstatus in ('CO','CL')
-          	  left join C_BPartner bp on bp.c_bpartner_id = fa.c_bpartner_id
-          WHERE  
-          				fa.dateacct>=$P{StartDate}and fa.dateacct<=$P{EndDate}
-          				and  fa.AD_Client_ID=$P{AD_CLIENT_ID}
-          				and 	fa.C_AcctSchema_ID=$P{C_AcctSchema_ID} 
-          				and  (fa.AD_org_id=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-          				and fa.Account_ID=$P{Account_ID}
-          				and (fa.C_BPartner_ID=$P{C_BPartner_ID} or $P{C_BPartner_ID} is null)
-          				and fa.ad_table_id=53121
-          				and (fa.C_Activity_ID = $P{C_Activity_ID} or $P{C_Activity_ID} is null)
-
-          union all
-
-          SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.account_id,fa.description ,a.documentno,bp.value
-          		FROM Fact_Acct fa 
-          	  join C_AllocationHdr a on fa.record_id=a.C_AllocationHdr_id	and a.docstatus in ('CO','CL')
-          	  left join C_BPartner bp on bp.c_bpartner_id = fa.c_bpartner_id
-          WHERE  
-          				fa.dateacct>=$P{StartDate}and fa.dateacct<=$P{EndDate}
-          				and  fa.AD_Client_ID=$P{AD_CLIENT_ID}
-          				and 	fa.C_AcctSchema_ID=$P{C_AcctSchema_ID} 
-          				and  (fa.AD_org_id=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-          				and fa.Account_ID=$P{Account_ID}
-          				and (fa.C_BPartner_ID=$P{C_BPartner_ID} or $P{C_BPartner_ID} is null)
-          				and fa.ad_table_id=735
-          				and (fa.C_Activity_ID = $P{C_Activity_ID} or $P{C_Activity_ID} is null)
-
-          union all
-
-          SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.account_id,fa.description ,a.documentno,bp.value
-          		FROM Fact_Acct fa 
-          	  join C_BankStatement a on fa.record_id=a.C_BankStatement_id	and a.docstatus in ('CO','CL')
-          	  left join C_BPartner bp on bp.c_bpartner_id = fa.c_bpartner_id
-          WHERE  
-          				fa.dateacct>=$P{StartDate}and fa.dateacct<=$P{EndDate}
-          				and  fa.AD_Client_ID=$P{AD_CLIENT_ID}
-          				and 	fa.C_AcctSchema_ID=$P{C_AcctSchema_ID} 
-          				and  (fa.AD_org_id=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-          				and fa.Account_ID=$P{Account_ID}
-          				and (fa.C_BPartner_ID=$P{C_BPartner_ID} or $P{C_BPartner_ID} is null)
-          				and fa.ad_table_id=392
-          				and (fa.C_Activity_ID = $P{C_Activity_ID} or $P{C_Activity_ID} is null)
-
-          union all
-
-          SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.account_id,fa.description ,a.documentno,bp.value
-          		FROM Fact_Acct fa 
-          	  join C_Cash a on fa.record_id=a.C_Cash_id	and a.docstatus in ('CO','CL')
-          	  left join C_BPartner bp on bp.c_bpartner_id = fa.c_bpartner_id
-          WHERE  
-          				fa.dateacct>=$P{StartDate}and fa.dateacct<=$P{EndDate}
-          				and  fa.AD_Client_ID=$P{AD_CLIENT_ID}
-          				and 	fa.C_AcctSchema_ID=$P{C_AcctSchema_ID} 
-          				and  (fa.AD_org_id=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-          				and fa.Account_ID=$P{Account_ID}
-          				and (fa.C_BPartner_ID=$P{C_BPartner_ID} or $P{C_BPartner_ID} is null)
-          				and fa.ad_table_id=407
-          				and (fa.C_Activity_ID = $P{C_Activity_ID} or $P{C_Activity_ID} is null)
-				
-          union all
-
-          SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.account_id,fa.description ,a.documentno,bp.value
-          		FROM Fact_Acct fa 
-          	  join C_Invoice a on fa.record_id=a.C_Invoice_id	and a.docstatus in ('CO','CL')
-          	  left join C_BPartner bp on bp.c_bpartner_id = fa.c_bpartner_id
-          WHERE  
-          				fa.dateacct>=$P{StartDate}and fa.dateacct<=$P{EndDate}
-          				and  fa.AD_Client_ID=$P{AD_CLIENT_ID}
-          				and 	fa.C_AcctSchema_ID=$P{C_AcctSchema_ID} 
-          				and  (fa.AD_org_id=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-          				and fa.Account_ID=$P{Account_ID}
-          				and (fa.C_BPartner_ID=$P{C_BPartner_ID} or $P{C_BPartner_ID} is null)
-          				and fa.ad_table_id=318
-          				and (fa.C_Activity_ID = $P{C_Activity_ID} or $P{C_Activity_ID} is null)
-				
-          union all
-
-          SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.account_id,fa.description ,a.documentno,bp.value
-          		FROM Fact_Acct fa 
-          	  join C_Payment a on fa.record_id=a.C_Payment_id	and a.docstatus in ('CO','CL')
-          	  left join C_BPartner bp on bp.c_bpartner_id = fa.c_bpartner_id
-          WHERE  
-          				fa.dateacct>=$P{StartDate}and fa.dateacct<=$P{EndDate}
-          				and  fa.AD_Client_ID=$P{AD_CLIENT_ID}
-          				and 	fa.C_AcctSchema_ID=$P{C_AcctSchema_ID} 
-          				and  (fa.AD_org_id=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-          				and fa.Account_ID=$P{Account_ID}
-          				and (fa.C_BPartner_ID=$P{C_BPartner_ID} or $P{C_BPartner_ID} is null)
-          				and fa.ad_table_id=335
-          				and (fa.C_Activity_ID = $P{C_Activity_ID} or $P{C_Activity_ID} is null)
-				
-          union all
-
-          SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.account_id,fa.description ,a.documentno,bp.value
-          		FROM Fact_Acct fa 
-          	  join GL_Journal a on fa.record_id=a.GL_Journal_id	and a.docstatus in ('CO','CL')
-          	  left join C_BPartner bp on bp.c_bpartner_id = fa.c_bpartner_id
-          WHERE  
-          				fa.dateacct>=$P{StartDate}and fa.dateacct<=$P{EndDate}
-          				and  fa.AD_Client_ID=$P{AD_CLIENT_ID}
-          				and 	fa.C_AcctSchema_ID=$P{C_AcctSchema_ID} 
-          				and  (fa.AD_org_id=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-          				and fa.Account_ID=$P{Account_ID}
-          				and (fa.C_BPartner_ID=$P{C_BPartner_ID} or $P{C_BPartner_ID} is null)
-          				and fa.ad_table_id=224
-          				and (fa.C_Activity_ID = $P{C_Activity_ID} or $P{C_Activity_ID} is null)
-				
-          union all
-
-          SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.account_id,fa.description ,a.documentno,bp.value
-          		FROM Fact_Acct fa 
-          	  join 	M_InOut a on fa.record_id=a.M_InOut_id	and a.docstatus in ('CO','CL')
-          	  left join C_BPartner bp on bp.c_bpartner_id = fa.c_bpartner_id
-          WHERE  
-          				fa.dateacct>=$P{StartDate}and fa.dateacct<=$P{EndDate}
-          				and  fa.AD_Client_ID=$P{AD_CLIENT_ID}
-          				and 	fa.C_AcctSchema_ID=$P{C_AcctSchema_ID} 
-          				and  (fa.AD_org_id=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-          				and fa.Account_ID=$P{Account_ID}
-          				and (fa.C_BPartner_ID=$P{C_BPartner_ID} or $P{C_BPartner_ID} is null)
-          				and fa.ad_table_id=319
-          				and (fa.C_Activity_ID = $P{C_Activity_ID} or $P{C_Activity_ID} is null)
-				
-          union all
-
-          SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.account_id,fa.description ,a.documentno,bp.value
-          		FROM Fact_Acct fa 
-          	  join 	M_Inventory a on fa.record_id=a.M_Inventory_id	and a.docstatus in ('CO','CL')
-          	  left join C_BPartner bp on bp.c_bpartner_id = fa.c_bpartner_id
-          WHERE  
-          				fa.dateacct>=$P{StartDate}and fa.dateacct<=$P{EndDate}
-          				and  fa.AD_Client_ID=$P{AD_CLIENT_ID}
-          				and 	fa.C_AcctSchema_ID=$P{C_AcctSchema_ID} 
-          				and  (fa.AD_org_id=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-          				and fa.Account_ID=$P{Account_ID}
-          				and (fa.C_BPartner_ID=$P{C_BPartner_ID} or $P{C_BPartner_ID} is null)
-          				and fa.ad_table_id=321
-          				and (fa.C_Activity_ID = $P{C_Activity_ID} or $P{C_Activity_ID} is null)
-				
-          union all
-
-          SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.account_id,fa.description ,a.documentno,bp.value
-          		FROM Fact_Acct fa 
-          	  join 	M_MatchInv a on fa.record_id=a.M_MatchInv_id
-          	  left join C_BPartner bp on bp.c_bpartner_id = fa.c_bpartner_id
-          WHERE  
-          				fa.dateacct>=$P{StartDate}and fa.dateacct<=$P{EndDate}
-          				and  fa.AD_Client_ID=$P{AD_CLIENT_ID}
-          				and 	fa.C_AcctSchema_ID=$P{C_AcctSchema_ID} 
-          				and  (fa.AD_org_id=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-          				and fa.Account_ID=$P{Account_ID}
-          				and (fa.C_BPartner_ID=$P{C_BPartner_ID} or $P{C_BPartner_ID} is null)
-          				and fa.ad_table_id=472
-          				and (fa.C_Activity_ID = $P{C_Activity_ID} or $P{C_Activity_ID} is null)
-				
-          union all
-
-          SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.account_id,fa.description ,a.documentno,bp.value
-          		FROM Fact_Acct fa 
-          	  join 	M_MatchPO a on fa.record_id=a.M_MatchPO_id
-          	  left join C_BPartner bp on bp.c_bpartner_id = fa.c_bpartner_id
-          WHERE  
-          				fa.dateacct>=$P{StartDate}and fa.dateacct<=$P{EndDate}
-          				and  fa.AD_Client_ID=$P{AD_CLIENT_ID}
-          				and 	fa.C_AcctSchema_ID=$P{C_AcctSchema_ID} 
-          				and  (fa.AD_org_id=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-          				and fa.Account_ID=$P{Account_ID}
-          				and (fa.C_BPartner_ID=$P{C_BPartner_ID} or $P{C_BPartner_ID} is null)
-          				and fa.ad_table_id=473
-          				and (fa.C_Activity_ID = $P{C_Activity_ID} or $P{C_Activity_ID} is null)
-				
-          union all
-
-          SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.account_id,fa.description ,a.documentno,bp.value
-          		FROM Fact_Acct fa 
-          	  join 	M_Movement a on fa.record_id=a.M_Movement_id	and a.docstatus in ('CO','CL')
-          	  left join C_BPartner bp on bp.c_bpartner_id = fa.c_bpartner_id
-          WHERE  
-          				fa.dateacct>=$P{StartDate}and fa.dateacct<=$P{EndDate}
-          				and  fa.AD_Client_ID=$P{AD_CLIENT_ID}
-          				and 	fa.C_AcctSchema_ID=$P{C_AcctSchema_ID} 
-          				and  (fa.AD_org_id=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-          				and fa.Account_ID=$P{Account_ID}
-          				and (fa.C_BPartner_ID=$P{C_BPartner_ID} or $P{C_BPartner_ID} is null)
-          				and fa.ad_table_id=323
-          				and (fa.C_Activity_ID = $P{C_Activity_ID} or $P{C_Activity_ID} is null)
-				
-          union all
-
-          SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.account_id,fa.description ,a.documentno,bp.value
-          		FROM Fact_Acct fa 
-          	  join 	M_Production a on fa.record_id=a.M_Production_id	and a.docstatus in ('CO','CL')
-          	  left join C_BPartner bp on bp.c_bpartner_id = fa.c_bpartner_id
-          WHERE  
-          				fa.dateacct>=$P{StartDate}and fa.dateacct<=$P{EndDate}
-          				and  fa.AD_Client_ID=$P{AD_CLIENT_ID}
-          				and 	fa.C_AcctSchema_ID=$P{C_AcctSchema_ID} 
-          				and  (fa.AD_org_id=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-          				and fa.Account_ID=$P{Account_ID}
-          				and (fa.C_BPartner_ID=$P{C_BPartner_ID} or $P{C_BPartner_ID} is null)
-          				and fa.ad_table_id=325			
-          				and (fa.C_Activity_ID = $P{C_Activity_ID} or $P{C_Activity_ID} is null)
-				) as t
- inner join c_elementvalue on t.account_id=c_elementvalue.c_elementvalue_id]]>
+SELECT 
+    d.dateacct  AS ngay, d.value AS value, d.description  AS noidung,
+   	case when d.amtacctcr  =0 then d.amtacctdr else 0 end  AS psn, 
+   	case when d.amtacctdr  =0 then d.amtacctcr else 0 end  AS psc,
+    
+    CASE 
+            WHEN ev.accountsign = 'N' THEN d.amtacctdr - d.amtacctcr
+            WHEN ev.accountsign = 'C' THEN d.amtacctcr - d.amtacctdr
+            ELSE d.amtacctdr - d.amtacctcr
+        END
+     AS ps, 
+    d.documentno AS soct
+FROM phat_sinh d
+JOIN c_elementvalue ev ON d.account_id = ev.c_elementvalue_id
+LEFT JOIN C_BPartner bp ON bp.c_bpartner_id = d.c_bpartner_id
+where d.documentno is not null
+]]>
 	</queryString>
 	<field name="ngay" class="java.sql.Timestamp">
 		<property name="com.jaspersoft.studio.field.name" value="ngay"/>
@@ -636,9 +245,6 @@ from
 				<subreportParameter name="EndDate">
 					<subreportParameterExpression><![CDATA[$P{EndDate}]]></subreportParameterExpression>
 				</subreportParameter>
-				<subreportParameter name="C_AcctSchema_ID">
-					<subreportParameterExpression><![CDATA[$P{C_AcctSchema_ID}]]></subreportParameterExpression>
-				</subreportParameter>
 				<subreportParameter name="AD_Org_ID">
 					<subreportParameterExpression><![CDATA[$P{AD_Org_ID}]]></subreportParameterExpression>
 				</subreportParameter>
@@ -656,9 +262,6 @@ from
 				</subreportParameter>
 				<subreportParameter name="TOTALS">
 					<subreportParameterExpression><![CDATA[$P{TOTALS}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="EXPORT_TYPE">
-					<subreportParameterExpression><![CDATA[$P{EXPORT_TYPE}]]></subreportParameterExpression>
 				</subreportParameter>
 				<subreportParameter name="C_Activity_ID">
 					<subreportParameterExpression><![CDATA[$P{C_Activity_ID}]]></subreportParameterExpression>
@@ -677,9 +280,6 @@ from
 				<subreportParameter name="EndDate">
 					<subreportParameterExpression><![CDATA[$P{EndDate}]]></subreportParameterExpression>
 				</subreportParameter>
-				<subreportParameter name="C_AcctSchema_ID">
-					<subreportParameterExpression><![CDATA[$P{C_AcctSchema_ID}]]></subreportParameterExpression>
-				</subreportParameter>
 				<subreportParameter name="AD_Org_ID">
 					<subreportParameterExpression><![CDATA[$P{AD_Org_ID}]]></subreportParameterExpression>
 				</subreportParameter>
@@ -697,9 +297,6 @@ from
 				</subreportParameter>
 				<subreportParameter name="TOTALS">
 					<subreportParameterExpression><![CDATA[$P{TOTALS}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="EXPORT_TYPE">
-					<subreportParameterExpression><![CDATA[$P{EXPORT_TYPE}]]></subreportParameterExpression>
 				</subreportParameter>
 				<subreportParameter name="C_Activity_ID">
 					<subreportParameterExpression><![CDATA[$P{C_Activity_ID}]]></subreportParameterExpression>
@@ -720,9 +317,6 @@ from
 				<subreportParameter name="EndDate">
 					<subreportParameterExpression><![CDATA[$P{EndDate}]]></subreportParameterExpression>
 				</subreportParameter>
-				<subreportParameter name="C_AcctSchema_ID">
-					<subreportParameterExpression><![CDATA[$P{C_AcctSchema_ID}]]></subreportParameterExpression>
-				</subreportParameter>
 				<subreportParameter name="AD_Org_ID">
 					<subreportParameterExpression><![CDATA[$P{AD_Org_ID}]]></subreportParameterExpression>
 				</subreportParameter>
@@ -740,9 +334,6 @@ from
 				</subreportParameter>
 				<subreportParameter name="TOTALS">
 					<subreportParameterExpression><![CDATA[$P{TOTALS}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="EXPORT_TYPE">
-					<subreportParameterExpression><![CDATA[$P{EXPORT_TYPE}]]></subreportParameterExpression>
 				</subreportParameter>
 				<subreportParameter name="C_Activity_ID">
 					<subreportParameterExpression><![CDATA[$P{C_Activity_ID}]]></subreportParameterExpression>
@@ -762,9 +353,6 @@ from
 				<subreportParameter name="EndDate">
 					<subreportParameterExpression><![CDATA[$P{EndDate}]]></subreportParameterExpression>
 				</subreportParameter>
-				<subreportParameter name="C_AcctSchema_ID">
-					<subreportParameterExpression><![CDATA[$P{C_AcctSchema_ID}]]></subreportParameterExpression>
-				</subreportParameter>
 				<subreportParameter name="AD_Org_ID">
 					<subreportParameterExpression><![CDATA[$P{AD_Org_ID}]]></subreportParameterExpression>
 				</subreportParameter>
@@ -782,9 +370,6 @@ from
 				</subreportParameter>
 				<subreportParameter name="TOTALS">
 					<subreportParameterExpression><![CDATA[$P{TOTALS}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="EXPORT_TYPE">
-					<subreportParameterExpression><![CDATA[$P{EXPORT_TYPE}]]></subreportParameterExpression>
 				</subreportParameter>
 				<subreportParameter name="C_Activity_ID">
 					<subreportParameterExpression><![CDATA[$P{C_Activity_ID}]]></subreportParameterExpression>
@@ -835,9 +420,6 @@ from
 				<subreportParameter name="EndDate">
 					<subreportParameterExpression><![CDATA[$P{EndDate}]]></subreportParameterExpression>
 				</subreportParameter>
-				<subreportParameter name="C_AcctSchema_ID">
-					<subreportParameterExpression><![CDATA[$P{C_AcctSchema_ID}]]></subreportParameterExpression>
-				</subreportParameter>
 				<subreportParameter name="AD_Org_ID">
 					<subreportParameterExpression><![CDATA[$P{AD_Org_ID}]]></subreportParameterExpression>
 				</subreportParameter>
@@ -856,9 +438,6 @@ from
 				<subreportParameter name="TOTALS">
 					<subreportParameterExpression><![CDATA[$P{TOTALS}]]></subreportParameterExpression>
 				</subreportParameter>
-				<subreportParameter name="EXPORT_TYPE">
-					<subreportParameterExpression><![CDATA[$P{EXPORT_TYPE}]]></subreportParameterExpression>
-				</subreportParameter>
 				<subreportParameter name="C_Activity_ID">
 					<subreportParameterExpression><![CDATA[$P{C_Activity_ID}]]></subreportParameterExpression>
 				</subreportParameter>
@@ -871,7 +450,6 @@ from
 		<band height="22" splitType="Stretch">
 			<property name="local_mesure_unitheight" value="pixel"/>
 			<property name="com.jaspersoft.studio.unit.height" value="px"/>
-			<printWhenExpression><![CDATA[$V{PAGE_NUMBER}==1 || $P{EXPORT_TYPE}==null]]></printWhenExpression>
 			<staticText>
 				<reportElement key="staticText-2" positionType="Float" stretchType="RelativeToTallestObject" x="410" y="0" width="80" height="22" uuid="12e5de05-c014-4717-8e4f-630d82e3e567">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
