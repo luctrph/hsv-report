@@ -2,6 +2,30 @@
 <!-- Created with Jaspersoft Studio version 6.20.0.final using JasperReports Library version 6.20.0-2bc7ab61c56f459e8176eb05c7705e145cd400ad  -->
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="BC_xuat_ngao_ve_cong_ty" pageWidth="842" pageHeight="595" orientation="Landscape" columnWidth="802" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="5d787601-a9ec-4bda-8be0-8dd9431090a1">
 	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.keep.first.band.1" value="columnHeader"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.keep.first.band.1" value="columnHeader"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.2" value="pageFooter"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.3" value="groupHeader"/>
+	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.rows" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.columns" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.white.page.background" value="false"/>
+	<property name="net.sf.jasperreports.export.xls.detect.cell.type" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.ignore.graphics" value="false"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.1" value="pageHeader"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.group.3" value="ProductGroup"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.report.3" value="ProductReport"/>
+	<property name="net.sf.jasperreports.export.xls.ignore.cell.border" value="false"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.2" value="pageFooter"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.3" value="groupHeader"/>
+	<property name="net.sf.jasperreports.export.xlsx.remove.empty.space.between.rows" value="true"/>
+	<property name="net.sf.jasperreports.export.xlsx.remove.empty.space.between.columns" value="true"/>
+	<property name="net.sf.jasperreports.export.xlsx.white.page.background" value="false"/>
+	<property name="net.sf.jasperreports.export.xlsx.detect.cell.type" value="true"/>
+	<property name="net.sf.jasperreports.export.xlsx.ignore.graphics" value="false"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.1" value="pageHeader"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.group.3" value="ProductGroup"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.report.3" value="ProductReport"/>
+	<property name="net.sf.jasperreports.export.xlsx.ignore.cell.border" value="false"/>
 	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="psql"/>
 	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
 	<parameter name="StartDate" class="java.util.Date"/>
@@ -12,30 +36,52 @@
 		<defaultValueExpression><![CDATA["dev/"]]></defaultValueExpression>
 	</parameter>
 	<queryString language="SQL">
-		<![CDATA[with don_gia as (
-	select miv.hsv_lovansay_id,cov.priceentered, sum(miv.movementqty) as so_luong  ,sum(miv.movementqty*priceentered) as thanh_tien
+		<![CDATA[with don_gia_raw as (
+	select miv.hsv_lovansay_id, cov.priceentered, 
+	       sum(miv.movementqty) as so_luong, 
+	       sum(miv.movementqty * cov.priceentered) as thanh_tien
 	from m_inoutline miv
 	join c_orderline cov on miv.c_orderline_id = cov.c_orderline_id 
 	join m_inout mi on mi.m_inout_id = miv.m_inout_id and mi.issotrx = 'N'
-	where miv.ad_client_id= $P{AD_CLIENT_ID} and miv.hsv_lovansay_id is not null and mi.docstatus IN ('CO','CL')
-	group by miv.hsv_lovansay_id,cov.priceentered 
+	where miv.ad_client_id = $P{AD_CLIENT_ID}
+	  and miv.hsv_lovansay_id is not null 
+	  and mi.docstatus IN ('CO', 'CL')
+	group by miv.hsv_lovansay_id, cov.priceentered 
+),
+-- Gom lại theo hsv_lovansay_id
+don_gia as (
+	select hsv_lovansay_id, 
+	       sum(so_luong) as so_luong, 
+	       sum(thanh_tien) as thanh_tien
+	from don_gia_raw
+	group by hsv_lovansay_id
 ),
 so_luong as (
-	select ll.hsv_lovansay_id,ll.name as ma_lo, loi.name as nguon_goc, 
-		sum(case when  mml.m_product_id = 1017815 then mml.movementqty else 0 end) as ngao_yeu,
+	select ll.hsv_lovansay_id, ll.name as ma_lo, loi.name as nguon_goc, 
+		sum(case when mml.m_product_id = 1017815 then mml.movementqty else 0 end) as ngao_yeu,
 		sum(case when mml.m_product_id = 1000302 then mml.movementqty else 0 end) as ngao_sach		
 	from m_movement mm 
 	join m_movementline mml on mm.m_movement_id = mml.m_movement_id 
 	join hsv_lovansay ll on ll.hsv_lovansay_id = mml.hsv_lovansay_id 
-	join hsv_loailo loi on ll.hsv_loailo_ID  = loi.hsv_loailo_ID 
-	where mm.ad_client_id = $P{AD_CLIENT_ID} and (mml.m_locator_id = $P{M_Locator_ID} or $P{M_Locator_ID} is null) and (mml.m_locatorto_id = $P{M_LocatorTo_ID} or $P{M_LocatorTo_ID} is null)
-	and mm.MovementDate >= $P{StartDate} and mm.MovementDate <= $P{EndDate} and mm.docstatus IN ('CO','CL')
-	group by  ll.hsv_lovansay_id,ll.name,loi.name
+	join hsv_loailo loi on ll.hsv_loailo_ID = loi.hsv_loailo_ID 
+	where mm.ad_client_id = $P{AD_CLIENT_ID}
+	  and (mml.m_locator_id = $P{M_Locator_ID} or $P{M_Locator_ID} is null)
+	  and (mml.m_locatorto_id = $P{M_LocatorTo_ID} or $P{M_LocatorTo_ID} is null)
+	  and mm.MovementDate >= $P{StartDate} 
+	  and mm.MovementDate <= $P{EndDate} 
+	  and mm.docstatus IN ('CO','CL')
+	group by ll.hsv_lovansay_id, ll.name, loi.name
 ) 
-select sl.ma_lo, sl.nguon_goc as nguon_goc ,sum(sl.ngao_yeu) as ngao_yeu  ,sum(sl.ngao_sach) as ngao_sach  ,sum(dg.so_luong) as so_luong  , sum(thanh_tien) as thanh_tien 
+select 
+	sl.ma_lo, 
+	sl.nguon_goc, 
+	sum(sl.ngao_yeu) as ngao_yeu,
+	sum(sl.ngao_sach) as ngao_sach,
+	sum(dg.so_luong) as so_luong,
+	sum(dg.thanh_tien) as thanh_tien 
 from so_luong sl 
-join don_gia  dg on sl.hsv_lovansay_id = dg.hsv_lovansay_id
-group by sl.ma_lo,sl.nguon_goc]]>
+join don_gia dg on sl.hsv_lovansay_id = dg.hsv_lovansay_id
+group by sl.ma_lo, sl.nguon_goc]]>
 	</queryString>
 	<field name="ma_lo" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="ma_lo"/>
@@ -81,6 +127,9 @@ group by sl.ma_lo,sl.nguon_goc]]>
 	</variable>
 	<variable name="sum_tyle" class="java.lang.Double" calculation="Sum">
 		<variableExpression><![CDATA[($V{sum_ngao_yeu}+$V{sum_ngao_sach})==0?0:$V{sum_sl}/($V{sum_ngao_yeu}+$V{sum_ngao_sach})]]></variableExpression>
+	</variable>
+	<variable name="tyle" class="java.lang.Double">
+		<variableExpression><![CDATA[ ($F{ngao_yeu}.doubleValue()+$F{ngao_sach}.doubleValue())==0?0: $F{so_luong}.doubleValue()/ ($F{ngao_yeu}.doubleValue()+$F{ngao_sach}.doubleValue())]]></variableExpression>
 	</variable>
 	<group name="Group1"/>
 	<background>
@@ -463,7 +512,7 @@ group by sl.ma_lo,sl.nguon_goc]]>
 					<font fontName="Arial"/>
 				</textElement>
 			</textField>
-			<textField pattern="#,##0.##">
+			<textField pattern="#,##0.##" isBlankWhenNull="true">
 				<reportElement x="622" y="0" width="50" height="30" uuid="f73c4f9d-5e4d-42e0-b0fe-c79f85d1e41d">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="401d9ef6-5f4c-4482-8ce9-729d226d3a1a"/>
 				</reportElement>
@@ -477,7 +526,7 @@ group by sl.ma_lo,sl.nguon_goc]]>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
 					<font fontName="Arial"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{so_luong}.doubleValue()==0?0: ($F{ngao_yeu}.doubleValue()+$F{ngao_sach}.doubleValue())/$F{so_luong}.doubleValue()]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$V{tyle}]]></textFieldExpression>
 			</textField>
 		</band>
 	</detail>
