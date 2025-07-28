@@ -6,7 +6,7 @@
 	<property name="ireport.zoom" value="1.0"/>
 	<property name="ireport.x" value="0"/>
 	<property name="ireport.y" value="0"/>
-	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="idempiere"/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="psql"/>
 	<property name="com.jaspersoft.studio.unit." value="pixel"/>
 	<property name="com.jaspersoft.studio.unit.pageHeight" value="pixel"/>
 	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.rows" value="true"/>
@@ -18,30 +18,57 @@
 	<property name="com.jaspersoft.studio.unit.rightMargin" value="pixel"/>
 	<property name="com.jaspersoft.studio.unit.columnWidth" value="pixel"/>
 	<property name="com.jaspersoft.studio.unit.columnSpacing" value="pixel"/>
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
 	<import value="net.sf.jasperreports.engine.*"/>
 	<import value="java.util.*"/>
 	<import value="net.sf.jasperreports.engine.data.*"/>
 	<parameter name="C_BPartner_ID" class="java.lang.Integer"/>
-	<parameter name="BASE_PATH" class="java.lang.String" isForPrompting="false">
-		<defaultValueExpression><![CDATA["Applications/idempiere-server/reports/"]]></defaultValueExpression>
-	</parameter>
-	<parameter name="RESOURCE_DIR" class="java.lang.String">
-		<defaultValueExpression><![CDATA["dev/"]]></defaultValueExpression>
-	</parameter>
+	<parameter name="AD_Org_ID" class="java.lang.Integer"/>
+	<parameter name="C_Activity_ID" class="java.lang.Integer"/>
+	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
+	<parameter name="C_Campaign_ID" class="java.lang.Integer"/>
+	<parameter name="Account_ID" class="java.lang.Integer"/>
 	<queryString language="SQL">
-		<![CDATA[select 
-	a.Name as kh,
-    a.value as value,
-    a.description as description
-from
-	C_BPartner a 
-	
-where
-a.C_BPartner_ID=$P{C_BPartner_ID}]]>
+		<![CDATA[SELECT 
+    case when $P{AD_Org_ID} is not null then org.name end as bophan,
+    CASE WHEN $P{Account_ID} IS NOT NULL THEN (a.value || '_' || a.name) END AS taikhoan,
+    CASE WHEN $P{C_BPartner_ID} IS NOT NULL THEN cb.name END AS doituong,
+    case when $P{C_Campaign_ID} is not null then cc.name end as chiendich,
+    case when $P{C_Activity_ID} is not null then ac.name end as hoatdong
+
+FROM c_elementvalue a
+FULL JOIN c_bpartner cb ON true
+full join c_campaign cc  on true
+full join c_activity ac  on true
+full join ad_org org on true
+WHERE a.ad_client_id = $P{AD_CLIENT_ID}
+  AND ($P{Account_ID} IS NULL OR a.c_elementvalue_id = $P{Account_ID})
+  AND ($P{C_BPartner_ID} IS NULL OR cb.c_bpartner_id = $P{C_BPartner_ID})
+  and ($P{C_Campaign_ID} is null or cc.c_campaign_id = $P{C_Campaign_ID})
+  and ($P{C_Activity_ID} is null or ac.c_activity_id  = $P{C_Activity_ID})
+  and ($P{AD_Org_ID} is null or org.ad_org_id = $P{AD_Org_ID})
+limit 1]]>
 	</queryString>
-	<field name="value" class="java.lang.String"/>
-	<field name="description" class="java.lang.String"/>
-	<field name="kh" class="java.lang.String"/>
+	<field name="bophan" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="bophan"/>
+		<property name="com.jaspersoft.studio.field.label" value="bophan"/>
+	</field>
+	<field name="taikhoan" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="taikhoan"/>
+		<property name="com.jaspersoft.studio.field.label" value="taikhoan"/>
+	</field>
+	<field name="doituong" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="doituong"/>
+		<property name="com.jaspersoft.studio.field.label" value="doituong"/>
+	</field>
+	<field name="chiendich" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="chiendich"/>
+		<property name="com.jaspersoft.studio.field.label" value="chiendich"/>
+	</field>
+	<field name="hoatdong" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="hoatdong"/>
+		<property name="com.jaspersoft.studio.field.label" value="hoatdong"/>
+	</field>
 	<background>
 		<band splitType="Stretch"/>
 	</background>
@@ -49,59 +76,46 @@ a.C_BPartner_ID=$P{C_BPartner_ID}]]>
 		<band splitType="Stretch"/>
 	</title>
 	<pageHeader>
-		<band height="20" splitType="Stretch">
+		<band height="115" splitType="Stretch">
 			<property name="local_mesure_unitheight" value="pixel"/>
 			<property name="com.jaspersoft.studio.unit.height" value="px"/>
 			<textField isBlankWhenNull="true">
-				<reportElement x="410" y="0" width="165" height="20" uuid="791aa6d3-3878-4602-92fc-6a03f609e59d">
-					<property name="local_mesure_unitheight" value="pixel"/>
-					<property name="com.jaspersoft.studio.unit.height" value="px"/>
-					<property name="com.jaspersoft.studio.unit.x" value="px"/>
-				</reportElement>
-				<textElement verticalAlignment="Middle">
-					<font fontName="Arial" size="12"/>
+				<reportElement x="0" y="0" width="575" height="23" isRemoveLineWhenBlank="true" uuid="5d804c73-67e0-4219-b039-74c87c5d79c8"/>
+				<textElement markup="none">
+					<font fontName="Arial" size="11" isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{kh}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{bophan}==null?null: "Bộ Phận: "+$F{bophan}]]></textFieldExpression>
 			</textField>
-			<staticText>
-				<reportElement x="0" y="0" width="125" height="20" uuid="e43f1b2d-ecc9-489c-a213-e9e9ea96401d">
-					<property name="local_mesure_unitheight" value="pixel"/>
-					<property name="com.jaspersoft.studio.unit.height" value="px"/>
-					<property name="local_mesure_unitx" value="pixel"/>
-					<property name="com.jaspersoft.studio.unit.x" value="px"/>
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-				</reportElement>
-				<textElement textAlignment="Right" verticalAlignment="Middle">
-					<font fontName="Arial" size="12" isBold="true"/>
-				</textElement>
-				<text><![CDATA[Mã KH:]]></text>
-			</staticText>
 			<textField isBlankWhenNull="true">
-				<reportElement x="125" y="0" width="185" height="20" uuid="58b31942-f792-4ed2-8d45-0b950557669c">
-					<property name="local_mesure_unitheight" value="pixel"/>
-					<property name="com.jaspersoft.studio.unit.height" value="px"/>
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-					<property name="com.jaspersoft.studio.unit.x" value="px"/>
-				</reportElement>
-				<textElement verticalAlignment="Middle">
-					<font fontName="Arial" size="12"/>
+				<reportElement x="0" y="46" width="575" height="23" isRemoveLineWhenBlank="true" uuid="fce9447e-025c-4c76-b080-69230743e29f"/>
+				<textElement markup="none">
+					<font fontName="Arial" size="11" isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{value}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{taikhoan}==null?null:"Tài khoản: "+$F{taikhoan}]]></textFieldExpression>
 			</textField>
-			<staticText>
-				<reportElement x="310" y="0" width="100" height="20" uuid="ed4a5193-7fc5-4f98-b400-c2962e6e2927">
-					<property name="local_mesure_unitheight" value="pixel"/>
+			<textField isBlankWhenNull="true">
+				<reportElement x="0" y="23" width="575" height="23" isRemoveLineWhenBlank="true" uuid="60d794a9-35a9-4fd1-9910-92948f3b3a8f">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
-					<property name="local_mesure_unitx" value="pixel"/>
-					<property name="com.jaspersoft.studio.unit.x" value="px"/>
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
-				<box rightPadding="3"/>
-				<textElement textAlignment="Right" verticalAlignment="Middle">
-					<font fontName="Arial" size="12" isBold="true"/>
+				<textElement markup="none">
+					<font fontName="Arial" size="11" isBold="true"/>
 				</textElement>
-				<text><![CDATA[Tên KH:]]></text>
-			</staticText>
+				<textFieldExpression><![CDATA[$F{doituong}==null?null:"Đối tượng: "+$F{doituong}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="0" y="69" width="575" height="23" isRemoveLineWhenBlank="true" uuid="acfc2669-d65d-4aee-9fad-8dceb594d66f"/>
+				<textElement markup="none">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{chiendich}==null?null:"Chiến dịch: "+$F{chiendich}]]></textFieldExpression>
+			</textField>
+			<textField isBlankWhenNull="true">
+				<reportElement x="0" y="92" width="575" height="23" isRemoveLineWhenBlank="true" uuid="6ebde0b8-e731-45ed-abd5-60a95c1efbc9"/>
+				<textElement markup="none">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{hoatdong}==null?null:"Hoạt động: "+$F{hoatdong}]]></textFieldExpression>
+			</textField>
 		</band>
 	</pageHeader>
 	<columnHeader>

@@ -4,8 +4,8 @@
 	<property name="ireport.scriptlethandling" value="0"/>
 	<property name="net.sf.jasperreports.export.xls.exclude.origin.keep.first.band.1" value="columnHeader"/>
 	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.2" value="pageFooter"/>
-	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.keep.first.band.1" value="columnHeader"/>
 	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.3" value="groupHeader"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.keep.first.band.1" value="columnHeader"/>
 	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.rows" value="true"/>
 	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.columns" value="true"/>
 	<property name="net.sf.jasperreports.export.xls.white.page.background" value="false"/>
@@ -15,7 +15,6 @@
 	<property name="net.sf.jasperreports.export.xls.exclude.origin.group.3" value="ProductGroup"/>
 	<property name="net.sf.jasperreports.export.xls.exclude.origin.report.3" value="ProductReport"/>
 	<property name="net.sf.jasperreports.export.xls.ignore.cell.border" value="false"/>
-	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.summary" value="summary"/>
 	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.2" value="pageFooter"/>
 	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.3" value="groupHeader"/>
 	<property name="net.sf.jasperreports.export.xlsx.remove.empty.space.between.rows" value="true"/>
@@ -55,109 +54,179 @@
 		<defaultValueExpression><![CDATA[new java.util.HashMap()]]></defaultValueExpression>
 	</parameter>
 	<parameter name="C_Activity_ID" class="java.lang.Integer"/>
+	<parameter name="C_Campaign_ID" class="java.lang.Integer"/>
 	<queryString language="SQL">
-		<![CDATA[WITH dau_ky AS (
-    SELECT 
-        fa.dateacct, fa.amtacctdr, fa.amtacctcr, fa.account_id, fa.description, 
-        fa.ad_table_id, fa.record_id, fa.c_bpartner_id,
-        CASE fa.ad_table_id
-            WHEN 53137 THEN (SELECT documentno FROM A_Asset_Addition WHERE A_Asset_Addition_ID = fa.record_id AND docstatus IN ('CO','CL'))
-            WHEN 53127 THEN (SELECT documentno FROM A_Asset_Disposed WHERE A_Asset_Disposed_ID = fa.record_id AND docstatus IN ('CO','CL'))
-            WHEN 53121 THEN (SELECT documentno FROM A_Depreciation_Entry WHERE A_Depreciation_Entry_ID = fa.record_id AND docstatus IN ('CO','CL'))
-            WHEN 735    THEN (SELECT documentno FROM C_AllocationHdr WHERE C_AllocationHdr_ID = fa.record_id AND docstatus IN ('CO','CL'))
-            WHEN 392    THEN (SELECT documentno FROM C_BankStatement WHERE C_BankStatement_ID = fa.record_id AND docstatus IN ('CO','CL'))
-            WHEN 407    THEN (SELECT documentno FROM C_Cash WHERE C_Cash_ID = fa.record_id AND docstatus IN ('CO','CL'))
-            WHEN 318    THEN (SELECT documentno FROM C_Invoice WHERE C_Invoice_ID = fa.record_id AND docstatus IN ('CO','CL'))
-            WHEN 335    THEN (SELECT documentno FROM C_Payment WHERE C_Payment_ID = fa.record_id AND docstatus IN ('CO','CL'))
-            WHEN 224    THEN (SELECT documentno FROM GL_Journal WHERE GL_Journal_ID = fa.record_id AND docstatus IN ('CO','CL'))
-            WHEN 319    THEN (SELECT documentno FROM M_InOut WHERE M_InOut_ID = fa.record_id AND docstatus IN ('CO','CL'))
-            WHEN 321    THEN (SELECT documentno FROM M_Inventory WHERE M_Inventory_ID = fa.record_id AND docstatus IN ('CO','CL'))
-            WHEN 472    THEN (SELECT documentno FROM M_MatchInv WHERE M_MatchInv_ID = fa.record_id)
-            WHEN 473    THEN (SELECT documentno FROM M_MatchPO WHERE M_MatchPO_ID = fa.record_id)
-            WHEN 323    THEN (SELECT documentno FROM M_Movement WHERE M_Movement_ID = fa.record_id AND docstatus IN ('CO','CL'))
-            WHEN 325    THEN (SELECT documentno FROM M_Production WHERE M_Production_ID = fa.record_id AND docstatus IN ('CO','CL'))
-        END AS documentno
+		<![CDATA[WITH fa_filtered AS (
+    SELECT fa.dateacct, fa.amtacctdr, fa.amtacctcr, fa.account_id,
+           fa.description,   bp.value AS bp_value,fa.ad_table_id,fa.record_id  
     FROM Fact_Acct fa
-    WHERE fa.dateacct < $P{StartDate}
-        AND fa.AD_Client_ID = $P{AD_CLIENT_ID}
-        AND (fa.AD_Org_ID = $P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)
-        AND fa.Account_ID = $P{Account_ID}
-        AND (fa.C_BPartner_ID = $P{C_BPartner_ID} OR $P{C_BPartner_ID} IS NULL)
-        AND (fa.C_Activity_ID = $P{C_Activity_ID} OR $P{C_Activity_ID} IS NULL)
-        AND fa.ad_table_id IN ( -- liệt kê các ID có thể
-            53137, 53127, 53121, 735, 392, 407, 318, 335, 224, 
-            319, 321, 472, 473, 323, 325
-        )
+    LEFT JOIN C_BPartner bp ON bp.c_bpartner_id = fa.c_bpartner_id
+    WHERE fa.AD_Client_ID = $P{AD_CLIENT_ID}
+      AND fa.Account_ID = $P{Account_ID}
+      AND (fa.AD_Org_ID = $P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)
+      AND (fa.C_BPartner_ID = $P{C_BPartner_ID} OR $P{C_BPartner_ID} IS NULL)
+      AND (fa.C_Activity_ID = $P{C_Activity_ID} OR $P{C_Activity_ID} IS NULL)
+      AND (fa.C_Campaign_ID = $P{C_Campaign_ID} OR $P{C_Campaign_ID} IS NULL)
+     
 ),
-phat_sinh AS (
-    SELECT 
-        fa.dateacct, fa.amtacctdr, fa.amtacctcr, fa.account_id, fa.description, 
-        fa.ad_table_id, fa.record_id, fa.c_bpartner_id,cb.value,
-        CASE fa.ad_table_id
-            WHEN 53137 THEN (SELECT documentno FROM A_Asset_Addition WHERE A_Asset_Addition_ID = fa.record_id AND docstatus IN ('CO','CL'))
-            WHEN 53127 THEN (SELECT documentno FROM A_Asset_Disposed WHERE A_Asset_Disposed_ID = fa.record_id AND docstatus IN ('CO','CL'))
-            WHEN 53121 THEN (SELECT documentno FROM A_Depreciation_Entry WHERE A_Depreciation_Entry_ID = fa.record_id AND docstatus IN ('CO','CL'))
-            WHEN 735    THEN (SELECT documentno FROM C_AllocationHdr WHERE C_AllocationHdr_ID = fa.record_id AND docstatus IN ('CO','CL'))
-            WHEN 392    THEN (SELECT documentno FROM C_BankStatement WHERE C_BankStatement_ID = fa.record_id AND docstatus IN ('CO','CL'))
-            WHEN 407    THEN (SELECT documentno FROM C_Cash WHERE C_Cash_ID = fa.record_id AND docstatus IN ('CO','CL'))
-            WHEN 318    THEN (SELECT documentno FROM C_Invoice WHERE C_Invoice_ID = fa.record_id AND docstatus IN ('CO','CL'))
-            WHEN 335    THEN (SELECT documentno FROM C_Payment WHERE C_Payment_ID = fa.record_id AND docstatus IN ('CO','CL'))
-            WHEN 224    THEN (SELECT documentno FROM GL_Journal WHERE GL_Journal_ID = fa.record_id AND docstatus IN ('CO','CL'))
-            WHEN 319    THEN (SELECT documentno FROM M_InOut WHERE M_InOut_ID = fa.record_id AND docstatus IN ('CO','CL'))
-            WHEN 321    THEN (SELECT documentno FROM M_Inventory WHERE M_Inventory_ID = fa.record_id AND docstatus IN ('CO','CL'))
-            WHEN 472    THEN (SELECT documentno FROM M_MatchInv WHERE M_MatchInv_ID = fa.record_id)
-            WHEN 473    THEN (SELECT documentno FROM M_MatchPO WHERE M_MatchPO_ID = fa.record_id)
-            WHEN 323    THEN (SELECT documentno FROM M_Movement WHERE M_Movement_ID = fa.record_id AND docstatus IN ('CO','CL'))
-            WHEN 325    THEN (SELECT documentno FROM M_Production WHERE M_Production_ID = fa.record_id AND docstatus IN ('CO','CL'))
-        END AS documentno
-    FROM Fact_Acct fa
-    left join c_bpartner cb on cb.c_bpartner_id = fa.c_bpartner_id 
-    WHERE fa.dateacct>=$P{StartDate} and fa.dateacct<=$P{EndDate}
-        AND fa.AD_Client_ID = $P{AD_CLIENT_ID}
-        AND (fa.AD_Org_ID = $P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)
-        AND fa.Account_ID = $P{Account_ID}
-        AND (fa.C_BPartner_ID = $P{C_BPartner_ID} OR $P{C_BPartner_ID} IS NULL)
-        AND (fa.C_Activity_ID = $P{C_Activity_ID} OR $P{C_Activity_ID} IS NULL)
-        AND fa.ad_table_id IN ( -- liệt kê các ID có thể
-            53137, 53127, 53121, 735, 392, 407, 318, 335, 224, 
-            319, 321, 472, 473, 323, 325
-        )
+base AS (
+    -- 1. A_Asset_Addition
+    SELECT fa.dateacct, fa.amtacctdr, fa.amtacctcr, fa.account_id,
+           fa.description, fa.bp_value AS value, a.documentno
+    FROM fa_filtered fa
+    JOIN A_Asset_Addition a ON a.a_asset_addition_id = fa.record_id
+    WHERE fa.ad_table_id = 53137 AND a.docstatus IN ('CO','CL')
+
+    UNION ALL
+    -- 2. A_Asset_Disposed
+    SELECT fa.dateacct, fa.amtacctdr, fa.amtacctcr, fa.account_id,
+           fa.description, fa.bp_value, a1.documentno
+    FROM fa_filtered fa
+    JOIN A_Asset_Disposed a1 ON a1.a_asset_disposed_id = fa.record_id
+    WHERE fa.ad_table_id = 53127 AND a1.docstatus IN ('CO','CL')
+
+    UNION ALL
+    -- 3. A_Depreciation_Entry
+    SELECT fa.dateacct, fa.amtacctdr, fa.amtacctcr, fa.account_id,
+           fa.description, fa.bp_value, a2.documentno
+    FROM fa_filtered fa
+    JOIN A_Depreciation_Entry a2 ON a2.a_depreciation_entry_id = fa.record_id
+    WHERE fa.ad_table_id = 53121 AND a2.docstatus IN ('CO','CL')
+
+    UNION ALL
+    -- 4. C_AllocationHdr
+    SELECT fa.dateacct, fa.amtacctdr, fa.amtacctcr, fa.account_id,
+           fa.description, fa.bp_value, a3.documentno
+    FROM fa_filtered fa
+    JOIN C_AllocationHdr a3 ON a3.c_allocationhdr_id = fa.record_id
+    WHERE fa.ad_table_id = 735 AND a3.docstatus IN ('CO','CL')
+
+    UNION ALL
+    -- 5. C_BankStatement
+    SELECT fa.dateacct, fa.amtacctdr, fa.amtacctcr, fa.account_id,
+           fa.description, fa.bp_value, a4.documentno
+    FROM fa_filtered fa
+    JOIN C_BankStatement a4 ON a4.c_bankstatement_id = fa.record_id
+    WHERE fa.ad_table_id = 392 AND a4.docstatus IN ('CO','CL')
+
+    UNION ALL
+    -- 6. C_Cash
+    SELECT fa.dateacct, fa.amtacctdr, fa.amtacctcr, fa.account_id,
+           fa.description, fa.bp_value, a5.documentno
+    FROM fa_filtered fa
+    JOIN C_Cash a5 ON a5.c_cash_id = fa.record_id
+    WHERE fa.ad_table_id = 407 AND a5.docstatus IN ('CO','CL')
+
+    UNION ALL
+    -- 7. C_Invoice
+    SELECT fa.dateacct, fa.amtacctdr, fa.amtacctcr, fa.account_id,
+           fa.description, fa.bp_value, a6.documentno
+    FROM fa_filtered fa
+    JOIN C_Invoice a6 ON a6.c_invoice_id = fa.record_id
+    WHERE fa.ad_table_id = 318 AND a6.docstatus IN ('CO','CL')
+
+    UNION ALL
+    -- 8. C_Payment
+    SELECT fa.dateacct, fa.amtacctdr, fa.amtacctcr, fa.account_id,
+           fa.description, fa.bp_value, a7.documentno
+    FROM fa_filtered fa
+    JOIN C_Payment a7 ON a7.c_payment_id = fa.record_id
+    WHERE fa.ad_table_id = 335 AND a7.docstatus IN ('CO','CL')
+
+    UNION ALL
+    -- 9. GL_Journal
+    SELECT fa.dateacct, fa.amtacctdr, fa.amtacctcr, fa.account_id,
+           fa.description, fa.bp_value, a8.documentno
+    FROM fa_filtered fa
+    JOIN GL_Journal a8 ON a8.gl_journal_id = fa.record_id
+    WHERE fa.ad_table_id = 224 AND a8.docstatus IN ('CO','CL')
+
+    UNION ALL
+    -- 10. M_InOut
+    SELECT fa.dateacct, fa.amtacctdr, fa.amtacctcr, fa.account_id,
+           fa.description, fa.bp_value, a9.documentno
+    FROM fa_filtered fa
+    JOIN M_InOut a9 ON a9.m_inout_id = fa.record_id
+    WHERE fa.ad_table_id = 319 AND a9.docstatus IN ('CO','CL')
+
+    UNION ALL
+    -- 11. M_Inventory
+    SELECT fa.dateacct, fa.amtacctdr, fa.amtacctcr, fa.account_id,
+           fa.description, fa.bp_value, a10.documentno
+    FROM fa_filtered fa
+    JOIN M_Inventory a10 ON a10.m_inventory_id = fa.record_id
+    WHERE fa.ad_table_id = 321 AND a10.docstatus IN ('CO','CL')
+
+    UNION ALL
+    -- 12. M_MatchInv
+    SELECT fa.dateacct, fa.amtacctdr, fa.amtacctcr, fa.account_id,
+           fa.description, fa.bp_value, a11.documentno
+    FROM fa_filtered fa
+    JOIN M_MatchInv a11 ON a11.m_matchinv_id = fa.record_id
+    WHERE fa.ad_table_id = 472
+
+    UNION ALL
+    -- 13. M_MatchPO
+    SELECT fa.dateacct, fa.amtacctdr, fa.amtacctcr, fa.account_id,
+           fa.description, fa.bp_value, a12.documentno
+    FROM fa_filtered fa
+    JOIN M_MatchPO a12 ON a12.m_matchpo_id = fa.record_id
+    WHERE fa.ad_table_id = 473
+
+    UNION ALL
+    -- 14. M_Movement
+    SELECT fa.dateacct, fa.amtacctdr, fa.amtacctcr, fa.account_id,
+           fa.description, fa.bp_value, a13.documentno
+    FROM fa_filtered fa
+    JOIN M_Movement a13 ON a13.m_movement_id = fa.record_id
+    WHERE fa.ad_table_id = 323 AND a13.docstatus IN ('CO','CL')
+
+    UNION ALL
+    -- 15. M_Production
+    SELECT fa.dateacct, fa.amtacctdr, fa.amtacctcr, fa.account_id,
+           fa.description, fa.bp_value, a14.documentno
+    FROM fa_filtered fa
+    JOIN M_Production a14 ON a14.m_production_id = fa.record_id
+    WHERE fa.ad_table_id = 325 AND a14.docstatus IN ('CO','CL')
 )
-
-SELECT 
-    NULL AS ngay, NULL AS value, 'Số dư đầu kỳ:' AS noidung,
-    NULL AS psn, NULL AS psc,
-    SUM(
-        CASE 
-            WHEN ev.accountsign = 'N' THEN d.amtacctdr - d.amtacctcr
-            WHEN ev.accountsign = 'C' THEN d.amtacctcr - d.amtacctdr
-            ELSE d.amtacctdr - d.amtacctcr
-        END
-    ) AS ps, 
-    NULL AS soct
-FROM dau_ky d
-JOIN c_elementvalue ev ON d.account_id = ev.c_elementvalue_id
-LEFT JOIN C_BPartner bp ON bp.c_bpartner_id = d.c_bpartner_id
-
-union all 
-
-SELECT 
-    d.dateacct  AS ngay, d.value AS value, d.description  AS noidung,
-   	case when d.amtacctcr  =0 then d.amtacctdr else 0 end  AS psn, 
-   	case when d.amtacctdr  =0 then d.amtacctcr else 0 end  AS psc,
-    
-    CASE 
-            WHEN ev.accountsign = 'N' THEN d.amtacctdr - d.amtacctcr
-            WHEN ev.accountsign = 'C' THEN d.amtacctcr - d.amtacctdr
-            ELSE d.amtacctdr - d.amtacctcr
-        END
-     AS ps, 
-    d.documentno AS soct
-FROM phat_sinh d
-JOIN c_elementvalue ev ON d.account_id = ev.c_elementvalue_id
-LEFT JOIN C_BPartner bp ON bp.c_bpartner_id = d.c_bpartner_id
-where d.documentno is not null
-]]>
+select * 
+	from(
+	SELECT
+	    NULL AS ngay,
+	    NULL AS value,
+	    'Số dư đầu kỳ:' AS noidung,
+	    NULL AS psn,
+	    NULL AS psc,
+	    SUM(CASE
+	        WHEN ev.accountsign='N' THEN b.amtacctdr - b.amtacctcr
+	        WHEN ev.accountsign='C' THEN b.amtacctcr - b.amtacctdr
+	        else b.amtacctdr-b.amtacctcr
+	    END) AS ps,
+	    NULL AS soct
+	FROM base b
+	JOIN c_elementvalue ev ON ev.c_elementvalue_id = b.account_id
+	WHERE b.dateacct < $P{StartDate}
+	
+	UNION ALL
+	
+	-- Phát sinh trong kỳ
+	SELECT
+	    b.dateacct AS ngay,
+	    b.value,
+	    b.description AS noidung,
+	    CASE WHEN b.amtacctcr = 0 THEN b.amtacctdr ELSE 0 END AS psn,
+	    CASE WHEN b.amtacctdr = 0 THEN b.amtacctcr ELSE 0 END AS psc,
+	    CASE
+	        WHEN ev.accountsign='N' THEN (CASE WHEN b.amtacctcr=0 THEN b.amtacctdr ELSE -b.amtacctcr END)
+	        WHEN ev.accountsign='C' THEN (CASE WHEN b.amtacctdr=0 THEN b.amtacctcr ELSE -b.amtacctdr END)
+	        ELSE (CASE WHEN b.amtacctcr=0 THEN b.amtacctdr ELSE -b.amtacctcr END)
+	    END AS ps,
+	    COALESCE(b.documentno,'') AS soct 
+	FROM base b
+	JOIN c_elementvalue ev ON ev.c_elementvalue_id = b.account_id
+	WHERE b.dateacct BETWEEN $P{StartDate} AND $P{EndDate}
+) as k
+order by k.ngay NULLS FIRST]]>
 	</queryString>
 	<field name="ngay" class="java.sql.Timestamp">
 		<property name="com.jaspersoft.studio.field.name" value="ngay"/>
@@ -230,45 +299,9 @@ where d.documentno is not null
 		<band splitType="Stretch"/>
 	</background>
 	<title>
-		<band height="179">
+		<band height="113">
 			<property name="local_mesure_unitheight" value="pixel"/>
 			<property name="com.jaspersoft.studio.unit.height" value="px"/>
-			<subreport>
-				<reportElement x="0" y="137" width="575" height="20" uuid="4655c010-0d9e-48fa-af5a-a375624d4bb4">
-					<property name="local_mesure_unitheight" value="pixel"/>
-					<property name="com.jaspersoft.studio.unit.height" value="px"/>
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-				</reportElement>
-				<subreportParameter name="StartDate">
-					<subreportParameterExpression><![CDATA[$P{StartDate}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="EndDate">
-					<subreportParameterExpression><![CDATA[$P{EndDate}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="AD_Org_ID">
-					<subreportParameterExpression><![CDATA[$P{AD_Org_ID}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="SUBREPORT_DIR">
-					<subreportParameterExpression><![CDATA[$P{SUBREPORT_DIR}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="AD_CLIENT_ID">
-					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="Account_ID">
-					<subreportParameterExpression><![CDATA[$P{Account_ID}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="C_BPartner_ID">
-					<subreportParameterExpression><![CDATA[$P{C_BPartner_ID}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="TOTALS">
-					<subreportParameterExpression><![CDATA[$P{TOTALS}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="C_Activity_ID">
-					<subreportParameterExpression><![CDATA[$P{C_Activity_ID}]]></subreportParameterExpression>
-				</subreportParameter>
-				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
-				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"KhachHang.jasper"]]></subreportExpression>
-			</subreport>
 			<subreport>
 				<reportElement x="0" y="0" width="575" height="42" uuid="c8f3bd92-1b44-4ed8-b2d5-d3660e7ca53c">
 					<property name="com.jaspersoft.studio.unit.x" value="px"/>
@@ -303,79 +336,6 @@ where d.documentno is not null
 				</subreportParameter>
 				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
 				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"CompanyHeader.jasper"]]></subreportExpression>
-			</subreport>
-			<subreport>
-				<reportElement x="0" y="115" width="575" height="20" isRemoveLineWhenBlank="true" uuid="224a6e52-301d-458d-8876-9ff087c3faf9">
-					<property name="local_mesure_unitheight" value="pixel"/>
-					<property name="com.jaspersoft.studio.unit.height" value="px"/>
-					<property name="com.jaspersoft.studio.unit.x" value="px"/>
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-				</reportElement>
-				<subreportParameter name="StartDate">
-					<subreportParameterExpression><![CDATA[$P{StartDate}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="EndDate">
-					<subreportParameterExpression><![CDATA[$P{EndDate}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="AD_Org_ID">
-					<subreportParameterExpression><![CDATA[$P{AD_Org_ID}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="SUBREPORT_DIR">
-					<subreportParameterExpression><![CDATA[$P{SUBREPORT_DIR}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="AD_CLIENT_ID">
-					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="Account_ID">
-					<subreportParameterExpression><![CDATA[$P{Account_ID}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="C_BPartner_ID">
-					<subreportParameterExpression><![CDATA[$P{C_BPartner_ID}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="TOTALS">
-					<subreportParameterExpression><![CDATA[$P{TOTALS}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="C_Activity_ID">
-					<subreportParameterExpression><![CDATA[$P{C_Activity_ID}]]></subreportParameterExpression>
-				</subreportParameter>
-				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
-				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"TaiKhoan.jasper"]]></subreportExpression>
-			</subreport>
-			<subreport>
-				<reportElement x="0" y="159" width="575" height="20" uuid="2319e2b9-b456-4b68-99ee-3b7c1adb74fe">
-					<property name="local_mesure_unitheight" value="pixel"/>
-					<property name="com.jaspersoft.studio.unit.height" value="px"/>
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-				</reportElement>
-				<subreportParameter name="StartDate">
-					<subreportParameterExpression><![CDATA[$P{StartDate}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="EndDate">
-					<subreportParameterExpression><![CDATA[$P{EndDate}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="AD_Org_ID">
-					<subreportParameterExpression><![CDATA[$P{AD_Org_ID}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="SUBREPORT_DIR">
-					<subreportParameterExpression><![CDATA[$P{SUBREPORT_DIR}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="AD_CLIENT_ID">
-					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="Account_ID">
-					<subreportParameterExpression><![CDATA[$P{Account_ID}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="C_BPartner_ID">
-					<subreportParameterExpression><![CDATA[$P{C_BPartner_ID}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="TOTALS">
-					<subreportParameterExpression><![CDATA[$P{TOTALS}]]></subreportParameterExpression>
-				</subreportParameter>
-				<subreportParameter name="C_Activity_ID">
-					<subreportParameterExpression><![CDATA[$P{C_Activity_ID}]]></subreportParameterExpression>
-				</subreportParameter>
-				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
-				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"Sub_HoatDong.jasper"]]></subreportExpression>
 			</subreport>
 			<textField pattern="dd/MM/yyyy" isBlankWhenNull="true">
 				<reportElement key="textField-5" x="0" y="71" width="575" height="20" uuid="33c3a4fc-35d3-4cc2-9217-846961f033c1">
@@ -442,7 +402,7 @@ where d.documentno is not null
 					<subreportParameterExpression><![CDATA[$P{C_Activity_ID}]]></subreportParameterExpression>
 				</subreportParameter>
 				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
-				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"BoPhan.jasper"]]></subreportExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"KhachHang.jasper"]]></subreportExpression>
 			</subreport>
 		</band>
 	</title>

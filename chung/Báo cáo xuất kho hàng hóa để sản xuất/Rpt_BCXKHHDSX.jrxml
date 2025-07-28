@@ -16,7 +16,6 @@
 	<property name="net.sf.jasperreports.export.xls.exclude.origin.group.3" value="ProductGroup"/>
 	<property name="net.sf.jasperreports.export.xls.exclude.origin.report.3" value="ProductReport"/>
 	<property name="net.sf.jasperreports.export.xls.ignore.cell.border" value="false"/>
-	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.summary" value="summary"/>
 	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.2" value="pageFooter"/>
 	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.3" value="groupHeader"/>
 	<property name="net.sf.jasperreports.export.xlsx.remove.empty.space.between.rows" value="true"/>
@@ -61,28 +60,57 @@
 	<parameter name="C_BPartner_ID" class="java.lang.Integer"/>
 	<parameter name="C_Activity_ID" class="java.lang.Integer"/>
 	<parameter name="M_Product_ID" class="java.lang.Integer"/>
+	<parameter name="C_Campaign_ID" class="java.lang.Integer"/>
 	<queryString language="SQL">
-		<![CDATA[select mn,tn,value,name,sl,tt, case when sl <>0 then tt/sl else 0 end as dg from
-(	
-	select nhh.value as mn,nhh.name as tn,t.value,t.name, sum(t.qty) as sl,sum(t.amtacctdr) as tt
-	from 
-	(
-		select iol.ad_orgtrx_id,fc.m_locator_id,hh.m_product_category_id,hh.m_product_id,hh.value,hh.name,(fc.qty) as qty,iol.movementdate,case when fc.qty >0 then fc.amtacctdr else -1*fc.amtacctcr end as amtacctdr 
-		from fact_acct fc	
-		join m_inventory iol on fc.record_id=iol.m_inventory_id and iol.movementdate<=$P{EndDate} and iol.movementdate>=$P{StartDate} and iol.docstatus in ('CO','CL') 
-		join m_inventoryline civ on fc.line_id = civ.m_inventoryline_id and fc.qty = civ.qtyinternaluse 
-		join m_product hh on hh.m_product_id = fc.m_product_id 
-		where   fc.ad_table_id=321  and fc.ad_client_id=$P{AD_CLIENT_ID} and (fc.AD_Org_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-		and fc.dateacct <=$P{EndDate} and fc.dateacct>=$P{StartDate}  and (fc.c_activity_id =$P{C_Activity_ID} or $P{C_Activity_ID} is null)
-		and iol.C_DocType_ID in  (SELECT C_DocType_ID FROM C_DocType Where DocBaseType='MMI' AND (DocSubTypeInv='IU' OR DocSubTypeInv IS null) and ad_client_id  = $P{AD_CLIENT_ID})
-		and (fc.m_product_id  = $P{M_Product_ID} or $P{M_Product_ID} is null)
-	) as t
-	join m_product_category nhh on t.m_product_category_id=nhh.m_product_category_id and (nhh.M_Product_Category_ID=$P{M_Product_Category_ID} or $P{M_Product_Category_ID} is null)
-	join m_locator kho on t.m_locator_id=kho.m_locator_id and (kho.m_locator_id=$P{M_Locator_ID} or $P{M_Locator_ID} is null)
-	group by nhh.value ,nhh.name ,t.value,t.name
-	order by nhh.name,t.value,t.name  asc
-	) as k
-where sl <>0]]>
+		<![CDATA[WITH doc_type AS (
+    SELECT C_DocType_ID
+    FROM C_DocType
+    WHERE DocBaseType = 'MMI'
+      AND (DocSubTypeInv = 'IU' OR DocSubTypeInv IS NULL)
+      AND ad_client_id = $P{AD_CLIENT_ID}
+),
+filtered_fact AS (
+    SELECT 
+        fc.ad_orgtrx_id,
+        fc.m_locator_id,
+        p.m_product_category_id,
+        p.value,
+        p.name,
+        fc.qty,
+        iol.movementdate,
+        CASE WHEN fc.qty > 0 THEN fc.amtacctdr ELSE -1 * fc.amtacctcr END AS amtacctdr
+    FROM fact_acct fc
+    JOIN m_inventory iol ON fc.record_id = iol.m_inventory_id
+        AND iol.docstatus IN ('CO','CL')
+        AND iol.movementdate BETWEEN $P{StartDate} AND $P{EndDate}
+    JOIN m_inventoryline civ ON fc.line_id = civ.m_inventoryline_id
+        AND fc.qty = civ.qtyinternaluse
+    JOIN m_product p ON p.m_product_id = fc.m_product_id
+    WHERE fc.ad_table_id = 321
+      AND fc.ad_client_id = $P{AD_CLIENT_ID}
+      AND fc.dateacct BETWEEN $P{StartDate} AND $P{EndDate}
+      AND fc.c_activity_id = COALESCE($P{C_Activity_ID}, fc.c_activity_id)
+      AND fc.c_campaign_id = COALESCE($P{C_Campaign_ID}, fc.c_campaign_id)
+      AND fc.m_product_id = COALESCE($P{M_Product_ID}, fc.m_product_id)
+      AND fc.ad_org_id = COALESCE($P{AD_Org_ID}, fc.ad_org_id)
+      AND iol.C_DocType_ID IN (SELECT C_DocType_ID FROM doc_type)
+)
+SELECT 
+    cat.value AS mn,
+    cat.name AS tn,
+    f.value,
+    f.name,
+    SUM(f.qty) AS sl,
+    SUM(f.amtacctdr) AS tt,
+    CASE WHEN SUM(f.qty) <> 0 THEN SUM(f.amtacctdr) / SUM(f.qty) ELSE 0 END AS dg
+FROM filtered_fact f
+JOIN m_product_category cat ON f.m_product_category_id = cat.m_product_category_id
+    AND cat.m_product_category_id = COALESCE($P{M_Product_Category_ID}, cat.m_product_category_id)
+JOIN m_locator kho ON f.m_locator_id = kho.m_locator_id
+    AND kho.m_locator_id = COALESCE($P{M_Locator_ID}, kho.m_locator_id)
+GROUP BY cat.value, cat.name, f.value, f.name
+HAVING SUM(f.qty) <> 0
+ORDER BY cat.name, f.value, f.name;]]>
 	</queryString>
 	<field name="mn" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="mn"/>
@@ -130,6 +158,9 @@ where sl <>0]]>
 	<variable name="TTNhh" class="java.math.BigDecimal" resetType="Group" resetGroup="Nh" calculation="Sum">
 		<variableExpression><![CDATA[$F{tt}]]></variableExpression>
 	</variable>
+	<variable name="STT" class="java.lang.Integer" resetType="Group" resetGroup="Nh" calculation="Sum">
+		<variableExpression><![CDATA[1]]></variableExpression>
+	</variable>
 	<group name="Nh">
 		<groupExpression><![CDATA[$F{mn}]]></groupExpression>
 		<groupHeader>
@@ -141,10 +172,9 @@ where sl <>0]]>
 		<groupFooter>
 			<band height="27">
 				<textField>
-					<reportElement x="80" y="0" width="210" height="27" uuid="de56a7fc-381d-479b-bf90-028f169f74a0">
+					<reportElement x="110" y="0" width="180" height="27" uuid="de56a7fc-381d-479b-bf90-028f169f74a0">
 						<property name="com.jaspersoft.studio.unit.height" value="px"/>
 						<property name="local_mesure_unitwidth" value="pixel"/>
-						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					</reportElement>
 					<box leftPadding="2" rightPadding="2">
 						<pen lineWidth="0.75"/>
@@ -169,7 +199,7 @@ where sl <>0]]>
 					<textFieldExpression><![CDATA[$V{SLnhh}]]></textFieldExpression>
 				</textField>
 				<staticText>
-					<reportElement x="0" y="0" width="80" height="27" uuid="bf8330cb-3fa3-4fc2-8131-be594c9248fa">
+					<reportElement x="0" y="0" width="110" height="27" uuid="bf8330cb-3fa3-4fc2-8131-be594c9248fa">
 						<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					</reportElement>
 					<box leftPadding="2" rightPadding="2">
@@ -178,7 +208,7 @@ where sl <>0]]>
 					<textElement textAlignment="Left" verticalAlignment="Middle">
 						<font fontName="Arial" size="12" isBold="true"/>
 					</textElement>
-					<text><![CDATA[Cộng nhóm HH]]></text>
+					<text><![CDATA[Cộng nhóm ]]></text>
 				</staticText>
 				<textField pattern="#,##0.00#" isBlankWhenNull="true">
 					<reportElement x="453" y="0" width="102" height="27" uuid="49463634-4ec9-4275-b470-4d948a5694c1">
@@ -391,7 +421,7 @@ where sl <>0]]>
 			<property name="local_mesure_unitheight" value="pixel"/>
 			<property name="com.jaspersoft.studio.unit.height" value="px"/>
 			<staticText>
-				<reportElement x="0" y="0" width="80" height="27" uuid="9b25b95e-b85e-44d8-95c8-0b7b1661b48c">
+				<reportElement x="30" y="0" width="80" height="27" uuid="9b25b95e-b85e-44d8-95c8-0b7b1661b48c">
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 				</reportElement>
@@ -404,7 +434,7 @@ where sl <>0]]>
 				<text><![CDATA[Mã hàng]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="80" y="0" width="210" height="27" uuid="edfe045e-26e4-4b3c-8d08-1bd0f99baca6">
+				<reportElement x="110" y="0" width="180" height="27" uuid="edfe045e-26e4-4b3c-8d08-1bd0f99baca6">
 					<property name="local_mesure_unitx" value="pixel"/>
 					<property name="com.jaspersoft.studio.unit.x" value="px"/>
 					<property name="local_mesure_unitwidth" value="pixel"/>
@@ -461,6 +491,19 @@ where sl <>0]]>
 				</textElement>
 				<text><![CDATA[Đơn giá]]></text>
 			</staticText>
+			<staticText>
+				<reportElement x="0" y="0" width="30" height="27" uuid="cd4ceae4-1fb0-4e98-a127-e7569e4c7a46">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[STT]]></text>
+			</staticText>
 		</band>
 	</columnHeader>
 	<detail>
@@ -468,7 +511,7 @@ where sl <>0]]>
 			<property name="local_mesure_unitheight" value="pixel"/>
 			<property name="com.jaspersoft.studio.unit.height" value="px"/>
 			<textField>
-				<reportElement x="0" y="0" width="80" height="27" uuid="238320d9-52f4-4b8d-997b-4a9ee348cf20">
+				<reportElement x="30" y="0" width="80" height="27" uuid="238320d9-52f4-4b8d-997b-4a9ee348cf20">
 					<property name="local_mesure_unitx" value="pixel"/>
 					<property name="com.jaspersoft.studio.unit.x" value="px"/>
 					<property name="local_mesure_unitheight" value="pixel"/>
@@ -483,9 +526,8 @@ where sl <>0]]>
 				<textFieldExpression><![CDATA[$F{value}]]></textFieldExpression>
 			</textField>
 			<textField>
-				<reportElement x="80" y="0" width="210" height="27" uuid="d5d34af4-7867-4347-82a4-03db48dd2fc2">
+				<reportElement x="110" y="0" width="180" height="27" uuid="d5d34af4-7867-4347-82a4-03db48dd2fc2">
 					<property name="local_mesure_unitwidth" value="pixel"/>
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					<property name="local_mesure_unitx" value="pixel"/>
 					<property name="com.jaspersoft.studio.unit.x" value="px"/>
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
@@ -542,6 +584,21 @@ where sl <>0]]>
 					<font fontName="Arial"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{dg}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="0" y="0" width="30" height="27" uuid="227a2481-9677-4809-b264-761d5f68b85d">
+					<property name="local_mesure_unitx" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					<property name="local_mesure_unitheight" value="pixel"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.75"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{STT}]]></textFieldExpression>
 			</textField>
 		</band>
 	</detail>
@@ -625,7 +682,7 @@ where sl <>0]]>
 				<text><![CDATA[Lập biểu]]></text>
 			</staticText>
 			<staticText>
-				<reportElement key="staticText-8" positionType="Float" stretchType="RelativeToTallestObject" x="0" y="0" width="80" height="27" uuid="2b3725aa-0d64-4a2e-a8db-2b52146ac9dc">
+				<reportElement key="staticText-8" positionType="Float" stretchType="RelativeToTallestObject" x="0" y="0" width="110" height="27" uuid="2b3725aa-0d64-4a2e-a8db-2b52146ac9dc">
 					<property name="local_mesure_unitwidth" value="pixel"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					<property name="local_mesure_unitheight" value="pixel"/>
@@ -677,9 +734,8 @@ where sl <>0]]>
 				<textFieldExpression><![CDATA[$V{TSL}]]></textFieldExpression>
 			</textField>
 			<staticText>
-				<reportElement key="staticText-8" positionType="Float" stretchType="RelativeToTallestObject" x="80" y="0" width="210" height="27" uuid="0a83935b-9139-413d-bf60-750c3de1b374">
+				<reportElement key="staticText-8" positionType="Float" stretchType="RelativeToTallestObject" x="110" y="0" width="180" height="27" uuid="0a83935b-9139-413d-bf60-750c3de1b374">
 					<property name="local_mesure_unitwidth" value="pixel"/>
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					<property name="local_mesure_unitheight" value="pixel"/>
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					<property name="local_mesure_unitx" value="pixel"/>
