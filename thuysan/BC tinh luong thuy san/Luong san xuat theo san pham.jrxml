@@ -1,0 +1,1416 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.20.0.final using JasperReports Library version 6.20.0-2bc7ab61c56f459e8176eb05c7705e145cd400ad  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Luong san xuat theo san pham" language="groovy" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="3da0950c-1458-4dfa-9688-b7a7a6d7c5f1">
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="psql"/>
+	<property name="com.jaspersoft.studio.unit." value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.pageHeight" value="pixel"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.keep.first.band.1" value="columnHeader"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.keep.first.band.1" value="columnHeader"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.2" value="pageFooter"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.3" value="groupHeader"/>
+	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.rows" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.columns" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.white.page.background" value="false"/>
+	<property name="net.sf.jasperreports.export.xls.detect.cell.type" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.ignore.graphics" value="false"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.1" value="pageHeader"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.group.3" value="ProductGroup"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.report.3" value="ProductReport"/>
+	<property name="net.sf.jasperreports.export.xls.ignore.cell.border" value="false"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.2" value="pageFooter"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.3" value="groupHeader"/>
+	<property name="net.sf.jasperreports.export.xlsx.remove.empty.space.between.rows" value="true"/>
+	<property name="net.sf.jasperreports.export.xlsx.remove.empty.space.between.columns" value="true"/>
+	<property name="net.sf.jasperreports.export.xlsx.white.page.background" value="false"/>
+	<property name="net.sf.jasperreports.export.xlsx.detect.cell.type" value="true"/>
+	<property name="net.sf.jasperreports.export.xlsx.ignore.graphics" value="false"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.1" value="pageHeader"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.group.3" value="ProductGroup"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.report.3" value="ProductReport"/>
+	<property name="net.sf.jasperreports.export.xlsx.ignore.cell.border" value="false"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.summary" value="summary"/>
+	<property name="com.jaspersoft.studio.unit.pageWidth" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.topMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.bottomMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.leftMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.rightMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.columnWidth" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.columnSpacing" value="pixel"/>
+	<style name="CategoryStyle" fontName="SansSerif" fontSize="11">
+		<conditionalStyle>
+			<conditionExpression><![CDATA[$F{value} != null && !$F{value}.contains(".")]]></conditionExpression>
+			<style mode="Transparent" isBold="true"/>
+		</conditionalStyle>
+	</style>
+	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
+	<parameter name="StartDate" class="java.util.Date"/>
+	<parameter name="EndDate" class="java.util.Date"/>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String">
+		<defaultValueExpression><![CDATA["dev/"]]></defaultValueExpression>
+	</parameter>
+	<queryString language="SQL">
+		<![CDATA[WITH dongia AS (
+    SELECT dgl.hsv_luongsxvh_id,
+           dgl.hsv_dongialuong,
+           dg.startdate,
+           dg.enddate  
+    FROM hsv_dgluong dg 
+    JOIN hsv_dgluongLine dgl ON dg.hsv_dgluong_id = dgl.hsv_dgluong_id 
+    WHERE dg.hsv_loaidongia_id = 1000061 
+      AND dg.ad_client_id = $P{AD_CLIENT_ID}
+),
+danhmuc AS (
+    SELECT lsx.hsv_luongsxvh_id, 
+           trim(lsx.value) AS value, 
+           name,
+           hsv_stt 
+    FROM hsv_luongsxvh lsx 
+    WHERE lsx.ad_client_id = $P{AD_CLIENT_ID} 
+      AND lsx.isactive = 'Y'
+),
+nhatky_sx as (
+	select nkl.hsv_sanpham_id, nkl.qtyother  
+	from hsv_nhatkysx nk
+	join hsv_nhatkysxline nkl on nk.hsv_nhatkysx_id =nkl.hsv_nhatkysx_id 
+	where nk.ad_client_id = $P{AD_CLIENT_ID} and nk.dateacct >= $P{StartDate} and nk.dateacct <= $P{EndDate}
+	
+),
+chuyen_kho as (
+	select civ.m_product_id,
+		civ.m_locator_id,
+		civ.movementqty 		
+	from m_movement ci
+	join m_movementline civ on ci.m_movement_id = civ.m_movement_id 
+	 WHERE ci.ad_client_id = $P{AD_CLIENT_ID}
+      AND ci.docstatus IN ('CL','CO')
+      AND ci.movementdate BETWEEN $P{StartDate} AND $P{EndDate}	     
+),
+xuat_ban as (
+	select hh.m_attributeset_id ,
+	civ.qtyentered, civ.m_locator_id
+	
+	from m_inout ci 
+	join  m_inoutline civ on ci.m_inout_id = civ.m_inout_id 
+	join m_product hh on hh.m_product_id = civ.m_product_id 
+	 WHERE ci.ad_client_id = $P{AD_CLIENT_ID}
+      AND ci.docstatus IN ('CL','CO') and ci.issotrx='Y'
+      AND ci.movementdate BETWEEN $P{StartDate} AND $P{EndDate}	
+     
+),
+xuat_ban_tt as (
+	select hh.m_attributeset_id ,ma.m_attributevalue_id, 
+	civ.qtyentered, civ.m_locator_id
+	from m_inout ci 
+	join  m_inoutline civ on ci.m_inout_id = civ.m_inout_id 
+	join m_attributeinstance ma on ma.m_attributesetinstance_id = civ.m_attributesetinstance_id  
+	join m_product hh on hh.m_product_id = civ.m_product_id 
+	 WHERE ci.ad_client_id = $P{AD_CLIENT_ID}
+      AND ci.docstatus IN ('CL','CO') and ci.issotrx='Y'
+      AND ci.movementdate BETWEEN $P{StartDate} AND $P{EndDate}	
+     
+),
+nhap_mua as (
+	select
+		civ.qtyentered, 
+		civ.m_product_id 
+	from m_inout ci 
+	join  m_inoutline civ on ci.m_inout_id = civ.m_inout_id 
+	 WHERE ci.ad_client_id = $P{AD_CLIENT_ID}
+      AND ci.docstatus IN ('CL','CO') and ci.issotrx='N'
+      AND ci.movementdate BETWEEN $P{StartDate} AND $P{EndDate}	
+
+),
+xuat_kho as (
+	select hh.m_attributeset_id , 
+	civ.m_locator_id ,
+	civ.QtyInternalUse
+	from m_inventory ci 
+	join m_inventoryline civ on ci.m_inventory_id = civ.m_inventory_id 
+	join m_product hh on hh.m_product_id = civ.m_product_id 
+	WHERE ci.ad_client_id = $P{AD_CLIENT_ID}
+      AND ci.docstatus IN ('CL','CO')
+      AND ci.movementdate BETWEEN $P{StartDate} AND $P{EndDate}	
+),
+nhap_kho as (
+	SELECT ci.c_campaign_id,
+           ci.movementdate,
+           civ.productionqty,
+           hh.m_attributeset_id,      
+           civ.m_locator_id,
+           civ.m_product_id 
+    FROM m_production ci
+    JOIN m_productionplan civ ON ci.m_production_id = civ.m_production_id
+    JOIN m_product hh ON hh.m_product_id = civ.m_product_id
+    WHERE ci.ad_client_id = $P{AD_CLIENT_ID}
+      AND ci.docstatus IN ('CL','CO')
+      AND ci.movementdate BETWEEN $P{StartDate} AND $P{EndDate}
+),
+nhap_kho_tt AS (
+    SELECT ci.c_campaign_id,
+           ci.movementdate,
+           civ.productionqty,
+           hh.m_attributeset_id,
+           ma.m_attributevalue_id,
+           civ.m_locator_id,
+           civ.m_product_id ,
+           ma.m_attribute_id 
+    FROM m_production ci
+    JOIN m_productionplan civ ON ci.m_production_id = civ.m_production_id
+    JOIN m_product hh ON hh.m_product_id = civ.m_product_id
+    LEFT JOIN m_attributeinstance ma 
+           ON ma.m_attributesetinstance_id = civ.m_attributesetinstance_id
+    WHERE ci.ad_client_id = $P{AD_CLIENT_ID}
+      AND ci.docstatus IN ('CL','CO')
+      AND ci.movementdate BETWEEN $P{StartDate} AND $P{EndDate}
+),
+nhap_kho_tt_tt AS (
+    SELECT ci.c_campaign_id,
+           ci.movementdate,
+           civ.productionqty,
+           hh.m_attributeset_id,
+           ma.m_attributevalue_id as  value1,
+           ma1.m_attributevalue_id as value2, 
+           ma.m_attribute_id, 
+           civ.m_locator_id,
+           civ.m_product_id 
+    FROM m_production ci
+    JOIN m_productionplan civ ON ci.m_production_id = civ.m_production_id
+    JOIN m_product hh ON hh.m_product_id = civ.m_product_id
+    LEFT JOIN m_attributeinstance ma 
+           ON ma.m_attributesetinstance_id = civ.m_attributesetinstance_id
+    LEFT JOIN m_attributeinstance ma1 
+           ON ma1.m_attributesetinstance_id = civ.m_attributesetinstance_id
+    WHERE ci.ad_client_id = $P{AD_CLIENT_ID}
+      AND ci.docstatus IN ('CL','CO')
+      AND ci.movementdate BETWEEN $P{StartDate} AND $P{EndDate}
+),
+filter_data as (
+	SELECT id, SUM(qty) AS qty
+	FROM (
+		select 'I' as id, null as qty 
+		union all
+	    -- I.01
+	    select  'I.01' AS id, SUM(miv.movementqty) AS qty
+	    FROM m_inout mi
+	    JOIN m_inoutline miv ON mi.m_inout_id = miv.m_inout_id
+	    JOIN hsv_lovansay hl ON hl.hsv_lovansay_id = miv.hsv_lovansay_id
+	    WHERE hl.hsv_loailo_id = 1000001
+	      AND mi.issotrx = 'N' and mi.docstatus in ('CL','CO')
+	      AND mi.ad_client_id = $P{AD_CLIENT_ID}
+	      AND mi.dateacct BETWEEN $P{StartDate} AND $P{EndDate}
+	
+	    UNION ALL
+	    
+	    SELECT 'I.02', SUM(miv.movementqty)
+	    FROM m_inout mi
+	    JOIN m_inoutline miv ON mi.m_inout_id = miv.m_inout_id
+	    JOIN hsv_lovansay hl ON hl.hsv_lovansay_id = miv.hsv_lovansay_id
+	    WHERE hl.hsv_loailo_id <> 1000001
+	      AND mi.issotrx = 'N' and mi.docstatus in ('CL','CO')
+	      AND mi.ad_client_id = $P{AD_CLIENT_ID}
+	      AND mi.dateacct BETWEEN $P{StartDate} AND $P{EndDate}
+		
+	   	union all 
+	    SELECT 'I.03', SUM(miv.movementqty)
+	    FROM m_inout mi
+	    JOIN m_inoutline miv ON mi.m_inout_id = miv.m_inout_id
+	    JOIN hsv_lovansay hl ON hl.hsv_lovansay_id = miv.hsv_lovansay_id
+	    WHERE hl.hsv_loailo_id <> 1000001
+	      AND mi.issotrx = 'N' and mi.docstatus in ('CL','CO')
+	      AND mi.ad_client_id = $P{AD_CLIENT_ID}
+	      AND mi.dateacct BETWEEN $P{StartDate} AND $P{EndDate} and  hl.dateto >= $P{StartDate} and hl.dateto <= $P{EndDate}
+		 union all 
+		
+		select 'I.04' as id,SUM(qtyother) FILTER (
+		    WHERE hsv_sanpham_id  = 1000565
+	     )
+	    FROM nhatky_sx 
+	
+		
+		union all 
+		
+		 
+		select 'I.05' as id,SUM(qtyother) FILTER (
+		    WHERE hsv_sanpham_id  = 1000566
+	     )
+	    FROM nhatky_sx 
+		
+		union all 
+		
+		select 'I.06' as id,SUM(qtyother) FILTER (
+		    WHERE hsv_sanpham_id  = 1000567
+	     )
+	    FROM nhatky_sx 
+	    
+		union all 
+		select 'I.07', sum(movementqty) FILTER (
+	    	where m_product_id in (1000302,1017815) and m_locator_id = 1000297
+	    )
+	    from chuyen_kho 
+	    union all 
+		
+		select 'I.08' as id, null as qty 
+		union all 
+		
+		select 'II' as id, null as qty
+		union all 
+		 
+		select 'II.01' as id,SUM(qtyother) FILTER (
+		    WHERE hsv_sanpham_id  = 1000047
+	     )
+	    FROM nhatky_sx 
+	    
+		union all 
+		
+		select 'II.02' as id,SUM(qtyother) FILTER (
+		    WHERE hsv_sanpham_id  = 1000048
+	     )
+	    FROM nhatky_sx 
+	    UNION ALL
+	   
+	    select 'II.03', SUM(productionqty) FILTER (
+		    WHERE c_campaign_id IN (1000093)
+		    AND m_attributeset_id IN (1000000,1000001,1000006)
+	     )
+	    FROM nhap_kho
+	    
+	    UNION all
+	    
+	    select 'II.04',sum(qty) 
+		from(
+		    select 0 as qty 
+		    
+		    union all 
+		    
+			select  -1* SUM(qtyother/1.15)  FILTER (
+			    WHERE hsv_sanpham_id  = 1000047
+		     )
+		    FROM nhatky_sx 
+			
+		    union all 
+		    
+		    select SUM(productionqty)FILTER (
+		               WHERE c_campaign_id IN (1000018)
+		                 AND m_attributeset_id IN (1000000,1000001,1000006)
+		           )
+		    FROM nhap_kho		  
+		) as k
+		
+		union all 
+		
+			 
+		select 'II.05', 
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id IN (1000018)
+	                 AND m_attributeset_id IN (1000000,1000001,1000006)
+	           )
+	    FROM nhap_kho
+		
+		union all 
+		
+		select 'II.06' as id,SUM(qtyother) FILTER (
+		    WHERE hsv_sanpham_id  = 1000037
+	     )
+	    FROM nhatky_sx 
+		
+		union all 
+		
+		select 'II.07' as id,SUM(qtyother) FILTER (
+		    WHERE hsv_sanpham_id  = 1000038
+	     )
+	    FROM nhatky_sx 
+		
+		union all 
+		
+		select 'II.08' as id,SUM(qtyother) FILTER (
+		    WHERE hsv_sanpham_id  = 1000039
+	     )
+	    FROM nhatky_sx 
+		
+		union all 
+		
+		select 'II.09' as id,SUM(qtyother) FILTER (
+		    WHERE hsv_sanpham_id  = 1000580
+	     )
+	    FROM nhatky_sx 
+	    
+	    union all 
+	   	select 'II.10' as id,SUM(qtyother) FILTER (
+		    WHERE hsv_sanpham_id  = 1000040
+	     )
+	    FROM nhatky_sx 
+		
+		union all 
+		
+		select 'III' as id, null as qty
+	    UNION ALL
+	    SELECT 'III.01',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id = 1000018
+	                 AND m_attributeset_id IN (1000000,1000001,1000006)
+	           )
+	    FROM nhap_kho
+	    
+		union all 
+		
+		select 'III.02' as id, null as qty
+	
+	    
+		union all 
+		
+		select 'IV' as id, null as qty
+	    union all
+		SELECT 'IV.01',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id = 1000018
+	                 AND m_attributeset_id IN (1000000,1000001,1000006)
+	           )
+	    FROM nhap_kho
+	    union all 
+		select 'IV.02' as id, null as qty
+	    UNION all
+	    select 'V' as id, null as qty
+	    union all
+	    SELECT 'V.01',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id = 1000018
+	                 AND m_attributeset_id = 1000000
+	                 AND m_attributevalue_id IN (1000002,1000165,1000096,1000163,1000851)
+	           )
+	    FROM nhap_kho_tt
+	    union all 
+	    SELECT 'V.02',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id = 1000018
+	                 AND m_attributeset_id = 1000000
+	                 AND m_attributevalue_id IN (1000162,1000852,1000098,1000097)
+	           )
+	    FROM nhap_kho_tt
+	 	union all 
+	    SELECT 'V.03',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id = 1000018
+	                   AND m_attributeset_id IN (1000001,1000006)
+	               
+	           )
+	    FROM nhap_kho
+	    union all 
+	    SELECT 'V.04',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id = 1000013
+	                 AND m_attributeset_id = 1000000
+	                 AND m_attributevalue_id IN (1000002,1000165,1000096,1000163,1000851)
+	           )
+	    FROM nhap_kho_tt
+	    union all 
+	      SELECT 'V.05',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id = 1000013
+	                 AND m_attributeset_id = 1000000
+	                 AND m_attributevalue_id IN (1000162,1000852,1000098,1000097)
+	           )
+	    FROM nhap_kho_tt
+	   	union all 
+	    SELECT 'V.06',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id = 1000013
+	                   AND m_attributeset_id in (1000001,1000006)
+	               
+	           )
+	    FROM nhap_kho
+	    union all 
+	    SELECT 'V.07',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id = 1000041
+	                 AND m_attributeset_id = 1000000
+	                 AND m_attributevalue_id IN (1000002,1000165,1000096,1000163,1000851)
+	           )
+	    FROM nhap_kho_tt
+	    
+	    union all 
+	    
+	    SELECT 'V.08',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id = 1000041
+	                 AND m_attributeset_id = 1000000
+	                 AND m_attributevalue_id IN (1000162,1000852,1000098,1000097)
+	           )
+	    FROM nhap_kho_tt
+	    union all 
+	    select 'V.09' as id,SUM(qtyother) FILTER (
+		    WHERE hsv_sanpham_id  = 1000049
+	     )
+	    FROM nhatky_sx 
+		
+	    union all
+	    select 'V.10' as id,SUM(qtyother) FILTER (
+		    WHERE hsv_sanpham_id  = 1000056
+	     )
+	    FROM nhatky_sx 
+	    union all
+	  
+	    select  'VI' as id, null as qty
+	    union all 
+	   SELECT 'VI.01',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000013,1000018)
+	                 AND m_attributeset_id = 1000000
+	                 AND m_attributevalue_id IN (1000009,1000010,1000170)
+	           )
+	   FROM nhap_kho_tt
+	  union all 
+	   SELECT 'VI.02',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000013,1000018)
+	                 AND m_attributeset_id = 1000000
+	                 AND m_attributevalue_id IN (1000849,1000853)
+	           )
+	   FROM nhap_kho_tt
+	   union all 
+	   SELECT 'VI.03',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000013,1000018)
+	                 AND m_attributeset_id = 1000000
+	                 AND m_attributevalue_id IN (1000848,1000164)
+	           )
+	    FROM nhap_kho_tt
+	    union all 
+	   SELECT 'VI.04',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000013,1000018)
+	                 AND m_attributeset_id = 1000000
+	                 AND m_attributevalue_id = 1000008
+	           )
+	    FROM nhap_kho_tt
+	    union all 
+	   SELECT 'VI.05',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000013,1000018)
+	                 AND m_attributeset_id = 1000000
+	                 AND m_attributevalue_id = 1000847
+	           )
+	    FROM nhap_kho_tt
+	    
+	      union all 
+	   SELECT 'VI.06',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000013,1000018)
+	                 AND m_attributeset_id = 1000000
+	                 AND m_attributevalue_id in  (1000233,1000161)
+	           )
+	    FROM nhap_kho_tt
+	      union all 
+	   SELECT 'VI.07',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000013,1000018)
+	                 AND m_attributeset_id = 1000000
+	                 AND m_attributevalue_id in   (1000005,1000176)
+	           )
+	    FROM nhap_kho_tt
+	   
+	   union all 
+	   SELECT 'VI.08',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000013,1000018)
+	                 AND m_attributeset_id = 1000000
+	                 AND m_attributevalue_id in   (1000166,1000007)
+	           )
+	    FROM nhap_kho_tt
+	     
+	         union all 
+	   SELECT 'VI.09',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000013,1000018)
+	                 AND m_attributeset_id = 1000000
+	                 AND m_attributevalue_id in (1000160,1000200)
+	           )
+	    FROM nhap_kho_tt
+	    union ALL
+	    SELECT 'VII',null as qty
+	    UNION all 
+	    SELECT 'VII.01',
+	           SUM(productionqty) FILTER (
+	               WHERE m_locator_id = 1000025
+	                   AND m_attributeset_id IN (1000000,1000001,1000006,1000018,1000031,1000012,1000062,1000185)
+	               
+	           )
+	    FROM nhap_kho
+	    union all 
+	    select 'VII.02', 
+	    	SUM(QtyInternalUse) FILTER (
+	    		where m_attributeset_id  in (1000000,1000001,1000006,1000018,1000031,1000012,1000062,1000185)
+	    		and m_locator_id = 1000025
+	    	)
+		from xuat_kho
+		union all 
+		select 'VII.03',
+		 SUM(qtyentered) FILTER (
+		 	where m_attributeset_id  in (1000000,1000018,1000062,1000185)
+	    		and m_locator_id = 1000025
+		 )
+		 from xuat_ban 
+		
+	     union ALL
+	     select 'VII.04' as id,SUM(qtyentered) FILTER (
+		    WHERE m_product_id = 1018908
+	     )
+	     FROM nhap_mua  
+	    
+	     union ALL
+	    
+	    select 'VII.05' as id,SUM(qtyentered) FILTER (
+		    WHERE m_attributeset_id  in (1000000,1000018,1000062,1000185) 
+		    and m_locator_id = 1000025
+	     )
+	      FROM xuat_ban  
+	     
+	     union ALL
+	   
+	    select 'VII.06' as id,SUM(qtyother) FILTER (
+		    WHERE hsv_sanpham_id  = 1000583
+	    )
+	    FROM nhatky_sx 
+	    union all
+	   	SELECT 'V.11',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000013,1000018)
+	               	 and M_AttributeSet_ID = 1000000
+	                 AND value1 =1000858
+	                 and value2 in (1000009,1000010,1000170,1000849,1000853,1000166,1000007)
+	                 and m_attribute_id = 1000017
+	           )
+	    FROM nhap_kho_tt_tt
+	   union all 
+	   SELECT 'V.12',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000013,1000018)
+	              	 and M_AttributeSet_ID = 1000000
+	                 AND value1  = 1000858
+	                 and value2 in (1000848,1000164,1000008,1000847,1000233,1000161,1000005,1000176,1000160,1000200)
+	                 and m_attribute_id = 1000017
+	           )
+	    FROM nhap_kho_tt_tt
+
+	    union all 
+	     SELECT 'V.13',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000013,1000018)
+	              	 and M_AttributeSet_ID = 1000000
+	                 AND value1  = 1000860
+	                 and value2 in (1000009,1000010,1000170,1000849,1000853,1000166,1000007)
+	                 and m_attribute_id = 1000017
+	           )
+	    FROM nhap_kho_tt_tt
+	    union all 
+	    
+	    SELECT 'V.14',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000013,1000018)
+	              	 and M_AttributeSet_ID = 1000000
+	                 AND value1  = 1000860
+	                 and value2 in (1000848,1000164,1000008,1000847,1000233,1000161,1000005,1000176,1000160,1000200)
+	                 and m_attribute_id = 1000017
+	           )
+	    FROM nhap_kho_tt_tt
+	    union all 
+		SELECT 'V.15',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000013,1000018)
+	              	 and M_AttributeSet_ID = 1000000
+	                 AND value1  = 1000860
+	                 and value2 in (1000009,1000010,1000170,1000849,1000853,1000166,1000007)
+	                 and m_attribute_id = 1000017
+	           )
+	    FROM nhap_kho_tt_tt
+	    union all 
+	    SELECT 'V.16',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000013,1000018)
+	              	 and M_AttributeSet_ID = 1000000
+	                 AND value1  = 1000860
+	   				and value2 in (1000848,1000164,1000008,1000847,1000233,1000161,1000005,1000176,1000160,1000200)
+	     			and m_attribute_id = 1000017
+	           )
+	    FROM nhap_kho_tt_tt
+	    union all 
+	      SELECT 'V.081',
+	           SUM(productionqty) FILTER (
+	               WHERE C_Campaign_ID=1000041
+	              	 and M_AttributeSet_ID=1000006	                
+	           )
+	    FROM nhap_kho_tt
+	    union all 
+	    select 'V.17' as id,SUM(qtyother) FILTER (
+		    WHERE hsv_sanpham_id  = 1000584
+	    )
+	    FROM nhatky_sx 
+	     union ALL
+	    SELECT 'VIII',null as qty
+	    union all 
+	   SELECT 'VIII.01',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000093,1000094)
+	                 AND m_attributeset_id = 1000000
+	                 AND m_attributevalue_id in  (1000009,1000010,1000170)
+	           )
+	    FROM nhap_kho_tt
+	   
+	       union all 
+	   SELECT 'VIII.02',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000093,1000094)
+	                 AND m_attributeset_id = 1000000
+	                 AND m_attributevalue_id in (1000849,1000853)
+	           )
+	    FROM nhap_kho_tt
+	        union all 
+	   SELECT 'VIII.03',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000093,1000094)
+	                 AND m_attributeset_id = 1000000
+	                 AND m_attributevalue_id in (1000848,1000164)
+	           )
+	    FROM nhap_kho_tt
+	
+	     union all 
+	   SELECT 'VIII.04',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000093,1000094)
+	                 AND m_attributeset_id = 1000000
+	                 AND m_attributevalue_id = 1000008
+	           )
+	    FROM nhap_kho_tt
+	   union all 
+	   SELECT 'VIII.05',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000093,1000094)
+	                 AND m_attributeset_id = 1000000
+	                 AND m_attributevalue_id = 1000847
+	           )
+	    FROM nhap_kho_tt
+	    union all 
+	   SELECT 'VIII.06',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000093,1000094)
+	                 AND m_attributeset_id = 1000000
+	                 AND m_attributevalue_id in (1000233,1000161)
+	           )
+	    FROM nhap_kho_tt
+	      union all 
+	   SELECT 'VIII.07',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000093,1000094)
+	                 AND m_attributeset_id = 1000000
+	                 AND m_attributevalue_id in (1000005,1000176)
+	           )
+	    FROM nhap_kho_tt
+	     union all 
+	   SELECT 'VIII.08',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000093,1000094)
+	                 AND m_attributeset_id = 1000000
+	                 AND m_attributevalue_id in (1000166,1000007)
+	           )
+	    FROM nhap_kho_tt
+	       union all 
+	   SELECT 'VIII.09',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000093,1000094)
+	                 AND m_attributeset_id = 1000000
+	                 AND m_attributevalue_id in (1000160,1000200)
+	           )
+	    FROM nhap_kho_tt
+	       union all 
+	   SELECT 'VIII.10',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000093,1000094)
+	                 AND m_attributeset_id = 1000000
+	                 AND m_attributevalue_id in (1000002,1000165,1000096,1000163,1000851)
+	           )
+	    FROM nhap_kho_tt
+	         union all 
+	   SELECT 'VIII.11',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000093,1000094)
+	                 AND m_attributeset_id = 1000000
+	                 AND m_attributevalue_id in (1000162,1000852,1000098,1000097)
+	           )
+	    FROM nhap_kho_tt
+	          union all 
+	   SELECT 'VIII.12',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000093,1000094)
+	                 AND m_attributeset_id in (1000001,1000006)  
+	           )
+	    FROM nhap_kho
+	    union all 
+	   SELECT 'X' AS code, NULL AS qty
+		UNION ALL 
+		SELECT 'X.01',
+		       SUM(qtyentered) FILTER (
+		           WHERE M_AttributeValue_ID IN (1000009,1000010,1000170,1000229)
+		             AND m_attributeset_id IN (1000000,1000018)   
+		       )
+		FROM xuat_ban_tt
+		UNION ALL 
+		SELECT 'X.02',
+		       SUM(qtyentered) FILTER (
+		           WHERE M_AttributeValue_ID IN (1000849,1000853)
+		             AND m_attributeset_id IN (1000000,1000018)   
+		       )
+		FROM xuat_ban_tt
+		UNION ALL    
+		SELECT 'X.03',
+		       SUM(qtyentered) FILTER (
+		           WHERE M_AttributeValue_ID IN (1000008,1000848,1000164,1000231)
+		             AND m_attributeset_id IN (1000000,1000018)   
+		       )
+		FROM xuat_ban_tt
+		UNION ALL    
+		SELECT 'X.04',
+		       SUM(qtyentered) FILTER (
+		           WHERE M_AttributeValue_ID=1000847
+		             AND m_attributeset_id IN (1000000,1000018)   
+		       )
+		FROM xuat_ban_tt
+		UNION ALL    
+		SELECT 'X.05',
+		       SUM(qtyentered) FILTER (
+		           WHERE M_AttributeValue_ID IN (1000233,1000160,1000200,1000161)
+		             AND m_attributeset_id IN (1000000,1000018)   
+		       )
+		FROM xuat_ban_tt
+		UNION ALL 
+		SELECT 'X.06',
+		       SUM(qtyentered) FILTER (
+		           WHERE M_AttributeValue_ID IN (1000005,1000176)
+		             AND m_attributeset_id IN (1000000,1000018)   
+		       )
+		FROM xuat_ban_tt
+		UNION ALL 
+		SELECT 'X.07',
+		       SUM(qtyentered) FILTER (
+		           WHERE M_AttributeValue_ID IN (1000166,1000007)
+		             AND m_attributeset_id IN (1000000,1000018)  
+		       )
+		FROM xuat_ban_tt
+		UNION ALL 
+		SELECT 'X.08',
+		       SUM(qtyentered) FILTER (
+		           WHERE m_attributeset_id IN (1000000,1000018,1000062,1000185)  
+		       )
+		FROM xuat_ban
+		UNION ALL 
+		SELECT 'X.09',
+		       SUM(qtyentered) FILTER (
+		           WHERE m_attributeset_id IN (1000000,1000018,1000062,1000185) 
+		       )
+		FROM xuat_ban
+		union all 
+		 select 'X.10' as id,SUM(qtyother) FILTER (
+		    WHERE hsv_sanpham_id  = 1000582
+	     )
+	    FROM nhatky_sx 
+		union  all 
+		select  'XI', null 
+		union all 
+		select  'XI.01', 
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000013,1000018)
+	                 AND m_attributeset_id in (1000018,1000031)
+	                 AND m_attributevalue_id = 1000128
+	           )
+	    FROM nhap_kho_tt
+	    union all 
+		select  'XI.02', 
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000013,1000018)
+	                 AND m_attributeset_id in (1000018,1000031)
+	                 AND m_attributevalue_id in (1000129,1000134,1000167)
+	           )
+	    FROM nhap_kho_tt
+  		union all 
+		select  'XI.03', 
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000013,1000018)
+	                 AND m_attributeset_id in (1000018,1000031)
+	                 AND m_attributevalue_id =1000855
+	           )
+	    FROM nhap_kho_tt
+	  	union all 
+		select  'XI.04', 
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000013,1000018)
+	                 AND m_attributeset_id in (1000018,1000031)
+	                 AND m_attributevalue_id =1000854
+	           )
+	    FROM nhap_kho_tt
+	    union all 
+		select  'XI.05', 
+	           SUM(productionqty) FILTER (
+	               WHERE C_Campaign_ID in (1000013,1000018,1000041)
+	                 AND M_AttributeSet_ID in (1000031,1000018)
+	              
+	           )
+	    FROM nhap_kho
+	    union all 
+		select  'XI.06', 
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000013,1000018,1000041)
+	                 AND m_attributeset_id =1000018
+	                 AND m_attributevalue_id in (1000229,1000230)
+	           )
+	    FROM nhap_kho_tt
+	    union all 
+		select  'XI.07', 
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000013,1000018,1000041)
+	                 AND m_attributeset_id = 1000018
+	                 AND m_attributevalue_id =1000231
+	           )
+	    FROM nhap_kho_tt
+	    
+	    union all 
+	    
+		select  'XI.08', 
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000013,1000018,1000041)
+	                 AND m_attributeset_id = 1000018
+	                 AND m_attributevalue_id =1000226
+	           )
+	    FROM nhap_kho_tt
+	    
+	    union all 
+	    
+		select  'XI.09', null 
+		union all 
+		select  'XII', null
+		union all
+		select  'XII.01',
+			sum(productionqty) FILTER (
+			 where m_product_id in (1000105,1017465,1000324,1000108,1000366,1005144)
+			 and c_campaign_id in (1000013,1000018)
+			)
+		from nhap_kho
+		union all
+		select  'XII.02',
+			sum(productionqty) FILTER (
+			 where m_product_id in (1000105,1017465,1000324,1000108,1000366,1005144)
+			 and c_campaign_id in (1000013,1000018,1000041)
+			)
+		from nhap_kho
+		union all
+		select  'XII.03',
+			sum(productionqty) FILTER (
+			 where m_product_id in (1019097,1019258,1019259)
+			 and c_campaign_id in (1000013,1000018)
+			)
+		from nhap_kho
+		union all
+		select  'XII.04',
+			sum(productionqty) FILTER (
+			 where m_product_id in (1000106,1000107)
+			 and c_campaign_id in (1000013,1000018)
+			)
+		from nhap_kho
+		
+		union all
+		
+		select  'XII.05',
+			sum(productionqty) FILTER (
+			 where m_product_id in (1000106,1000107)
+			 and c_campaign_id in (1000013,1000018)
+			)
+		from nhap_kho
+		union all
+		
+		select  'XII.06',sum(qty) as qty
+		from(
+			select 0 as qty 
+			union all
+			
+			select -1*0.2*sum(productionqty) FILTER (
+				 where m_product_id in (1017465,1000324) 
+				 	and c_campaign_id in (1000013,1000018)
+			)			
+			from nhap_kho
+			
+			union all 
+			
+			select -1*0.1*sum(productionqty) FILTER (
+				 where m_product_id = 1000108
+				 	and c_campaign_id in (1000013,1000018)
+				)
+			from nhap_kho
+				union all 
+			
+			select -1*0.1*sum(productionqty) FILTER (
+				 where m_product_id in  (1000366,1005144) and m_attributevalue_id = 1000147
+				 	and c_campaign_id in (1000013,1000018)
+				)
+			from nhap_kho_tt
+			union all 
+			select -1*0.2*sum(productionqty) FILTER (
+				 where m_product_id in  (1000366,1005144) and m_attributevalue_id = 1000148
+				 	and c_campaign_id in (1000013,1000018)
+				)
+			from nhap_kho_tt
+			union all 
+			select -1*0.25*sum(productionqty) FILTER (
+				 where m_product_id in  (1000366,1005144) and m_attributevalue_id = 1000149
+				 	and c_campaign_id in (1000013,1000018)
+				)
+			from nhap_kho_tt
+		) as k 
+		union all
+		select  'XII.07',sum(qty) as qty
+		from(
+			select 0 as qty 
+			union all
+			
+			select -1*0.2*sum(productionqty) FILTER (
+				 where m_product_id in (1017465,1000324) 
+				 	and c_campaign_id in (1000013,1000018,1000041)
+			)			
+			from nhap_kho
+			
+			union all 
+			
+			select -1*0.1*sum(productionqty) FILTER (
+				 where m_product_id = 1000108
+				 	and c_campaign_id in (1000013,1000018,1000041)
+				)
+			from nhap_kho
+				union all 
+			
+			select -1*0.1*sum(productionqty) FILTER (
+				 where m_product_id in  (1000366,1005144) and m_attributevalue_id = 1000147
+				 	and c_campaign_id in (1000013,1000018,1000041)
+				)
+			from nhap_kho_tt
+			union all 
+			select -1*0.2*sum(productionqty) FILTER (
+				 where m_product_id in  (1000366,1005144) and m_attributevalue_id = 1000148
+				 	and c_campaign_id in (1000013,1000018,1000041)
+				)
+			from nhap_kho_tt
+			union all 
+			select -1*0.25*sum(productionqty) FILTER (
+				 where m_product_id in  (1000366,1005144) and m_attributevalue_id = 1000149
+				 	and c_campaign_id in (1000013,1000018,1000041)
+				)
+			from nhap_kho_tt
+		) as k 
+		union all
+		select  'XIII', null
+		union all 
+		select  'XIII.01',
+			sum(productionqty) FILTER (
+			 where m_product_id in (1019097,1019098,1019098,1019258,1019259,1019260)
+			 and c_campaign_id in (1000013,1000018)
+			)
+		from nhap_kho
+		
+		union all 
+			select  'XIII.02',
+			sum(productionqty) FILTER (
+			 where m_product_id in (1019097,1019098,1019098,1019258,1019259,1019260)
+			 and c_campaign_id in (1000013,1000018,1000041)
+			)
+		from nhap_kho
+		union all 
+			select  'XIII.03',
+			sum(productionqty) FILTER (
+			 where m_product_id in (1019258,1019259,1019260)
+			 and c_campaign_id in (1000013,1000018,1000041) and m_attributevalue_id =1000772
+			)
+		from nhap_kho_tt 
+		union all 
+			select  'XIII.04',
+			sum(productionqty) FILTER (
+			 where m_product_id in (1019258,1019259,1019260) 
+			 and c_campaign_id in (1000013,1000018,1000041) and m_attributevalue_id =1000771
+			)
+		from nhap_kho_tt 
+	) t
+	GROUP BY id
+) 
+
+select dm.hsv_stt,split_part(dm.value, '.', 1) as group_value,dm.value,dm.name,fil.qty,dg.hsv_dongialuong,case when dm.value in ('II.01','II.02','II.06','II.07','II.08','II.09') then fil.qty*dg.hsv_dongialuong/1.15 													   	
+													else fil.qty*dg.hsv_dongialuong end as tt
+from filter_data fil 
+join danhmuc dm on fil.id = dm.value
+left join dongia dg on dg.hsv_luongsxvh_id = dm.hsv_luongsxvh_id
+order by dm.value, cast(dm.hsv_stt as integer) asc ]]>
+	</queryString>
+	<field name="hsv_stt" class="java.lang.Float">
+		<property name="com.jaspersoft.studio.field.name" value="hsv_stt"/>
+		<property name="com.jaspersoft.studio.field.label" value="hsv_stt"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="hsv_luongsxvh"/>
+	</field>
+	<field name="group_value" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="group_value"/>
+		<property name="com.jaspersoft.studio.field.label" value="group_value"/>
+	</field>
+	<field name="value" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="value"/>
+		<property name="com.jaspersoft.studio.field.label" value="value"/>
+	</field>
+	<field name="name" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="name"/>
+		<property name="com.jaspersoft.studio.field.label" value="name"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="hsv_luongsxvh"/>
+	</field>
+	<field name="qty" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="qty"/>
+		<property name="com.jaspersoft.studio.field.label" value="qty"/>
+	</field>
+	<field name="hsv_dongialuong" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="hsv_dongialuong"/>
+		<property name="com.jaspersoft.studio.field.label" value="hsv_dongialuong"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="hsv_dgluongline"/>
+	</field>
+	<field name="tt" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="tt"/>
+		<property name="com.jaspersoft.studio.field.label" value="tt"/>
+	</field>
+	<variable name="danh_muc" class="java.lang.Boolean">
+		<variableExpression><![CDATA[OR($F{value}.equals("I"),$F{value}.equals("II"),$F{value}.equals("III"),$F{value}.equals("IV"),$F{value}.equals("V"),$F{value}.equals("VI"),$F{value}.equals("VII"),$F{value}.equals("VIII"),$F{value}.equals("IX"),$F{value}.equals("X"),$F{value}.equals("XI"),$F{value}.equals("XII"))?true:false]]></variableExpression>
+		<initialValueExpression><![CDATA[false]]></initialValueExpression>
+	</variable>
+	<variable name="flash" class="java.lang.String">
+		<variableExpression><![CDATA[$F{value}]]></variableExpression>
+	</variable>
+	<variable name="sum_qty" class="java.lang.Double" resetType="Group" resetGroup="Group1" calculation="Sum">
+		<variableExpression><![CDATA[$F{qty}]]></variableExpression>
+	</variable>
+	<variable name="sum_tt" class="java.lang.Double" resetType="Group" resetGroup="Group1" calculation="Sum">
+		<variableExpression><![CDATA[$F{tt}]]></variableExpression>
+	</variable>
+	<variable name="sum_qty_1" class="java.lang.Double" calculation="Sum">
+		<variableExpression><![CDATA[$F{qty}]]></variableExpression>
+	</variable>
+	<variable name="sum_tt_1" class="java.lang.Double" calculation="Sum">
+		<variableExpression><![CDATA[$F{tt}]]></variableExpression>
+	</variable>
+	<group name="Group1">
+		<groupExpression><![CDATA[$F{group_value}]]></groupExpression>
+		<groupFooter>
+			<band height="26">
+				<textField pattern="#,##0.##" isBlankWhenNull="true">
+					<reportElement style="CategoryStyle" x="0" y="0" width="240" height="26" uuid="feed57d9-6113-4b20-835e-e585b22da377">
+						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="08e7480a-78a1-422f-a178-b744d726677a"/>
+					</reportElement>
+					<box leftPadding="2" rightPadding="2">
+						<pen lineWidth="0.5"/>
+					</box>
+					<textElement textAlignment="Left" verticalAlignment="Middle">
+						<font fontName="Arial" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA["Cộng nhóm"]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0" isBlankWhenNull="true">
+					<reportElement style="CategoryStyle" x="240" y="0" width="90" height="26" uuid="9cc44cd9-591a-4e32-aaf0-39ef27c109d9">
+						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="9a6e73a2-efcb-4fc3-96bd-c8524c18e0c1"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					</reportElement>
+					<box leftPadding="2" rightPadding="2">
+						<pen lineWidth="0.5"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{sum_qty}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0" isBlankWhenNull="true">
+					<reportElement style="CategoryStyle" x="410" y="0" width="145" height="26" uuid="74caf1d9-b1b5-4cf5-b5a5-5c5513d7eedb">
+						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c166a0e3-bac4-47df-b22e-0948317e40e8"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					</reportElement>
+					<box leftPadding="2" rightPadding="2">
+						<pen lineWidth="0.5"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{sum_tt}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0.##" isBlankWhenNull="true">
+					<reportElement style="CategoryStyle" x="330" y="0" width="80" height="26" uuid="291a5874-3ebf-4282-9a90-4ea3e6659b74">
+						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="76fc66ea-55dd-4e59-ae39-e84b2b707e28"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					</reportElement>
+					<box leftPadding="2" rightPadding="2">
+						<pen lineWidth="0.5"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" isBold="true"/>
+					</textElement>
+				</textField>
+			</band>
+		</groupFooter>
+	</group>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="90" splitType="Stretch">
+			<staticText>
+				<reportElement x="0" y="40" width="555" height="30" uuid="11e4eeef-78f4-4bee-8ff2-4abaa26c0ca7"/>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="16" isBold="true"/>
+				</textElement>
+				<text><![CDATA[LƯƠNG SẢN XUẤT THEO SẢN PHẨM]]></text>
+			</staticText>
+			<textField isBlankWhenNull="false">
+				<reportElement x="0" y="70" width="555" height="20" uuid="17121737-c236-4157-b5d6-232d62bc9e01">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Từ ngày: "+ new SimpleDateFormat("dd/MM/yyyy").format($P{StartDate})+"  Đến ngày: " +  new SimpleDateFormat("dd/MM/yyyy").format($P{EndDate})]]></textFieldExpression>
+			</textField>
+			<subreport>
+				<reportElement x="0" y="0" width="555" height="40" uuid="3f293028-0e4f-4137-8c9b-7cd57dd077d3"/>
+				<subreportParameter name="AD_CLIENT_ID">
+					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"CompanyHeader.jasper"]]></subreportExpression>
+			</subreport>
+		</band>
+	</title>
+	<columnHeader>
+		<band height="30" splitType="Stretch">
+			<staticText>
+				<reportElement x="0" y="0" width="40" height="30" uuid="28bb7d9e-8d8a-4243-92b2-cba0b422519f">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="08e7480a-78a1-422f-a178-b744d726677a"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[STT]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="40" y="0" width="200" height="30" uuid="a4cb404d-bba3-4c64-b7e5-46769e1de77b">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="961fd842-65e1-47e2-b7b0-9b88340130cd"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Tên công việc]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="240" y="0" width="90" height="30" uuid="b9e6c9ed-6327-4157-ae34-f0f414e87f30">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="9a6e73a2-efcb-4fc3-96bd-c8524c18e0c1"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Số lượng]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="330" y="0" width="80" height="30" uuid="b213025c-e688-4ea7-9903-e5d9038de173">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="76fc66ea-55dd-4e59-ae39-e84b2b707e28"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Đơn giá]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="410" y="0" width="145" height="30" uuid="b243602d-ab0d-405c-a1b5-2f2b9c1f1b4f">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c166a0e3-bac4-47df-b22e-0948317e40e8"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[thành tiền]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="26" splitType="Stretch">
+			<textField pattern="#,##0.##" isBlankWhenNull="true">
+				<reportElement style="CategoryStyle" x="0" y="0" width="40" height="26" uuid="1005a389-42b1-48bf-a5e0-4d0231e4d032">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="08e7480a-78a1-422f-a178-b744d726677a"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{value}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.##" isBlankWhenNull="true">
+				<reportElement style="CategoryStyle" x="40" y="0" width="200" height="26" uuid="72e1dc97-41fa-4918-b7f0-95571f6c7bf2">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="961fd842-65e1-47e2-b7b0-9b88340130cd"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{name}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement style="CategoryStyle" x="240" y="0" width="90" height="26" uuid="82f60b56-3bf5-4040-b9b6-ca966daeba86">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="9a6e73a2-efcb-4fc3-96bd-c8524c18e0c1"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{qty}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.##" isBlankWhenNull="true">
+				<reportElement style="CategoryStyle" x="330" y="0" width="80" height="26" uuid="9ab67799-59bc-4e54-980f-959bbe18d8c0">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="76fc66ea-55dd-4e59-ae39-e84b2b707e28"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{hsv_dongialuong}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement style="CategoryStyle" x="410" y="0" width="145" height="26" uuid="64c58304-fbb8-4f43-9d4f-d8ccca6d71c0">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c166a0e3-bac4-47df-b22e-0948317e40e8"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{tt}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<summary>
+		<band height="62" splitType="Stretch">
+			<staticText>
+				<reportElement key="staticText-8" positionType="Float" stretchType="RelativeToTallestObject" x="0" y="46" width="240" height="16" uuid="9a4095a8-8076-4901-a256-a08c4112afab"/>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Lập biểu]]></text>
+			</staticText>
+			<staticText>
+				<reportElement key="staticText-8" positionType="Float" stretchType="RelativeToTallestObject" x="410" y="45" width="145" height="16" uuid="ded150b8-220e-471c-a6ea-84ea89c0656f"/>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Kiểm soát]]></text>
+			</staticText>
+			<textField pattern="" isBlankWhenNull="false">
+				<reportElement key="textField-4" x="330" y="26" width="225" height="19" forecolor="#000000" backcolor="#FFFFFF" uuid="abb211e6-58b2-4b78-b7f7-366f7ec3b392"/>
+				<box>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Ngày in: " + new SimpleDateFormat("dd/MM/yyyy hh24:mm").format(new Date())]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement style="CategoryStyle" x="240" y="0" width="90" height="26" uuid="334e704c-42bf-4557-a0ae-b23803fe65ab">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="9a6e73a2-efcb-4fc3-96bd-c8524c18e0c1"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{sum_qty_1}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.##" isBlankWhenNull="true">
+				<reportElement style="CategoryStyle" x="330" y="0" width="80" height="26" uuid="2b6fb05d-dfce-42da-9489-9dcb9f298b3e">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="76fc66ea-55dd-4e59-ae39-e84b2b707e28"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement style="CategoryStyle" x="410" y="0" width="145" height="26" uuid="cda7cf1c-547d-4d1e-9203-572f0fb5999c">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c166a0e3-bac4-47df-b22e-0948317e40e8"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{sum_tt_1}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.##" isBlankWhenNull="true">
+				<reportElement style="CategoryStyle" x="0" y="0" width="240" height="26" uuid="8b94dfc9-627f-40ae-8ae2-23abad70fa6a">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="08e7480a-78a1-422f-a178-b744d726677a"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Tổng cộng"]]></textFieldExpression>
+			</textField>
+		</band>
+	</summary>
+</jasperReport>

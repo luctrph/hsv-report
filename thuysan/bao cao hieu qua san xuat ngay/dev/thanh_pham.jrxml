@@ -14,7 +14,7 @@
         date_trunc('month', $P{EndDate}::date)::date AS month_start
 ),
 dongia AS (
-    SELECT
+    SELECT 
         dgl.m_product_id,
         dgl.hsv_dinhmuc,
         dg.startdate,
@@ -23,211 +23,274 @@ dongia AS (
     JOIN hsv_nkdongialine dgl ON dgl.hsv_dongia_id = dg.hsv_dongia_id
     WHERE dg.hsv_loaidongia_id = 1000058
       AND dg.ad_client_id = $P{AD_CLIENT_ID}
+),
+ducuoi AS (
+    SELECT 
+        m.m_product_id,
+        SUM(m.movementqty) AS ducuoi
+    FROM m_transaction m
+    WHERE m.ad_client_id = $P{AD_CLIENT_ID}
+      AND m.movementdate <= $P{EndDate}
+      AND m.m_locator_id = 1000025
+    GROUP BY m.m_product_id
+    HAVING SUM(m.movementqty) <> 0
+),
+base_production AS (
+    SELECT 
+        ci.m_production_id,
+        ci.movementdate,
+        civ.m_product_id,
+        civ.productionqty,
+        civ.m_attributesetinstance_id,
+        hh.m_attributeset_id,
+        hh.value,
+        k.hsv_dinhmuc
+    FROM m_production ci
+    JOIN m_productionplan civ ON ci.m_production_id = civ.m_production_id
+    JOIN m_product hh ON hh.m_product_id = civ.m_product_id
+    JOIN dongia k ON k.m_product_id = civ.m_product_id
+    WHERE ci.ad_client_id = $P{AD_CLIENT_ID}
+      AND ci.movementdate BETWEEN k.startdate AND k.enddate
+      AND ci.c_campaign_id IN (1000018, 1000093)
+      AND ci.docstatus IN ('CL', 'CO')
 )
- 
-SELECT  
-    'Ngao đơn hàng HCK,CN' AS noidung,
-    SUM(CASE WHEN ci.movementdate BETWEEN p.start_date AND p.end_date THEN civ.productionqty ELSE 0 END) AS sl,
-    SUM(CASE WHEN ci.movementdate BETWEEN p.month_start AND p.end_date THEN civ.productionqty ELSE 0 END) AS lksl,
-    SUM(CASE WHEN ci.movementdate BETWEEN p.start_date AND p.end_date THEN civ.productionqty * k.hsv_dinhmuc ELSE 0 END) AS tt,
-    SUM(CASE WHEN ci.movementdate BETWEEN p.month_start AND p.end_date THEN civ.productionqty * k.hsv_dinhmuc ELSE 0 END) AS lktt, 1.035 as tyle
-FROM m_production ci
-JOIN m_productionplan civ ON ci.m_production_id = civ.m_production_id
-JOIN m_attributeinstance att ON att.m_attributesetinstance_id = civ.m_attributesetinstance_id
-JOIN m_product hh ON hh.m_product_id = civ.m_product_id
-JOIN dongia k ON k.m_product_id = civ.m_product_id
-JOIN params p ON TRUE
-WHERE ci.ad_client_id = $P{AD_CLIENT_ID}
-  AND ci.movementdate BETWEEN k.startdate AND k.enddate
-  AND ci.c_campaign_id IN (1000018, 1000093)
-  AND ci.docstatus IN ('CL','CO')
-  AND hh.m_attributeset_id = 1000000
-  AND att.m_attributevalue_id IN (1000012,1000641)
-  
-union all
+SELECT 
+    id,
+    noidung,
+    SUM(sl) AS sl,
+    SUM(lksl) AS lksl,
+    SUM(tt) AS tt,
+    SUM(lktt) AS lktt,
+    tyle,
+    SUM(sodu) AS sodu
+FROM (
+    -- 1: Ngao đơn hàng HCK, CN
+    SELECT 
+        1 AS id,
+        'Ngao đơn hàng HCK,CN' AS noidung,
+        SUM(CASE WHEN bp.movementdate BETWEEN p.start_date AND p.end_date THEN bp.productionqty ELSE 0 END) AS sl,
+        SUM(CASE WHEN bp.movementdate BETWEEN p.month_start AND p.end_date THEN bp.productionqty ELSE 0 END) AS lksl,
+        SUM(CASE WHEN bp.movementdate BETWEEN p.start_date AND p.end_date THEN bp.productionqty * bp.hsv_dinhmuc ELSE 0 END) AS tt,
+        SUM(CASE WHEN bp.movementdate BETWEEN p.month_start AND p.end_date THEN bp.productionqty * bp.hsv_dinhmuc ELSE 0 END) AS lktt,
+        1.035 AS tyle,
+        dc.ducuoi AS sodu
+    FROM base_production bp
+    JOIN params p ON true
+    LEFT JOIN ducuoi dc ON dc.m_product_id = bp.m_product_id
+    WHERE bp.m_attributeset_id = 1000000
+      AND EXISTS (
+          SELECT 1
+          FROM m_attributeinstance att
+          WHERE att.m_attributesetinstance_id = bp.m_attributesetinstance_id
+            AND att.m_attributevalue_id IN (1000012, 1000641)
+      )
+    GROUP BY dc.ducuoi
 
- select  'Ngao đơn hàng K.HCK :hàn túi 1 kg' as noidung, 
- 	SUM(CASE WHEN ci.movementdate BETWEEN p.start_date AND p.end_date THEN civ.productionqty ELSE 0 END) AS sl,
- 	SUM(CASE WHEN ci.movementdate BETWEEN p.month_start AND p.end_date THEN civ.productionqty ELSE 0 END) AS lksl,
-    SUM(CASE WHEN ci.movementdate BETWEEN p.start_date AND p.end_date THEN civ.productionqty * k.hsv_dinhmuc ELSE 0 END) AS tt,
-    SUM(CASE WHEN ci.movementdate BETWEEN p.month_start AND p.end_date THEN civ.productionqty * k.hsv_dinhmuc ELSE 0 END) AS lktt, 1.035 as tyle
-FROM m_production ci
-JOIN m_productionplan civ ON ci.m_production_id = civ.m_production_id
-JOIN m_attributeinstance att ON att.m_attributesetinstance_id = civ.m_attributesetinstance_id
-JOIN m_attributeinstance att2 ON att2.m_attributesetinstance_id = civ.m_attributesetinstance_id
-join m_product hh on hh.m_product_id = civ.m_product_id
-join dongia k  ON k.m_product_id = civ.m_product_id
-JOIN params p ON TRUE
-AND ci.movementdate BETWEEN k.startdate AND k.enddate
-and ci.c_campaign_id in (1000018,1000093) and ci.docstatus in ('CL','CO')
-and   hh.m_attributeset_id = 1000000 
-AND att.m_attributevalue_id =  1000013 
-and att2.m_attributevalue_id =  1000009
+    UNION ALL
 
-union all 
+    -- 2: Ngao đơn hàng K.HCK: hàn túi 1 kg
+    SELECT 
+        2 AS id,
+        'Ngao đơn hàng K.HCK: hàn túi 1 kg' AS noidung,
+        SUM(CASE WHEN bp.movementdate BETWEEN p.start_date AND p.end_date THEN bp.productionqty ELSE 0 END) AS sl,
+        SUM(CASE WHEN bp.movementdate BETWEEN p.month_start AND p.end_date THEN bp.productionqty ELSE 0 END) AS lksl,
+        SUM(CASE WHEN bp.movementdate BETWEEN p.start_date AND p.end_date THEN bp.productionqty * bp.hsv_dinhmuc ELSE 0 END) AS tt,
+        SUM(CASE WHEN bp.movementdate BETWEEN p.month_start AND p.end_date THEN bp.productionqty * bp.hsv_dinhmuc ELSE 0 END) AS lktt,
+        1.035 AS tyle,
+        NULL AS sodu
+    FROM base_production bp
+    JOIN params p ON true
+    WHERE bp.m_attributeset_id = 1000000
+      AND EXISTS (
+          SELECT 1
+          FROM m_attributeinstance att
+          WHERE att.m_attributesetinstance_id = bp.m_attributesetinstance_id
+            AND att.m_attributevalue_id = 1000013
+      )
+      AND EXISTS (
+          SELECT 1
+          FROM m_attributeinstance att2
+          WHERE att2.m_attributesetinstance_id = bp.m_attributesetinstance_id
+            AND att2.m_attributevalue_id = 1000009
+      )
+    GROUP BY bp.value
 
-select  'Ngao đơn hàng K.HCK  :đóng bulk' as noidung,
-	SUM(CASE WHEN ci.movementdate BETWEEN p.start_date AND p.end_date THEN civ.productionqty ELSE 0 END) AS sl,
- 	SUM(CASE WHEN ci.movementdate BETWEEN p.month_start AND p.end_date THEN civ.productionqty ELSE 0 END) AS lksl,
-    SUM(CASE WHEN ci.movementdate BETWEEN p.start_date AND p.end_date THEN civ.productionqty * k.hsv_dinhmuc ELSE 0 END) AS tt,
-    SUM(CASE WHEN ci.movementdate BETWEEN p.month_start AND p.end_date THEN civ.productionqty * k.hsv_dinhmuc ELSE 0 END) AS lktt, 1.09 as tyle
-FROM m_production ci
-JOIN m_productionplan civ ON ci.m_production_id = civ.m_production_id
-JOIN m_product hh ON hh.m_product_id = civ.m_product_id
-join dongia k  ON k.m_product_id = civ.m_product_id
-JOIN params p ON TRUE
-where  ci.ad_client_id = $P{AD_CLIENT_ID}
-AND ci.movementdate BETWEEN k.startdate AND k.enddate
-  AND ci.ad_client_id = $P{AD_CLIENT_ID}
-  AND ci.c_campaign_id IN (1000018, 1000093)
-  AND ci.docstatus IN ('CL', 'CO')
-  AND hh.m_attributeset_id = 1000000
-  -- Có thuộc tính ID = 1000013
-  AND EXISTS (
-      SELECT 1 
-      FROM m_attributeinstance ai
-      WHERE ai.m_attributesetinstance_id = civ.m_attributesetinstance_id
-        AND ai.m_attributevalue_id = 1000013
-  )
+    UNION ALL
 
-  -- Không có thuộc tính ID = 1000009
-  AND NOT EXISTS (
-      SELECT 1 
-      FROM m_attributeinstance ai
-      WHERE ai.m_attributesetinstance_id = civ.m_attributesetinstance_id
-        AND ai.m_attributevalue_id = 1000009
-  )
-union all 
+    -- 3: Ngao đơn hàng K.HCK: đóng bulk
+    SELECT 
+        3 AS id,
+        'Ngao đơn hàng K.HCK: đóng bulk' AS noidung,
+        SUM(CASE WHEN bp.movementdate BETWEEN p.start_date AND p.end_date THEN bp.productionqty ELSE 0 END) AS sl,
+        SUM(CASE WHEN bp.movementdate BETWEEN p.month_start AND p.end_date THEN bp.productionqty ELSE 0 END) AS lksl,
+        SUM(CASE WHEN bp.movementdate BETWEEN p.start_date AND p.end_date THEN bp.productionqty * bp.hsv_dinhmuc ELSE 0 END) AS tt,
+        SUM(CASE WHEN bp.movementdate BETWEEN p.month_start AND p.end_date THEN bp.productionqty * bp.hsv_dinhmuc ELSE 0 END) AS lktt,
+        1.09 AS tyle,
+        NULL AS sodu
+    FROM base_production bp
+    JOIN params p ON true
+    WHERE bp.m_attributeset_id = 1000000
+      AND EXISTS (
+          SELECT 1
+          FROM m_attributeinstance ai
+          WHERE ai.m_attributesetinstance_id = bp.m_attributesetinstance_id
+            AND ai.m_attributevalue_id = 1000013
+      )
+      AND NOT EXISTS (
+          SELECT 1
+          FROM m_attributeinstance ai
+          WHERE ai.m_attributesetinstance_id = bp.m_attributesetinstance_id
+            AND ai.m_attributevalue_id = 1000009
+      )
+    GROUP BY bp.value
 
-select  'Ngao bulk dự trử chưa có đơn hàng' as noidung, 
-	SUM(CASE WHEN ci.movementdate BETWEEN p.start_date AND p.end_date THEN civ.productionqty ELSE 0 END) AS sl,
- 	SUM(CASE WHEN ci.movementdate BETWEEN p.month_start AND p.end_date THEN civ.productionqty ELSE 0 END) AS lksl,
-    SUM(CASE WHEN ci.movementdate BETWEEN p.start_date AND p.end_date THEN civ.productionqty * k.hsv_dinhmuc ELSE 0 END) AS tt,
-    SUM(CASE WHEN ci.movementdate BETWEEN p.month_start AND p.end_date THEN civ.productionqty * k.hsv_dinhmuc ELSE 0 END) AS lktt,1.09 as tyle
-FROM m_production ci
-JOIN m_productionplan civ ON ci.m_production_id = civ.m_production_id
-join m_product hh on hh.m_product_id = civ.m_product_id
-join dongia k  ON k.m_product_id = civ.m_product_id
-JOIN params p ON TRUE
-where ci.movementdate BETWEEN k.startdate AND k.enddate and ci.ad_client_id = $P{AD_CLIENT_ID}
-and ci.c_campaign_id in (1000018,1000093) and ci.docstatus in ('CL','CO')
-and   hh.m_attributeset_id = 1000001
+    UNION ALL
 
-union all
+    -- 4: Ngao bulk dự trữ chưa có đơn hàng
+    SELECT 
+        4 AS id,
+        'Ngao bulk dự trữ chưa có đơn hàng' AS noidung,
+        SUM(CASE WHEN bp.movementdate BETWEEN p.start_date AND p.end_date THEN bp.productionqty ELSE 0 END) AS sl,
+        SUM(CASE WHEN bp.movementdate BETWEEN p.month_start AND p.end_date THEN bp.productionqty ELSE 0 END) AS lksl,
+        SUM(CASE WHEN bp.movementdate BETWEEN p.start_date AND p.end_date THEN bp.productionqty * bp.hsv_dinhmuc ELSE 0 END) AS tt,
+        SUM(CASE WHEN bp.movementdate BETWEEN p.month_start AND p.end_date THEN bp.productionqty * bp.hsv_dinhmuc ELSE 0 END) AS lktt,
+        1.09 AS tyle,
+        dc.ducuoi AS sodu
+    FROM base_production bp
+    JOIN params p ON true
+    LEFT JOIN ducuoi dc ON dc.m_product_id = bp.m_product_id
+    WHERE bp.m_attributeset_id = 1000001
+    GROUP BY dc.ducuoi
 
-select  'Ngao loại , chờ sử lý ,cát,mùi …' as noidung, 
-	SUM(CASE WHEN ci.movementdate BETWEEN p.start_date AND p.end_date THEN civ.productionqty ELSE 0 END) AS sl,
- 	SUM(CASE WHEN ci.movementdate BETWEEN p.month_start AND p.end_date THEN civ.productionqty ELSE 0 END) AS lksl,
-    SUM(CASE WHEN ci.movementdate BETWEEN p.start_date AND p.end_date THEN civ.productionqty * k.hsv_dinhmuc ELSE 0 END) AS tt,
-    SUM(CASE WHEN ci.movementdate BETWEEN p.month_start AND p.end_date THEN civ.productionqty * k.hsv_dinhmuc ELSE 0 END) AS lktt,1.09 as tyle
+    UNION ALL
 
-FROM m_production ci
-JOIN m_productionplan civ ON ci.m_production_id = civ.m_production_id
-join m_product hh on hh.m_product_id = civ.m_product_id
-join dongia k  ON k.m_product_id = civ.m_product_id
-JOIN params p ON TRUE
-where ci.ad_client_id = $P{AD_CLIENT_ID}
-AND ci.movementdate BETWEEN k.startdate AND k.enddate
-and ci.c_campaign_id in (1000018,1000093) and ci.docstatus in ('CL','CO')
-and   hh.m_attributeset_id = 1000006 and  hh.M_Product_ID <> 1017801
+    -- 5: Ngao loại, chờ xử lý, cát, mùi ...
+    SELECT 
+        5 AS id,
+        'Ngao loại, chờ xử lý, cát, mùi ...' AS noidung,
+        SUM(CASE WHEN bp.movementdate BETWEEN p.start_date AND p.end_date THEN bp.productionqty ELSE 0 END) AS sl,
+        SUM(CASE WHEN bp.movementdate BETWEEN p.month_start AND p.end_date THEN bp.productionqty ELSE 0 END) AS lksl,
+        SUM(CASE WHEN bp.movementdate BETWEEN p.start_date AND p.end_date THEN bp.productionqty * bp.hsv_dinhmuc ELSE 0 END) AS tt,
+        SUM(CASE WHEN bp.movementdate BETWEEN p.month_start AND p.end_date THEN bp.productionqty * bp.hsv_dinhmuc ELSE 0 END) AS lktt,
+        1.09 AS tyle,
+        dc.ducuoi AS sodu
+    FROM base_production bp
+    JOIN params p ON true
+    LEFT JOIN ducuoi dc ON dc.m_product_id = bp.m_product_id
+    WHERE bp.m_attributeset_id in (1000006,1000195)
+      AND bp.m_product_id <> 1017801
+    GROUP BY dc.ducuoi, bp.value
 
-union all
-select  'Nhập ngao chơ sử lý : do  túi sì' as noidung,
-	SUM(CASE WHEN ci.movementdate BETWEEN p.start_date AND p.end_date THEN civ.productionqty ELSE 0 END) AS sl,
- 	SUM(CASE WHEN ci.movementdate BETWEEN p.month_start AND p.end_date THEN civ.productionqty ELSE 0 END) AS lksl,
-    SUM(CASE WHEN ci.movementdate BETWEEN p.start_date AND p.end_date THEN civ.productionqty * k.hsv_dinhmuc ELSE 0 END) AS tt,
-    SUM(CASE WHEN ci.movementdate BETWEEN p.month_start AND p.end_date THEN civ.productionqty * k.hsv_dinhmuc ELSE 0 END) AS lktt,1.09 as tyle
-FROM m_production ci
-JOIN m_productionplan civ ON ci.m_production_id = civ.m_production_id
-join m_product hh on hh.m_product_id = civ.m_product_id
-join dongia k  ON k.m_product_id = civ.m_product_id
-JOIN params p ON TRUE
-where ci.ad_client_id = $P{AD_CLIENT_ID} and ci.movementdate BETWEEN k.startdate AND k.enddate
- and ci.docstatus in ('CL','CO')
-and   hh.M_Product_ID=1017801
-union all 
+    UNION ALL
 
-select  'Ngao mãnh thu được (Ngao mãnh)' as noidung,
-	null AS sl,
-    null AS lksl,
-    SUM(CASE WHEN ci.movementdate BETWEEN p.start_date AND p.end_date THEN civ.productionqty * k.hsv_dinhmuc ELSE 0 END) AS tt,
-    SUM(CASE WHEN ci.movementdate BETWEEN p.month_start AND p.end_date THEN civ.productionqty * k.hsv_dinhmuc ELSE 0 END) AS lktt, 1.02 as tyle
-FROM m_production ci
-JOIN m_productionplan civ ON ci.m_production_id = civ.m_production_id
-JOIN m_attributeinstance att ON att.m_attributesetinstance_id = civ.m_attributesetinstance_id
-join m_product hh on hh.m_product_id = civ.m_product_id
-join dongia k  ON k.m_product_id = civ.m_product_id
-JOIN params p ON TRUE
-where  ci.movementdate BETWEEN k.startdate AND k.enddate
-and ci.c_campaign_id in (1000018,1000093) and ci.docstatus in ('CL','CO')
-and   hh.m_attributeset_id in  (1000018,1000031) and ci.ad_client_id = $P{AD_CLIENT_ID}
+    -- 6: Nhập ngao chờ xử lý: do túi sì
+    SELECT 
+        6 AS id,
+        'Nhập ngao chờ xử lý: do túi sì' AS noidung,
+        SUM(CASE WHEN bp.movementdate BETWEEN p.start_date AND p.end_date THEN bp.productionqty ELSE 0 END) AS sl,
+        SUM(CASE WHEN bp.movementdate BETWEEN p.month_start AND p.end_date THEN bp.productionqty ELSE 0 END) AS lksl,
+        SUM(CASE WHEN bp.movementdate BETWEEN p.start_date AND p.end_date THEN bp.productionqty * bp.hsv_dinhmuc ELSE 0 END) AS tt,
+        SUM(CASE WHEN bp.movementdate BETWEEN p.month_start AND p.end_date THEN bp.productionqty * bp.hsv_dinhmuc ELSE 0 END) AS lktt,
+        1.09 AS tyle,
+        dc.ducuoi AS sodu
+    FROM base_production bp
+    JOIN params p ON true
+    LEFT JOIN ducuoi dc ON dc.m_product_id = bp.m_product_id
+    WHERE bp.m_product_id = 1017801
+    GROUP BY dc.ducuoi
 
-union all
+    UNION ALL
 
-select  'Ngao thịt thu được  (ngao thịt)' as noidung,
-	null AS sl,
- 	null AS lksl,
-    SUM(CASE WHEN ci.movementdate BETWEEN p.start_date AND p.end_date THEN civ.productionqty * k.hsv_dinhmuc ELSE 0 END) AS tt,
-    SUM(CASE WHEN ci.movementdate BETWEEN p.month_start AND p.end_date THEN civ.productionqty * k.hsv_dinhmuc ELSE 0 END) AS lktt, 1.02 as tyle
-FROM m_production ci
-JOIN m_productionplan civ ON ci.m_production_id = civ.m_production_id
-join m_product hh on hh.m_product_id = civ.m_product_id
-join dongia k  ON k.m_product_id = civ.m_product_id
-JOIN params p ON TRUE
-where  ci.movementdate BETWEEN k.startdate AND k.enddate
-and ci.c_campaign_id in (1000018,1000093) and ci.docstatus in ('CL','CO')
-and   hh.m_attributeset_id in  (1000012,1000062) and ci.ad_client_id = $P{AD_CLIENT_ID}
+    -- 7: Ngao mãnh thu được (Ngao mãnh)
+    SELECT 
+        7 AS id,
+        'Ngao mãnh thu được (Ngao mãnh)' AS noidung,
+        NULL AS sl,
+        NULL AS lksl,
+        SUM(CASE WHEN bp.movementdate BETWEEN p.start_date AND p.end_date THEN bp.productionqty * bp.hsv_dinhmuc ELSE 0 END) AS tt,
+        SUM(CASE WHEN bp.movementdate BETWEEN p.month_start AND p.end_date THEN bp.productionqty * bp.hsv_dinhmuc ELSE 0 END) AS lktt,
+        1.02 AS tyle,
+        dc.ducuoi AS sodu
+    FROM base_production bp
+    JOIN params p ON true
+    LEFT JOIN ducuoi dc ON dc.m_product_id = bp.m_product_id
+    WHERE bp.m_attributeset_id IN (1000018, 1000031)
+    GROUP BY dc.ducuoi, bp.value
 
-union all 
+    UNION ALL
 
-select  'Số lượng giảm do mạ băng (quy NET)' as noidung,
+    -- 8: Ngao thịt thu được (Ngao thịt)
+    SELECT 
+        8 AS id,
+        'Ngao thịt thu được (Ngao thịt)' AS noidung,
+        NULL AS sl,
+        NULL AS lksl,
+        SUM(CASE WHEN bp.movementdate BETWEEN p.start_date AND p.end_date THEN bp.productionqty * bp.hsv_dinhmuc ELSE 0 END) AS tt,
+        SUM(CASE WHEN bp.movementdate BETWEEN p.month_start AND p.end_date THEN bp.productionqty * bp.hsv_dinhmuc ELSE 0 END) AS lktt,
+        1.02 AS tyle,
+        dc.ducuoi AS sodu
+    FROM base_production bp
+    JOIN params p ON true
+    LEFT JOIN ducuoi dc ON dc.m_product_id = bp.m_product_id
+    WHERE bp.m_attributeset_id IN (1000012, 1000062)
+    GROUP BY dc.ducuoi, bp.value
 
-	SUM(CASE WHEN ci.movementdate BETWEEN p.start_date AND p.end_date THEN 
-					-1*case att.m_attributevalue_id when 1000093 then 0.1  
-							 when 1000224 then 0.02 	 
-							 when 1000095 then 0.03
-							 when 1000090 then 0.05
-							 else 0
-	end end * civ.productionqty )AS sl,
-	
-	SUM(CASE WHEN ci.movementdate BETWEEN p.month_start AND p.end_date THEN 
-	-1*case att.m_attributevalue_id when 1000093 then 0.1  
-							 when 1000224 then 0.02 	 
-							 when 1000095 then 0.03
-							 when 1000090 then 0.05
-							 else 0
-	end end * civ.productionqty) AS lksl,
-	
-	SUM(CASE WHEN ci.movementdate BETWEEN p.start_date AND p.end_date THEN 
-	-1* case att.m_attributevalue_id when 1000093 then 0.1  
-							 when 1000224 then 0.02 	 
-							 when 1000095 then 0.03
-							 when 1000090 then 0.05
-							 else 0
-	end end * civ.productionqty*k.hsv_dinhmuc) AS tt,
-	
-	SUM(CASE WHEN ci.movementdate BETWEEN p.month_start AND p.end_date THEN 
-	-1* case att.m_attributevalue_id when 1000093 then 0.1  
-							 when 1000224 then 0.02 	 
-							 when 1000095 then 0.03
-							 when 1000090 then 0.05
-							 else 0
-end end  * civ.productionqty *k.hsv_dinhmuc) AS lktt, 1.09 as tyle
-FROM m_production ci
-JOIN m_productionplan civ ON ci.m_production_id = civ.m_production_id
-JOIN m_attributeinstance att ON att.m_attributesetinstance_id = civ.m_attributesetinstance_id
-join m_product hh on hh.m_product_id = civ.m_product_id
-join dongia k  ON k.m_product_id = civ.m_product_id
-JOIN params p ON TRUE
-where ci.c_campaign_id in (1000018,1000093)
-AND ci.movementdate BETWEEN k.startdate AND k.enddate
- and ci.docstatus in ('CL','CO')
- 
+    UNION ALL
 
-
- 
- ]]>
+    -- 9: Số lượng giảm do mạ băng (quy NET)
+    SELECT 
+        9 AS id,
+        'Số lượng giảm do mạ băng (quy NET)' AS noidung,
+        SUM(CASE WHEN bp.movementdate BETWEEN p.start_date AND p.end_date THEN 
+            -1 * CASE att.m_attributevalue_id 
+                WHEN 1000093 THEN 0.1
+                WHEN 1000224 THEN 0.02
+                WHEN 1000095 THEN 0.03
+                WHEN 1000090 THEN 0.05
+                ELSE 0
+            END * bp.productionqty 
+        END) AS sl,
+        SUM(CASE WHEN bp.movementdate BETWEEN p.month_start AND p.end_date THEN 
+            -1 * CASE att.m_attributevalue_id 
+                WHEN 1000093 THEN 0.1
+                WHEN 1000224 THEN 0.02
+                WHEN 1000095 THEN 0.03
+                WHEN 1000090 THEN 0.05
+                ELSE 0
+            END * bp.productionqty 
+        END) AS lksl,
+        SUM(CASE WHEN bp.movementdate BETWEEN p.start_date AND p.end_date THEN 
+            -1 * CASE att.m_attributevalue_id 
+                WHEN 1000093 THEN 0.1
+                WHEN 1000224 THEN 0.02
+                WHEN 1000095 THEN 0.03
+                WHEN 1000090 THEN 0.05
+                ELSE 0
+            END * bp.productionqty * bp.hsv_dinhmuc 
+        END) AS tt,
+        SUM(CASE WHEN bp.movementdate BETWEEN p.month_start AND p.end_date THEN 
+            -1 * CASE att.m_attributevalue_id 
+                WHEN 1000093 THEN 0.1
+                WHEN 1000224 THEN 0.02
+                WHEN 1000095 THEN 0.03
+                WHEN 1000090 THEN 0.05
+                ELSE 0
+            END * bp.productionqty * bp.hsv_dinhmuc 
+        END) AS lktt,
+        1.09 AS tyle,
+        NULL AS sodu
+    FROM base_production bp
+    JOIN m_attributeinstance att ON att.m_attributesetinstance_id = bp.m_attributesetinstance_id
+    JOIN params p ON true
+    
+) AS k
+GROUP BY id, noidung, tyle
+ORDER BY id;]]>
 	</queryString>
+	<field name="id" class="java.lang.Integer">
+		<property name="com.jaspersoft.studio.field.name" value="id"/>
+		<property name="com.jaspersoft.studio.field.label" value="id"/>
+	</field>
 	<field name="noidung" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="noidung"/>
 		<property name="com.jaspersoft.studio.field.label" value="noidung"/>
@@ -252,6 +315,10 @@ AND ci.movementdate BETWEEN k.startdate AND k.enddate
 		<property name="com.jaspersoft.studio.field.name" value="tyle"/>
 		<property name="com.jaspersoft.studio.field.label" value="tyle"/>
 	</field>
+	<field name="sodu" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="sodu"/>
+		<property name="com.jaspersoft.studio.field.label" value="sodu"/>
+	</field>
 	<variable name="sum_sl_tp" class="java.lang.Double" resetType="Group" resetGroup="Group1" calculation="Sum">
 		<variableExpression><![CDATA[$F{sl}]]></variableExpression>
 	</variable>
@@ -270,11 +337,14 @@ AND ci.movementdate BETWEEN k.startdate AND k.enddate
 	<variable name="sum_lk_sldm" class="java.lang.Double" calculation="Sum">
 		<variableExpression><![CDATA[$F{lksl}.doubleValue()*$F{tyle}.doubleValue()]]></variableExpression>
 	</variable>
+	<variable name="toncuoi" class="java.lang.Double" resetType="Group" resetGroup="Group1" calculation="Sum">
+		<variableExpression><![CDATA[$F{sodu}]]></variableExpression>
+	</variable>
 	<group name="Group1">
 		<groupFooter>
 			<band height="30">
 				<textField pattern="#,##0" isBlankWhenNull="true">
-					<reportElement x="210" y="0" width="80" height="30" uuid="0c9e3fb2-07f9-4f7e-9f24-f10bf116265b">
+					<reportElement x="210" y="0" width="60" height="30" uuid="0c9e3fb2-07f9-4f7e-9f24-f10bf116265b">
 						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="696cca9b-684c-4a5b-bf1c-58ec6d01bd43"/>
 						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					</reportElement>
@@ -291,8 +361,9 @@ AND ci.movementdate BETWEEN k.startdate AND k.enddate
 					<textFieldExpression><![CDATA[$V{sum_sl_tp}]]></textFieldExpression>
 				</textField>
 				<textField pattern="#,##0" isBlankWhenNull="true">
-					<reportElement x="380" y="0" width="80" height="30" uuid="af87a8d4-4504-4238-88e7-fdf010d3ea3a">
+					<reportElement x="350" y="0" width="60" height="30" uuid="af87a8d4-4504-4238-88e7-fdf010d3ea3a">
 						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="bfe955fd-2c76-494d-adfd-9addff9e7cc9"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					</reportElement>
 					<box padding="2">
 						<pen lineWidth="0.5"/>
@@ -323,8 +394,9 @@ AND ci.movementdate BETWEEN k.startdate AND k.enddate
 					<textFieldExpression><![CDATA["Cộng nhóm"]]></textFieldExpression>
 				</textField>
 				<textField pattern="#,##0" isBlankWhenNull="true">
-					<reportElement x="290" y="0" width="90" height="30" uuid="7f07d140-8b7e-4add-8cb1-38969e16cac3">
+					<reportElement x="270" y="0" width="80" height="30" uuid="7f07d140-8b7e-4add-8cb1-38969e16cac3">
 						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="19d77c78-31db-46d7-9951-4d39d3ffe714"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					</reportElement>
 					<box padding="2">
 						<pen lineWidth="0.5"/>
@@ -339,7 +411,7 @@ AND ci.movementdate BETWEEN k.startdate AND k.enddate
 					<textFieldExpression><![CDATA[$V{sum_tt_tp}]]></textFieldExpression>
 				</textField>
 				<textField pattern="#,##0" isBlankWhenNull="true">
-					<reportElement x="460" y="0" width="95" height="30" uuid="64451c7c-7f0f-44dd-b001-9c7b8d567909">
+					<reportElement x="410" y="0" width="90" height="30" uuid="64451c7c-7f0f-44dd-b001-9c7b8d567909">
 						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="19d77c78-31db-46d7-9951-4d39d3ffe714"/>
 						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					</reportElement>
@@ -354,6 +426,24 @@ AND ci.movementdate BETWEEN k.startdate AND k.enddate
 						<font fontName="Arial" isBold="true"/>
 					</textElement>
 					<textFieldExpression><![CDATA[$V{sum_lktt_tp}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0" isBlankWhenNull="true">
+					<reportElement x="500" y="0" width="55" height="30" uuid="f964a58d-87ac-486b-aeea-a5357e22da6c">
+						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="bfe955fd-2c76-494d-adfd-9addff9e7cc9"/>
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					</reportElement>
+					<box padding="2">
+						<pen lineWidth="0.5"/>
+						<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{toncuoi}]]></textFieldExpression>
 				</textField>
 			</band>
 		</groupFooter>
@@ -432,9 +522,8 @@ AND ci.movementdate BETWEEN k.startdate AND k.enddate
 				<textFieldExpression><![CDATA[$F{noidung}]]></textFieldExpression>
 			</textField>
 			<textField pattern="#,##0" isBlankWhenNull="true">
-				<reportElement x="210" y="0" width="80" height="30" uuid="03af9238-0700-4b09-871e-3d784179c8e3">
+				<reportElement x="210" y="0" width="60" height="30" uuid="03af9238-0700-4b09-871e-3d784179c8e3">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="696cca9b-684c-4a5b-bf1c-58ec6d01bd43"/>
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box padding="2">
 					<pen lineWidth="0.5"/>
@@ -449,7 +538,7 @@ AND ci.movementdate BETWEEN k.startdate AND k.enddate
 				<textFieldExpression><![CDATA[$F{sl}]]></textFieldExpression>
 			</textField>
 			<textField pattern="#,##0" isBlankWhenNull="true">
-				<reportElement x="290" y="0" width="90" height="30" uuid="4b0dfa81-dd61-429e-907c-3165f9cd4c0d">
+				<reportElement x="270" y="0" width="80" height="30" uuid="4b0dfa81-dd61-429e-907c-3165f9cd4c0d">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="19d77c78-31db-46d7-9951-4d39d3ffe714"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
@@ -466,8 +555,9 @@ AND ci.movementdate BETWEEN k.startdate AND k.enddate
 				<textFieldExpression><![CDATA[$F{tt}]]></textFieldExpression>
 			</textField>
 			<textField pattern="#,##0" isBlankWhenNull="true">
-				<reportElement x="380" y="0" width="80" height="30" uuid="e08f3007-904f-4b65-8af9-f4d33ca91e7a">
+				<reportElement x="350" y="0" width="60" height="30" uuid="e08f3007-904f-4b65-8af9-f4d33ca91e7a">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="bfe955fd-2c76-494d-adfd-9addff9e7cc9"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box padding="2">
 					<pen lineWidth="0.5"/>
@@ -481,8 +571,8 @@ AND ci.movementdate BETWEEN k.startdate AND k.enddate
 				</textElement>
 				<textFieldExpression><![CDATA[$F{lksl}]]></textFieldExpression>
 			</textField>
-			<textField pattern="#,##0.###" isBlankWhenNull="true">
-				<reportElement x="460" y="0" width="95" height="30" uuid="b3ac219b-ef9f-4518-ad1e-08c0774aec24">
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="410" y="0" width="90" height="30" uuid="b3ac219b-ef9f-4518-ad1e-08c0774aec24">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="19d77c78-31db-46d7-9951-4d39d3ffe714"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
@@ -497,6 +587,24 @@ AND ci.movementdate BETWEEN k.startdate AND k.enddate
 					<font fontName="Arial"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{lktt}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="500" y="0" width="55" height="30" uuid="a01ef4a4-85b2-4781-88a2-d791e39c779b">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="bfe955fd-2c76-494d-adfd-9addff9e7cc9"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="false"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{sodu}]]></textFieldExpression>
 			</textField>
 		</band>
 	</detail>
