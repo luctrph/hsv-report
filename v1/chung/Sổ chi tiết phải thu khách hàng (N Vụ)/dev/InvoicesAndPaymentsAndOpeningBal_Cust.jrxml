@@ -1,0 +1,667 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.20.0.final using JasperReports Library version 6.20.0-2bc7ab61c56f459e8176eb05c7705e145cd400ad  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="InvoicesAndPaymentsAndOpeningBal_Cust" pageWidth="820" pageHeight="595" orientation="Landscape" columnWidth="820" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="83d6d6e0-882a-49bf-bb2f-39115d487b43">
+	<property name="ireport.scriptlethandling" value="0"/>
+	<property name="ireport.encoding" value="UTF-8"/>
+	<property name="ireport.zoom" value="1.0"/>
+	<property name="ireport.x" value="0"/>
+	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.rows" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.columns" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.detect.cell.type" value="true"/>
+	<property name="net.sf.jasperreports.print.keep.full.text" value="true"/>
+	<property name="net.sf.jasperreports.exports.xls.font.size.fix.enabled" value="true"/>
+	<property name="ireport.y" value="0"/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="psql"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="0"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="1000"/>
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="com.jaspersoft.studio.unit.pageHeight" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.pageWidth" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.topMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.bottomMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.leftMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.rightMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.columnWidth" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.columnSpacing" value="pixel"/>
+	<import value="net.sf.jasperreports.engine.*"/>
+	<import value="java.util.*"/>
+	<import value="net.sf.jasperreports.engine.data.*"/>
+	<parameter name="C_BPartner_ID" class="java.lang.Integer">
+		<defaultValueExpression><![CDATA[new Integer (1000000)]]></defaultValueExpression>
+	</parameter>
+	<parameter name="StartDate" class="java.util.Date">
+		<defaultValueExpression><![CDATA[new Date(100,0,1)]]></defaultValueExpression>
+	</parameter>
+	<parameter name="EndDate" class="java.util.Date">
+		<defaultValueExpression><![CDATA[new Date()]]></defaultValueExpression>
+	</parameter>
+	<parameter name="TOTALS" class="java.util.HashMap" isForPrompting="false">
+		<defaultValueExpression><![CDATA[new java.util.HashMap()]]></defaultValueExpression>
+	</parameter>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String">
+		<defaultValueExpression><![CDATA["dev/"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="C_Currency_ID" class="java.lang.Integer"/>
+	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
+	<queryString language="SQL">
+		<![CDATA[SELECT
+    -- 1. Dữ liệu từ Hóa đơn (C_INVOICE)
+    inv.DATEINVOICED AS DateTrx,
+    inv.DOCUMENTNO,
+    trim(doc.Name) as Name,
+    -- Tìm DESCRIPTION: Nếu inv.DESCRIPTION null, lấy tên sản phẩm đầu tiên từ dòng hóa đơn
+    CASE
+        WHEN inv.DESCRIPTION IS NOT NULL THEN inv.DESCRIPTION
+        ELSE (
+            SELECT pro.NAME
+            FROM C_INVOICELINE il
+            INNER JOIN M_PRODUCT pro ON il.M_PRODUCT_ID = pro.M_PRODUCT_ID
+            WHERE il.C_INVOICE_ID = inv.C_INVOICE_ID
+            LIMIT 1 -- Giữ LIMIT 1 để đảm bảo chỉ lấy một mô tả
+        )
+    END AS DESCRIPTION,
+    -- Tính toán các trường giá trị dựa trên docbasetype
+    CASE
+        WHEN doc.docbasetype IN ('ARC', 'API') THEN inv.GRANDTOTAL * -1
+        ELSE inv.GRANDTOTAL
+    END AS "GRANDTOTAL",
+    CASE
+        WHEN doc.docbasetype IN ('ARC', 'API') THEN inv.GRANDTOTAL
+        ELSE 0
+    END AS "PSCO",
+    CASE
+        WHEN doc.docbasetype IN ('ARI', 'APC') THEN inv.GRANDTOTAL
+        ELSE 0
+    END AS "PSNO"
+FROM
+    C_INVOICE inv
+INNER JOIN
+    C_DOCTYPE doc ON inv.C_DOCTYPE_ID = doc.C_DOCTYPE_ID
+WHERE
+    inv.DOCSTATUS IN ('CO', 'CL')
+    AND doc.docbasetype IN ('ARI', 'ARC', 'API', 'APC') -- Kết hợp 2 khối UNION đầu và cuối
+    AND ($P{C_Currency_ID} IS NULL OR inv.C_Currency_ID = $P{C_Currency_ID})
+    AND inv.C_BPARTNER_ID = $P{C_BPartner_ID}
+    AND inv.DATEINVOICED BETWEEN $P{StartDate} AND $P{EndDate}
+    AND inv.AD_CLIENT_ID = $P{AD_CLIENT_ID}
+
+UNION ALL
+
+SELECT
+    -- 2. Dữ liệu từ Thanh toán (C_PAYMENT)
+    pa.DATETRX AS DateTrx,
+    pa.DOCUMENTNO,
+    trim(doc.Name) AS NAME,
+    -- Tìm DESCRIPTION: Nếu pa.DESCRIPTION null/không có, lấy số chứng từ hóa đơn được thanh toán
+    CASE
+        WHEN pa.DESCRIPTION IS NOT NULL THEN pa.DESCRIPTION
+        WHEN pa.C_INVOICE_ID IS NOT NULL THEN (
+            SELECT inv.DOCUMENTNO FROM C_INVOICE inv WHERE inv.C_INVOICE_ID = pa.C_INVOICE_ID LIMIT 1
+        )
+        ELSE ''
+    END AS DESCRIPTION,
+    -- Tính toán các trường giá trị dựa trên docbasetype (ARR/APP)
+    CASE
+        WHEN doc.docbasetype = 'ARR' THEN pa.PAYAMT * -1 -- 'ARR' (Nhận tiền)
+        WHEN doc.docbasetype = 'APP' THEN pa.PAYAMT      -- 'APP' (Chi tiền)
+        ELSE 0
+    END AS "GRANDTOTAL",
+    CASE
+        WHEN doc.docbasetype = 'ARR' THEN pa.PAYAMT
+        ELSE 0
+    END AS "PSCO", -- PSCO (Thu)
+    CASE
+        WHEN doc.docbasetype = 'APP' THEN pa.PAYAMT
+        ELSE '0'
+    END AS "PSNO" -- PSNO (Chi)
+FROM
+    C_PAYMENT pa
+INNER JOIN
+    C_DOCTYPE doc ON pa.C_DOCTYPE_ID = doc.C_DOCTYPE_ID
+WHERE
+    pa.DOCSTATUS IN ('CO', 'CL')
+    AND doc.docbasetype IN ('ARR', 'APP') -- Kết hợp 2 khối UNION từ C_PAYMENT
+    AND pa.POSTED = 'Y'
+    AND pa.C_CHARGE_ID IS NULL
+    AND pa.C_BPARTNER_ID = $P{C_BPartner_ID}
+    AND ($P{C_Currency_ID} IS NULL OR pa.C_Currency_ID = $P{C_Currency_ID})
+    AND pa.DATETRX BETWEEN $P{StartDate} AND $P{EndDate}
+    AND pa.AD_CLIENT_ID = $P{AD_CLIENT_ID}
+
+UNION ALL
+
+-- 3. Dữ liệu từ Phân bổ (C_ALLOCATIONLINE) - Phí ngân hàng/Bỏ đi/Giảm giá
+-- Phối hợp 6 khối UNION còn lại về Allocation
+SELECT
+    t.datetrx AS "DateTrx",
+    t.documentno AS "DOCUMENTNO",
+    CASE
+        WHEN t.is_charge_amount = 1 THEN 'Phí ngân hàng/Bỏ đi ' -- Phí ngân hàng (từ C_CHARGE_ID is not null)
+        WHEN t.writeoffamt <> 0 THEN 'Phí ngân hàng/Bỏ đi'     -- Bỏ đi (từ writeoffamt)
+        WHEN t.discountamt <> 0 THEN 'Giảm giá '               -- Giảm giá (từ discountamt)
+        ELSE 'Khác'
+    END AS NAME,
+    t.description,
+    t.GRANDTOTAL,
+    t.PSCO,
+    t.PSNO
+FROM (
+    -- Truy vấn con để lấy tất cả các dòng Allocation có liên quan (writeoffamt, discountamt, charge)
+    SELECT
+        ca.datetrx,
+        ca.documentno,
+        ca.description,
+        cal.discountamt,
+        cal.writeoffamt,
+        cal.amount, -- Cho trường hợp phí ngân hàng không liên quan đến hóa đơn
+        cal.c_invoice_id,
+        CASE WHEN cal.c_charge_id IS NOT NULL AND cal.c_invoice_id IS NULL THEN 1 ELSE 0 END AS is_charge_amount, -- Đánh dấu phí ngân hàng không có hóa đơn
+
+        -- Tính toán GRANDTOTAL, PSCO, PSNO trong subquery
+        CASE
+            -- Trường hợp Phí ngân hàng/Bỏ đi (writeoffamt) và Giảm giá (discountamt)
+            WHEN cal.writeoffamt > 0 AND doc.docbasetype IN ('ARI', 'APC') THEN -1 * cal.writeoffamt -- Bỏ đi (Thu/Phải trả - ARI/APC)
+            WHEN cal.discountamt > 0 AND doc.docbasetype IN ('ARI', 'APC') THEN -1 * cal.discountamt -- Giảm giá (Thu/Phải trả - ARI/APC)
+            WHEN cal.writeoffamt < 0 AND doc.docbasetype IN ('API', 'ARC') THEN -1 * cal.writeoffamt -- Bỏ đi (Chi/Phải thu - API/ARC)
+            WHEN cal.discountamt < 0 AND doc.docbasetype IN ('API', 'ARC') THEN -1 * cal.discountamt -- Giảm giá (Chi/Phải thu - API/ARC)
+
+            -- Trường hợp Phí ngân hàng không liên quan đến hóa đơn (CMA)
+            WHEN cal.c_charge_id IS NOT NULL AND cal.c_invoice_id IS NULL AND ca_doc.docbasetype = 'CMA' THEN -1 * cal.amount
+            ELSE 0
+        END AS GRANDTOTAL,
+
+        -- PSCO (Thu/Phải trả)
+        CASE
+            WHEN cal.writeoffamt > 0 AND doc.docbasetype IN ('ARI', 'APC') THEN cal.writeoffamt    -- Bỏ đi (ARI/APC)
+            WHEN cal.discountamt > 0 AND doc.docbasetype IN ('ARI', 'APC') THEN cal.discountamt    -- Giảm giá (ARI/APC)
+            WHEN cal.c_charge_id IS NOT NULL AND cal.c_invoice_id IS NULL AND ca_doc.docbasetype = 'CMA' THEN cal.amount -- Phí ngân hàng (CMA)
+            ELSE 0
+        END AS PSCO,
+
+        -- PSNO (Chi/Phải thu)
+        CASE
+            WHEN cal.writeoffamt < 0 AND doc.docbasetype IN ('API', 'ARC') THEN -1 * cal.writeoffamt -- Bỏ đi (API/ARC)
+            WHEN cal.discountamt < 0 AND doc.docbasetype IN ('API', 'ARC') THEN -1 * cal.discountamt -- Giảm giá (API/ARC)
+            ELSE 0
+        END AS PSNO,
+
+        -- Các ID cần thiết để join ra docbasetype
+        iv.c_doctype_id, -- Dùng cho hóa đơn (writeoff/discount)
+        ca.c_doctype_id AS ca_c_doctype_id -- Dùng cho Allocation (CMA)
+    FROM
+        C_ALLOCATIONLINE cal
+    INNER JOIN
+        C_ALLOCATIONHDR ca ON cal.C_ALLOCATIONHDR_ID = ca.C_ALLOCATIONHDR_ID
+    LEFT JOIN
+        C_INVOICE iv ON cal.C_INVOICE_ID = iv.C_INVOICE_ID -- Dùng LEFT JOIN vì có trường hợp cal.c_invoice_id IS NULL
+    LEFT JOIN
+        C_DOCTYPE doc ON iv.C_DOCTYPE_ID = doc.C_DOCTYPE_ID -- docbasetype của hóa đơn
+    LEFT JOIN
+        C_DOCTYPE ca_doc ON ca.C_DOCTYPE_ID = ca_doc.C_DOCTYPE_ID -- docbasetype của Allocation HDR (cho CMA)
+    WHERE
+        ca.DOCSTATUS IN ('CO', 'CL')
+        AND ca.DATETRX BETWEEN $P{StartDate} AND $P{EndDate}
+        AND cal.C_BPARTNER_ID = $P{C_BPartner_ID}
+        AND cal.AD_CLIENT_ID = $P{AD_CLIENT_ID}
+        AND ($P{C_Currency_ID} IS NULL OR iv.C_Currency_ID = $P{C_Currency_ID} OR cal.C_INVOICE_ID IS NULL) -- Cần cẩn thận với điều kiện tiền tệ
+        AND (
+            cal.writeoffamt <> 0 OR cal.discountamt <> 0 OR (cal.c_charge_id IS NOT NULL AND cal.c_invoice_id IS NULL) -- Chỉ lấy các dòng có giá trị
+        )
+) AS t
+WHERE
+    t.GRANDTOTAL <> 0 -- Loại bỏ các dòng Allocation không thỏa mãn bất kỳ điều kiện docbasetype nào (GRANDTOTAL = 0)
+ORDER BY
+    DateTrx]]>
+	</queryString>
+	<field name="datetrx" class="java.sql.Timestamp">
+		<property name="com.jaspersoft.studio.field.name" value="datetrx"/>
+		<property name="com.jaspersoft.studio.field.label" value="datetrx"/>
+	</field>
+	<field name="documentno" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="documentno"/>
+		<property name="com.jaspersoft.studio.field.label" value="documentno"/>
+	</field>
+	<field name="name" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="name"/>
+		<property name="com.jaspersoft.studio.field.label" value="name"/>
+	</field>
+	<field name="description" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="description"/>
+		<property name="com.jaspersoft.studio.field.label" value="description"/>
+	</field>
+	<field name="GRANDTOTAL" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="GRANDTOTAL"/>
+		<property name="com.jaspersoft.studio.field.label" value="GRANDTOTAL"/>
+	</field>
+	<field name="PSCO" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="PSCO"/>
+		<property name="com.jaspersoft.studio.field.label" value="PSCO"/>
+	</field>
+	<field name="PSNO" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="PSNO"/>
+		<property name="com.jaspersoft.studio.field.label" value="PSNO"/>
+	</field>
+	<variable name="RUNNINGBAL" class="java.lang.Double" calculation="Sum">
+		<variableExpression><![CDATA[$F{GRANDTOTAL}]]></variableExpression>
+	</variable>
+	<variable name="TOTAL" class="java.lang.Double" incrementType="Group" incrementGroup="group1">
+		<variableExpression><![CDATA[$V{TOTAL}]]></variableExpression>
+		<initialValueExpression><![CDATA[0]]></initialValueExpression>
+	</variable>
+	<variable name="TN" class="java.lang.Double" resetType="Group" resetGroup="group1" calculation="Sum">
+		<variableExpression><![CDATA[$F{PSNO}]]></variableExpression>
+	</variable>
+	<variable name="TC" class="java.lang.Double" calculation="Sum">
+		<variableExpression><![CDATA[$F{PSCO}]]></variableExpression>
+	</variable>
+	<group name="group1">
+		<groupExpression><![CDATA[null]]></groupExpression>
+		<groupHeader>
+			<band splitType="Stretch"/>
+		</groupHeader>
+		<groupFooter>
+			<band height="22" splitType="Stretch">
+				<staticText>
+					<reportElement key="element-90" mode="Opaque" x="0" y="0" width="464" height="22" forecolor="#003333" backcolor="#FFFFFF" uuid="6a3c175a-0b6b-420a-a68b-7093faef0dfe">
+						<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					</reportElement>
+					<box leftPadding="2" rightPadding="2">
+						<pen lineWidth="0.5"/>
+						<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textElement textAlignment="Center" verticalAlignment="Middle">
+						<font fontName="Arial" size="11" isBold="true" pdfFontName="Helvetica-Bold"/>
+					</textElement>
+					<text><![CDATA[Lũy kế phát sinh trong kỳ :      ]]></text>
+				</staticText>
+				<textField textAdjust="StretchHeight" pattern="#,##0.00" isBlankWhenNull="true">
+					<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="464" y="0" width="118" height="22" uuid="8efa3c3b-7eaf-4f4f-96c3-85c03ccdedde">
+						<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					</reportElement>
+					<box leftPadding="2" rightPadding="2">
+						<pen lineWidth="0.5"/>
+						<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" size="10" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{TN}]]></textFieldExpression>
+				</textField>
+				<textField textAdjust="StretchHeight" pattern="#,##0.00" isBlankWhenNull="true">
+					<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="582" y="0" width="112" height="22" uuid="99ec6f11-e51f-4d90-bb38-85975cc14a68">
+						<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					</reportElement>
+					<box leftPadding="2" rightPadding="2">
+						<pen lineWidth="0.5"/>
+						<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" size="10" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{TC}]]></textFieldExpression>
+				</textField>
+				<textField textAdjust="StretchHeight" pattern="#,##0.00" isBlankWhenNull="true">
+					<reportElement key="textField-1" positionType="Float" stretchType="RelativeToTallestObject" x="694" y="0" width="126" height="22" uuid="d3fd19bc-a79b-4eb7-a4f3-911d4e033b13">
+						<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					</reportElement>
+					<box leftPadding="2" rightPadding="2">
+						<pen lineWidth="0.5"/>
+						<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" size="10" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[new Double($V{TOTAL}.doubleValue() + $V{RUNNINGBAL}.doubleValue())]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupFooter>
+	</group>
+	<group name="group2">
+		<groupExpression><![CDATA[null]]></groupExpression>
+		<groupHeader>
+			<band splitType="Stretch"/>
+		</groupHeader>
+		<groupFooter>
+			<band splitType="Stretch"/>
+		</groupFooter>
+	</group>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="18" splitType="Stretch">
+			<subreport isUsingCache="true">
+				<reportElement key="subreport-1" x="0" y="0" width="820" height="18" uuid="83b0d499-1d84-476e-915e-3a9bc50317e0">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+				</reportElement>
+				<subreportParameter name="StartDate">
+					<subreportParameterExpression><![CDATA[$P{StartDate}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="C_BPartner_ID">
+					<subreportParameterExpression><![CDATA[$P{C_BPartner_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="EndDate">
+					<subreportParameterExpression><![CDATA[$P{EndDate}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="TOTALS">
+					<subreportParameterExpression><![CDATA[$P{TOTALS}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="SUBREPORT_DIR">
+					<subreportParameterExpression><![CDATA[$P{SUBREPORT_DIR}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="C_Currency_ID">
+					<subreportParameterExpression><![CDATA[$P{C_Currency_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="AD_CLIENT_ID">
+					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<returnValue subreportVariable="TOTALS" toVariable="TOTAL"/>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR} + "OpenningBalance_Cust.jasper"]]></subreportExpression>
+			</subreport>
+		</band>
+	</title>
+	<pageHeader>
+		<band splitType="Stretch"/>
+	</pageHeader>
+	<columnHeader>
+		<band height="29" splitType="Stretch">
+			<property name="local_mesure_unitheight" value="pixel"/>
+			<property name="com.jaspersoft.studio.unit.height" value="px"/>
+			<staticText>
+				<reportElement key="element-90" mode="Opaque" x="0" y="0" width="70" height="29" forecolor="#003333" backcolor="#FFFFFF" uuid="3de31ee3-b071-44fa-b13b-0d004d3f4d9a">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<printWhenExpression><![CDATA[$V{PAGE_NUMBER}==1]]></printWhenExpression>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Ngày ghi sổ]]></text>
+			</staticText>
+			<staticText>
+				<reportElement key="element-90" mode="Opaque" x="70" y="0" width="70" height="29" forecolor="#003333" backcolor="#FFFFFF" uuid="5cce4ee0-1ae5-49b3-baf7-f3807c6a5f76">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<printWhenExpression><![CDATA[$V{PAGE_NUMBER}==1]]></printWhenExpression>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Số CT]]></text>
+			</staticText>
+			<staticText>
+				<reportElement key="element-90" mode="Opaque" x="140" y="0" width="115" height="29" forecolor="#003333" backcolor="#FFFFFF" uuid="bfd0f466-b635-4a41-b542-3d2a08a0f859">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<printWhenExpression><![CDATA[$V{PAGE_NUMBER}==1]]></printWhenExpression>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Loại tài liệu]]></text>
+			</staticText>
+			<staticText>
+				<reportElement key="element-90" mode="Opaque" x="255" y="0" width="209" height="29" forecolor="#003333" backcolor="#FFFFFF" uuid="4bb0c08e-8eb5-4e8c-88b0-4ca6a63ea19e">
+					<printWhenExpression><![CDATA[$V{PAGE_NUMBER}==1]]></printWhenExpression>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Nội dung]]></text>
+			</staticText>
+			<staticText>
+				<reportElement key="element-90" mode="Opaque" x="464" y="0" width="118" height="29" forecolor="#003333" backcolor="#FFFFFF" uuid="7a2eb1a9-7589-4fcc-a26d-6a845f2315ea">
+					<printWhenExpression><![CDATA[$V{PAGE_NUMBER}==1]]></printWhenExpression>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[PS Nợ]]></text>
+			</staticText>
+			<staticText>
+				<reportElement key="element-91" mode="Opaque" x="694" y="0" width="126" height="29" forecolor="#003333" backcolor="#FFFFFF" uuid="3fc6f5e3-cd36-47c5-82e9-f7f599e77112">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<printWhenExpression><![CDATA[$V{PAGE_NUMBER}==1]]></printWhenExpression>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Dư cuối]]></text>
+			</staticText>
+			<staticText>
+				<reportElement key="element-90" mode="Opaque" x="582" y="0" width="112" height="29" forecolor="#003333" backcolor="#FFFFFF" uuid="ae11bb94-9055-4e8b-a332-4f460cb691ad">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<printWhenExpression><![CDATA[$V{PAGE_NUMBER}==1]]></printWhenExpression>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[PS Có]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="22" splitType="Stretch">
+			<property name="local_mesure_unitheight" value="pixel"/>
+			<property name="com.jaspersoft.studio.unit.height" value="px"/>
+			<textField textAdjust="StretchHeight" pattern="dd/MM/yyyy" isBlankWhenNull="true">
+				<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="0" y="0" width="70" height="22" uuid="74ed189b-69aa-4bed-968b-41d298fbf8e4">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{datetrx}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" pattern="" isBlankWhenNull="true">
+				<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="70" y="0" width="70" height="22" uuid="d4c24fec-1a98-49a5-abc6-e0038f649de9">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{documentno}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" pattern="" isBlankWhenNull="true">
+				<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="140" y="0" width="115" height="22" uuid="52b024d9-521e-47d0-ae9a-6273f18eab66">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{name}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" pattern="" isBlankWhenNull="true">
+				<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="255" y="0" width="209" height="22" uuid="680cf4eb-0cde-4c8f-9ed5-96339476304d">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{description}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" pattern="#,##0.00" isBlankWhenNull="true">
+				<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="464" y="0" width="118" height="22" uuid="133cd741-4ae1-4882-abc6-592f5564520b">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{PSNO}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" pattern="#,##0.00" isBlankWhenNull="true">
+				<reportElement key="textField-1" positionType="Float" stretchType="RelativeToTallestObject" x="694" y="0" width="126" height="22" uuid="ac1bc838-bd40-497a-a05a-0091ea56e11b">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA[new Double($V{TOTAL}.doubleValue()+ $V{RUNNINGBAL}.doubleValue())]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" pattern="#,##0.00" isBlankWhenNull="true">
+				<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="582" y="0" width="112" height="22" uuid="ad5625a6-f970-4912-bbd2-4b1d6ced1a95">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{PSCO}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<columnFooter>
+		<band splitType="Stretch"/>
+	</columnFooter>
+	<pageFooter>
+		<band splitType="Stretch"/>
+	</pageFooter>
+	<summary>
+		<band height="21" splitType="Stretch">
+			<property name="com.jaspersoft.studio.unit.height" value="px"/>
+			<staticText>
+				<reportElement key="element-90" mode="Opaque" x="0" y="2" width="464" height="19" forecolor="#000000" backcolor="#FFFFFF" uuid="94ae35e0-e71f-414f-8548-4f1bcff764de">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[SỐ DƯ CUỐI KỲ]]></text>
+			</staticText>
+			<textField textAdjust="StretchHeight" pattern="#,##0.00" isBlankWhenNull="true">
+				<reportElement key="textField" mode="Opaque" x="464" y="2" width="356" height="19" backcolor="#FFFFFF" uuid="15a6eadb-f06a-4ae8-905f-12043db911eb">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<textFieldExpression><![CDATA[new Double($V{TOTAL}.doubleValue() + $V{RUNNINGBAL}.doubleValue())]]></textFieldExpression>
+			</textField>
+		</band>
+	</summary>
+</jasperReport>

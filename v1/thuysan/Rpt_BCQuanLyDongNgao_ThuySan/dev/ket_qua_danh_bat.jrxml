@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.20.0.final using JasperReports Library version 6.20.0-2bc7ab61c56f459e8176eb05c7705e145cd400ad  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="dau_tu_chua_phan_bo" pageWidth="802" pageHeight="595" orientation="Landscape" columnWidth="802" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="110b8325-7714-48c6-a3ff-b70c566164cc">
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="psql"/>
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
+	<parameter name="StartDate" class="java.util.Date"/>
+	<parameter name="EndDate" class="java.util.Date"/>
+	<parameter name="C_BPartner_ID" class="java.lang.Integer"/>
+	<queryString>
+		<![CDATA[select id, 'II. Kết quả  đánh bắt' as dm,concat('2.',row_number() over(order by id)) as stt, noidung, sl, tt,dg,dinhmuc,luyke  
+	from(
+		select 4 as id,   'Ngao Đánh bắt chuyển kho' as noidung, 
+		coalesce(sum(case when ci.movementdate >= $P{StartDate} then civ.productionqty end),0)  as sl ,
+		coalesce(sum(case when ci.movementdate >= $P{StartDate} then 10000 * civ.productionqty end),0) as tt,
+		10000 as dg, 10000 as dinhmuc,
+		coalesce(sum(case when ci.movementdate>= '01-01-2017' then  10000 * civ.productionqty end),0) as luyke
+		from m_productionplan civ
+			join m_production ci on civ.m_production_id=ci.m_production_id  and ci.docstatus in ('CO','CL') and ci.AD_Org_ID=1000049
+			and   ci.movementdate<=$P{EndDate} 
+			join m_product hh on civ.m_product_id=hh.m_product_id  and hh.M_Product_ID =1000017
+		where civ.ad_client_id=$P{AD_CLIENT_ID} and civ.m_locator_id = 1000122 and (ci.c_bpartner_id = $P{C_BPartner_ID} or $P{C_BPartner_ID} is null) 
+		
+		
+		union all 
+		
+		select 5 as id, 'Ngao Nuôi xuất bán (511)' as noidung,sl,tt,case when sl <> 0 then tt/sl else 0 end as dg ,null as dinhmuc,luyke
+		from(
+			select 
+			coalesce(sum(case when ci.dateacct>=$P{StartDate} then civ.qtyinvoiced end),0) as sl,
+			coalesce(sum(case when ci.dateacct>=$P{StartDate} then civ.linenetamt end),0) as tt ,
+			coalesce(sum(case when ci.dateacct>='01-01-2017' then civ.linenetamt end),0) as luyke  
+			from c_invoice ci 
+			join c_invoiceline civ on ci.c_invoice_id = civ.c_invoice_id  and ci.issotrx = 'Y'
+			where civ.m_product_id = 1017197 and ci.docstatus in ('CL','CO')
+			and ci.ad_org_id = 1000049 and ci.ad_client_id = $P{AD_CLIENT_ID} and (ci.c_bpartner_id = $P{C_BPartner_ID} or $P{C_BPartner_ID} is null) 
+			and ci.dateacct<=$P{EndDate}
+		) as t
+		union all 
+		
+		select 6 as id, 'DT sp khác  xuất bán (511)' as noidung,sl,tt,case when sl <> 0 then tt/sl else 0 end as dg ,null as dinhmuc,luyke
+		from(
+			select 
+				coalesce(sum(case when ci.dateacct>=$P{StartDate} then civ.qtyinvoiced end),0) as sl,
+				coalesce(sum(case when ci.dateacct>=$P{StartDate} then civ.linenetamt end),0) as tt ,
+				coalesce(sum(case when ci.dateacct>='01-01-2017' then civ.linenetamt end),0) as luyke  
+			
+			from c_invoice ci 
+			join c_invoiceline civ on ci.c_invoice_id = civ.c_invoice_id  and ci.issotrx = 'Y'
+			where civ.m_product_id <> 1017197 and ci.docstatus in ('CL','CO')
+			and ci.ad_org_id = 1000049 and ci.ad_client_id = $P{AD_CLIENT_ID}
+			 and ci.dateacct<=$P{EndDate} and (ci.c_bpartner_id = $P{C_BPartner_ID} or $P{C_BPartner_ID} is null) 
+		) as t	
+		union all
+		
+		select 7 as id,'thu nhập khác (711)' as noidung, null::int4 as sl, coalesce(sum(case when dateacct>=$P{StartDate} then  amtacctcr-amtacctdr end),0) as tt,null::int4 as dg,
+		 null as dinhmuc,coalesce(sum(case when dateacct >= '01-01-2017' then  amtacctcr-amtacctdr end),0) as luyke 
+		from(
+			SELECT  fc.amtacctdr, fc.amtacctcr, fc.account_id, fc.c_activity_id, fc.dateacct 
+			from fact_acct fc
+			join gl_journalline gl on fc.record_id = gl.gl_journal_id and fc.line_id = gl.gl_journalline_id and fc.Account_ID = gl.Account_ID and gl.IsGenerated = 'N'
+			join gl_journal a on a.gl_journal_id = fc.record_id and a.docstatus in ('CO', 'CL')
+			where  fc.ad_client_id = $P{AD_CLIENT_ID} and fc.ad_table_id = 224 and fc.ad_org_id = 1000049
+			and (fc.c_bpartner_id = $P{C_BPartner_ID} or $P{C_BPartner_ID} is null) 
+			union all
+		 	SELECT  fc.amtacctdr, fc.amtacctcr, fc.account_id, fc.c_activity_id, fc.dateacct 
+			from fact_acct fc
+			where  fc.ad_client_id = $P{AD_CLIENT_ID} and fc.ad_table_id <> 224 and fc.ad_org_id = 1000049
+			and (fc.c_bpartner_id = $P{C_BPartner_ID} or $P{C_BPartner_ID} is null) 
+		) as t
+		join c_elementvalue acct on t.account_id = acct.c_elementvalue_id and LEFT(acct.value, 3) in ('711')	
+		where  dateacct<=$P{EndDate}
+		
+	) as k]]>
+	</queryString>
+	<field name="id" class="java.lang.Integer">
+		<property name="com.jaspersoft.studio.field.name" value="id"/>
+		<property name="com.jaspersoft.studio.field.label" value="id"/>
+	</field>
+	<field name="dm" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="dm"/>
+		<property name="com.jaspersoft.studio.field.label" value="dm"/>
+	</field>
+	<field name="stt" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="stt"/>
+		<property name="com.jaspersoft.studio.field.label" value="stt"/>
+	</field>
+	<field name="noidung" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="noidung"/>
+		<property name="com.jaspersoft.studio.field.label" value="noidung"/>
+	</field>
+	<field name="sl" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="sl"/>
+		<property name="com.jaspersoft.studio.field.label" value="sl"/>
+	</field>
+	<field name="tt" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="tt"/>
+		<property name="com.jaspersoft.studio.field.label" value="tt"/>
+	</field>
+	<field name="dg" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="dg"/>
+		<property name="com.jaspersoft.studio.field.label" value="dg"/>
+	</field>
+	<field name="dinhmuc" class="java.lang.Integer">
+		<property name="com.jaspersoft.studio.field.name" value="dinhmuc"/>
+		<property name="com.jaspersoft.studio.field.label" value="dinhmuc"/>
+	</field>
+	<field name="luyke" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="luyke"/>
+		<property name="com.jaspersoft.studio.field.label" value="luyke"/>
+	</field>
+	<variable name="sum_luyke_2" class="java.lang.Double" calculation="Sum">
+		<variableExpression><![CDATA[$F{luyke}]]></variableExpression>
+	</variable>
+	<variable name="sum_tt_2" class="java.lang.Double" calculation="Sum">
+		<variableExpression><![CDATA[$F{tt}]]></variableExpression>
+	</variable>
+	<variable name="qty_db" class="java.lang.Double" calculation="Sum">
+		<variableExpression><![CDATA[$F{id}==4||$F{id}==5?$F{sl}.doubleValue():0]]></variableExpression>
+	</variable>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<columnHeader>
+		<band height="30">
+			<textField>
+				<reportElement x="0" y="0" width="802" height="30" uuid="216c87d6-e2c0-41b6-90ed-ea22f364f58e"/>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{dm}]]></textFieldExpression>
+			</textField>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="26" splitType="Stretch">
+			<textField>
+				<reportElement x="0" y="0" width="40" height="26" uuid="624e63fc-a099-42db-8a79-2616c22f4f6d">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="17c3a233-7757-4c2c-a141-7cc9ba84b9dc"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{stt}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="40" y="0" width="210" height="26" uuid="03e01d64-945e-4278-b3fb-7f55f1cc54f9">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="b44323aa-38f7-42c0-8b9a-ed499fb3b971"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{noidung}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="250" y="0" width="100" height="26" uuid="9e0d060c-2ccf-4c70-9672-a39bbe6dc242">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="24d0594d-e2f7-4261-b7bd-0c0b938aa68f"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{sl}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="350" y="0" width="130" height="26" uuid="116afcd3-be4c-4a6a-b8fb-d79bacac6584">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="5d4115b8-83be-43e4-bf01-b7a3a63062c8"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{tt}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="480" y="0" width="90" height="26" uuid="57f9cd71-88bf-4afa-8a49-dedc8c8feb86">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="4071dc75-7a03-41c0-a65f-db8cca0d96b4"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{dg}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="570" y="0" width="100" height="26" uuid="e9121505-6e19-493e-941a-1378574f1bd1">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="cd65b959-3022-4cdf-8818-d630a600ada0"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{dinhmuc}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="670" y="0" width="132" height="26" uuid="0367c539-e42f-431f-9155-bd9b75326763">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="01eb9d20-5ce2-4338-869c-ba1ffd36edf8"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{luyke}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<summary>
+		<band height="30">
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="350" y="0" width="130" height="30" uuid="1b320c27-ef7f-4618-92ff-9e7d734ea923"/>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{sum_tt_2}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0">
+				<reportElement x="0" y="0" width="250" height="30" uuid="ea4989fe-ac5e-4e10-8165-b52f08e54420"/>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Cộng nhóm"]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="250" y="0" width="100" height="30" uuid="b984323b-6745-4833-9486-a5be02f491cb"/>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="480" y="0" width="90" height="30" uuid="7e28057a-782c-4728-ac70-cfd6f369106d"/>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="570" y="0" width="100" height="30" uuid="47ddc1ce-58d6-4464-96ad-63045749f7f8"/>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="670" y="0" width="132" height="30" uuid="959c4a9a-2e77-4ca9-a7ce-5d2063231090"/>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$V{sum_luyke_2}]]></textFieldExpression>
+			</textField>
+		</band>
+	</summary>
+</jasperReport>

@@ -1,0 +1,371 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.21.5.final using JasperReports Library version 6.21.5-74d586df47b25dbd05bd0957999819196e59934a  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="check_code" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="771ddd9b-0cd8-4c65-886f-7ee7caef26e1">
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="psql"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.keep.first.band.1" value="columnHeader"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.keep.first.band.1" value="columnHeader"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.2" value="pageFooter"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.3" value="groupHeader"/>
+	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.rows" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.columns" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.white.page.background" value="false"/>
+	<property name="net.sf.jasperreports.export.xls.detect.cell.type" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.ignore.graphics" value="false"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.1" value="pageHeader"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.group.3" value="ProductGroup"/>
+	<property name="net.sf.jasperreports.export.xls.exclude.origin.report.3" value="ProductReport"/>
+	<property name="net.sf.jasperreports.export.xls.ignore.cell.border" value="false"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.2" value="pageFooter"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.3" value="groupHeader"/>
+	<property name="net.sf.jasperreports.export.xlsx.remove.empty.space.between.rows" value="true"/>
+	<property name="net.sf.jasperreports.export.xlsx.remove.empty.space.between.columns" value="true"/>
+	<property name="net.sf.jasperreports.export.xlsx.white.page.background" value="false"/>
+	<property name="net.sf.jasperreports.export.xlsx.detect.cell.type" value="true"/>
+	<property name="net.sf.jasperreports.export.xlsx.ignore.graphics" value="false"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.band.1" value="pageHeader"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.group.3" value="ProductGroup"/>
+	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.report.3" value="ProductReport"/>
+	<property name="net.sf.jasperreports.export.xlsx.ignore.cell.border" value="false"/>
+	<property name="net.sf.jasperreports.default.pdf.embedded" value="true"/>
+	<property name="net.sf.jasperreports.default.pdf.font.name" value="Arial.ttf"/>
+	<property name="net.sf.jasperreports.awt.ignore.missing.font" value="false"/>
+	<property name="net.sf.jasperreports.default.pdf.encoding" value="Cp1258"/>
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
+	<parameter name="StartDate" class="java.util.Date"/>
+	<parameter name="EndDate" class="java.util.Date"/>
+	<parameter name="M_Product_ID" class="java.lang.String"/>
+	<queryString>
+		<![CDATA[with
+giao_dich AS (
+    -- Giao dịch cho sản phẩm 1000017 (Ngao Nâu có thuộc tính)
+    SELECT
+        ma.m_attribute_id,
+        mav.hsv_c_thuoctinh_id,
+        m.movementdate,
+        m.movementqty,
+        RIGHT(m.movementtype, 1) AS tang_giam
+    FROM m_transaction m
+    JOIN m_product hh ON hh.m_product_id = m.m_product_id
+    join m_attributeinstance ma on ma.m_attributesetinstance_id = m.m_attributesetinstance_id
+    join m_attributevalue mav on mav.m_attributevalue_id = ma.m_attributevalue_id
+    WHERE m.ad_client_id = $P{AD_CLIENT_ID}
+      AND m.movementdate <= $P{EndDate}
+      AND hh.m_product_id = 1000017
+),
+giao_dich_2 AS (
+    -- Giao dịch cho sản phẩm 1000017 (Ngao Trắng - không thuộc tính/tổng cộng)
+    SELECT
+        m.movementdate,
+        m.movementqty,
+        RIGHT(m.movementtype, 1) AS tang_giam
+    FROM m_transaction m
+    JOIN m_product hh ON hh.m_product_id = m.m_product_id
+    WHERE m.ad_client_id = $P{AD_CLIENT_ID}
+      AND m.movementdate <= $P{EndDate}
+      AND hh.m_product_id = 1000017
+),
+chuyen_kho_2_9 AS (
+    -- Dữ liệu chuyển kho (chỉ tiêu 4)
+    SELECT COALESCE(SUM(mmv.movementqty), 0) AS qty
+    FROM m_movement mm
+    JOIN m_movementline mmv ON mm.m_movement_id = mmv.m_movement_id
+    WHERE mmv.ad_client_id = $P{AD_CLIENT_ID}
+      AND mm.movementdate BETWEEN $P{StartDate} AND $P{EndDate}
+      AND mm.docstatus IN ('CL', 'CO')
+      AND mmv.m_product_id = 1000302 -- SP Ngao Lọt
+      AND mmv.m_locator_id = 1000297 AND mmv.m_locatorto_id = 1000251 -- Kho cụ thể
+),
+nhap_mua_tt AS (
+    -- Nhập mua Ngao Nâu có thuộc tính (chỉ tiêu 2)
+    SELECT SUM(miv.movementqty) AS qty
+    FROM m_inout mi
+    JOIN m_inoutline miv ON mi.m_inout_id = miv.m_inout_id
+    JOIN m_attributeinstance ma ON ma.m_attributesetinstance_id = miv.m_attributesetinstance_id
+    JOIN m_attributevalue mav ON mav.m_attributevalue_id = ma.m_attributevalue_id
+    WHERE mi.ad_client_id = $P{AD_CLIENT_ID}
+      AND miv.m_product_id = 1000017
+      AND ma.m_attribute_id = 1000022 AND mav.hsv_c_thuoctinh_id = 1000021
+      AND mi.movementdate BETWEEN $P{StartDate} AND $P{EndDate} AND mi.docstatus IN ('CL', 'CO')
+),
+nhap_mua_all AS (
+    -- Nhập mua Ngao Trắng (tổng nhập mua SP 1000017) (chỉ tiêu 2)
+    SELECT SUM(miv.movementqty) AS qty
+    FROM m_inout mi
+    JOIN m_inoutline miv ON mi.m_inout_id = miv.m_inout_id
+    WHERE mi.ad_client_id = $P{AD_CLIENT_ID}
+      AND miv.m_product_id = 1000017
+      AND mi.movementdate BETWEEN $P{StartDate} AND $P{EndDate} AND mi.docstatus IN ('CL', 'CO')
+),
+nhap_kho_2_9 AS (
+    -- Dữ liệu thành phẩm nhập kho từ sản xuất (chỉ tiêu 4 & 6)
+    SELECT civ.productionqty AS qty, hh.hsv_loaimat_id, ci.c_campaign_id
+    FROM m_production ci
+    JOIN m_productionplan civ ON ci.m_production_id = civ.m_production_id
+    JOIN m_product hh ON hh.m_product_id = civ.m_product_id
+    WHERE ci.ad_client_id = $P{AD_CLIENT_ID}
+      AND ci.movementdate BETWEEN $P{StartDate} AND $P{EndDate}
+      AND ci.docstatus IN ('CL', 'CO')
+),
+ton_kho_summary AS (
+    -- Tổng hợp Tồn Đầu & Tồn Cuối (Chỉ tiêu 1 & 3)
+    SELECT
+        -- Ngao Nâu (có thuộc tính)
+        SUM(CASE WHEN t.m_attribute_id = 1000022 AND t.hsv_c_thuoctinh_id = 1000021 THEN t.movementqty END) FILTER (WHERE t.movementdate < $P{StartDate}) AS tdk_nau,
+        SUM(CASE WHEN t.m_attribute_id = 1000022 AND t.hsv_c_thuoctinh_id = 1000021 THEN t.movementqty END) FILTER (WHERE t.movementdate <= $P{EndDate}) AS tck_nau,
+        -- Ngao Trắng (tổng SP 1000017)
+        SUM(t2.movementqty) FILTER (WHERE t2.movementdate < $P{StartDate}) AS tdk_trang_tong,
+        SUM(t2.movementqty) FILTER (WHERE t2.movementdate <= $P{EndDate}) AS tck_trang_tong
+    FROM giao_dich t
+    FULL JOIN giao_dich_2 t2 ON FALSE -- Dùng FULL JOIN FALSE để kết hợp 2 nguồn dữ liệu tổng hợp
+),
+-- Tính toán các chỉ số phụ thuộc (1-4)
+kq_1_4 AS (
+    SELECT
+        -- Tồn đầu kỳ (ID 1)
+        (SELECT tdk_nau FROM ton_kho_summary) AS t1_nau,
+        (SELECT tdk_trang_tong - tdk_nau FROM ton_kho_summary) AS t1_trang, -- Ngao Trắng = Tổng - Ngao Nâu
+        -- Nhập mua trong kỳ (ID 2)
+        (SELECT qty FROM nhap_mua_tt) AS t2_nau,
+        ((SELECT qty FROM nhap_mua_all) - (SELECT qty FROM nhap_mua_tt)) AS t2_trang,
+        -- Tồn cuối kỳ (ID 3)
+        (SELECT tck_nau FROM ton_kho_summary) AS t3_nau,
+        ((SELECT tck_trang_tong FROM ton_kho_summary) - (SELECT tck_nau FROM ton_kho_summary)) AS t3_trang,
+        -- Ngao sử dụng tại Long Hải (ID 4)
+        COALESCE(SUM(t.qty) FILTER (
+            WHERE t.hsv_loaimat_id = 1000020 AND t.c_campaign_id = 1000007
+        ), 0) * 1.15 AS t4_nau, -- Ngao Nâu (1.15 * sản xuất)
+        (SELECT qty FROM chuyen_kho_2_9) AS t4_trang -- Ngao Trắng (chuyển kho)
+    FROM nhap_kho_2_9 t
+    CROSS JOIN chuyen_kho_2_9 ck -- Đảm bảo CTE nhỏ có thể được truy cập
+),
+-- Tính toán Chỉ số 5 (Đưa vào sử dụng trong kỳ)
+kq5 AS (
+    SELECT
+        -- Ngao Nâu: Tồn Đầu + Nhập Mua - Tồn Cuối - Sử dụng LH
+        (t1_nau + t2_nau - t3_nau - t4_nau) AS nau,
+        -- Ngao Trắng: Tồn Đầu + Nhập Mua - Tồn Cuối - Sử dụng LH
+        (t1_trang + t2_trang - t3_trang - t4_trang - t4_nau)  AS trang,
+        t1_trang , t2_trang , t3_trang , t4_trang - t4_nau  as t4_trang,
+        t1_trang + t2_trang - t3_trang - t4_trang + t4_nau as trang_5
+        
+        
+     
+    FROM kq_1_4
+),
+-- Tính toán Chỉ số 6 (Thành phẩm nhập kho từ nguyên liệu)
+kq6 AS (
+    SELECT
+        COALESCE(SUM(qty) FILTER (
+            WHERE hsv_loaimat_id = 1000020 -- Ngao Nâu
+              AND c_campaign_id IN (1000093, 1000094, 1000018)
+        ), 0) AS nau,
+        COALESCE(SUM(qty) FILTER (
+            WHERE hsv_loaimat_id = 1000021 -- Ngao Trắng
+              AND c_campaign_id IN (1000093, 1000094, 1000018)
+        ), 0) AS trang
+    FROM nhap_kho_2_9
+)
+
+select 'II.09' as id,kq5.t1_trang , kq5.t2_trang , kq5.t3_trang,kq5.t4_trang ,kq5.nau as nau_5, kq5.t1_trang + kq5.t2_trang - kq5.t3_trang-kq5.t4_trang as trang_5,
+kq5.trang_5 as trang_51,
+	      (
+	        kq6.nau -- Thành phẩm NN nhập kho
+	        - kq5.nau/1.15 -- Đưa vào sử dụng NN
+	        - 0.1 * kq5.trang/1.15 -- 10% Đưa vào sử dụng NT
+    	) AS ngao_nau
+		FROM kq5, kq6]]>
+	</queryString>
+	<field name="id" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="id"/>
+		<property name="com.jaspersoft.studio.field.label" value="id"/>
+	</field>
+	<field name="t1_trang" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="t1_trang"/>
+		<property name="com.jaspersoft.studio.field.label" value="t1_trang"/>
+	</field>
+	<field name="t2_trang" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="t2_trang"/>
+		<property name="com.jaspersoft.studio.field.label" value="t2_trang"/>
+	</field>
+	<field name="t3_trang" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="t3_trang"/>
+		<property name="com.jaspersoft.studio.field.label" value="t3_trang"/>
+	</field>
+	<field name="t4_trang" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="t4_trang"/>
+		<property name="com.jaspersoft.studio.field.label" value="t4_trang"/>
+	</field>
+	<field name="nau_5" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="nau_5"/>
+		<property name="com.jaspersoft.studio.field.label" value="nau_5"/>
+	</field>
+	<field name="trang_5" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="trang_5"/>
+		<property name="com.jaspersoft.studio.field.label" value="trang_5"/>
+	</field>
+	<field name="trang_51" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="trang_51"/>
+		<property name="com.jaspersoft.studio.field.label" value="trang_51"/>
+	</field>
+	<field name="ngao_nau" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="ngao_nau"/>
+		<property name="com.jaspersoft.studio.field.label" value="ngao_nau"/>
+	</field>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<columnHeader>
+		<band height="30" splitType="Stretch">
+			<staticText>
+				<reportElement x="0" y="0" width="67" height="30" uuid="947cd576-e354-4043-ad16-6122a260d435">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c99c9e81-ab7a-4eda-b3c3-b1bbcf311e37"/>
+				</reportElement>
+				<text><![CDATA[id]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="67" y="0" width="61" height="30" uuid="83cba47a-5781-4a49-83a3-dbf29e463f37">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="4ab428cf-fd46-4cc3-9d67-2c93693a869f"/>
+				</reportElement>
+				<text><![CDATA[t1_trang]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="128" y="0" width="61" height="30" uuid="968501fb-c569-49d5-aebc-65dd6a8ff453">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="fd07abfc-05b7-48b7-b6dc-0afa2ef381ae"/>
+				</reportElement>
+				<text><![CDATA[t2_trang]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="189" y="0" width="61" height="30" uuid="2dbe1dd8-ffb7-4036-80c8-cdf84605e652">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="b98fc71b-2e5a-41e1-87b2-f2d3e59f2065"/>
+				</reportElement>
+				<text><![CDATA[t3_trang]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="250" y="0" width="61" height="30" uuid="1ff1561a-1767-4440-a9b7-73a6c27a2692">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="edea8c08-d53b-4e6e-92f5-b6398268f97a"/>
+				</reportElement>
+				<text><![CDATA[t4_trang]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="311" y="0" width="61" height="30" uuid="a2d82e33-63aa-4944-8f50-7d704a0c3f73">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="426d7240-8c74-4f7f-bbeb-846770460179"/>
+				</reportElement>
+				<text><![CDATA[nau_5]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="372" y="0" width="61" height="30" uuid="536ab174-0f8b-49d6-ac81-318860322685">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="99702a20-dce0-450a-8704-12e6eceace4a"/>
+				</reportElement>
+				<text><![CDATA[trang_5]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="433" y="0" width="61" height="30" uuid="896d1af5-2e81-4227-8e56-95d106bd938a">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="05790523-5656-414b-bd46-11afdfc44586"/>
+				</reportElement>
+				<text><![CDATA[trang_51]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="494" y="0" width="61" height="30" uuid="0b42a48c-2117-4bb8-a527-8d2a3a75f516">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="280754ab-5a5f-4462-9314-acfefeba0dc9"/>
+				</reportElement>
+				<text><![CDATA[ngao_nau]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="30" splitType="Stretch">
+			<textField>
+				<reportElement x="0" y="0" width="67" height="30" uuid="638fa81d-932e-4856-92fa-af905616b24d">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c99c9e81-ab7a-4eda-b3c3-b1bbcf311e37"/>
+				</reportElement>
+				<textFieldExpression><![CDATA[$F{id}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.###;#,##0.###-">
+				<reportElement x="67" y="0" width="61" height="30" uuid="c9d16e35-ad75-4def-8bf1-11bc0d1fa80a">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="4ab428cf-fd46-4cc3-9d67-2c93693a869f"/>
+				</reportElement>
+				<textElement textAlignment="Right"/>
+				<textFieldExpression><![CDATA[$F{t1_trang}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.###;#,##0.###-">
+				<reportElement x="128" y="0" width="61" height="30" uuid="efab4abd-67dd-4b3a-bb8e-270f79b42763">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="fd07abfc-05b7-48b7-b6dc-0afa2ef381ae"/>
+				</reportElement>
+				<textElement textAlignment="Right"/>
+				<textFieldExpression><![CDATA[$F{t2_trang}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.###;#,##0.###-">
+				<reportElement x="189" y="0" width="61" height="30" uuid="bed42fb3-b535-4050-bde2-6d4a4f87240a">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="b98fc71b-2e5a-41e1-87b2-f2d3e59f2065"/>
+				</reportElement>
+				<textElement textAlignment="Right"/>
+				<textFieldExpression><![CDATA[$F{t3_trang}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.###;#,##0.###-">
+				<reportElement x="250" y="0" width="61" height="30" uuid="69519f7a-b0ba-4040-b91e-1fdf1f63dde6">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="edea8c08-d53b-4e6e-92f5-b6398268f97a"/>
+				</reportElement>
+				<textElement textAlignment="Right"/>
+				<textFieldExpression><![CDATA[$F{t4_trang}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.###;#,##0.###-">
+				<reportElement x="311" y="0" width="61" height="30" uuid="a218612b-7bb9-4eba-a3fe-35659fceb13d">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="426d7240-8c74-4f7f-bbeb-846770460179"/>
+				</reportElement>
+				<textElement textAlignment="Right"/>
+				<textFieldExpression><![CDATA[$F{nau_5}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.###;#,##0.###-">
+				<reportElement x="372" y="0" width="61" height="30" uuid="83af7af2-2b9c-4be6-847b-dd7e5692b3b3">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="99702a20-dce0-450a-8704-12e6eceace4a"/>
+				</reportElement>
+				<textElement textAlignment="Right"/>
+				<textFieldExpression><![CDATA[$F{trang_5}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.###;#,##0.###-">
+				<reportElement x="433" y="0" width="61" height="30" uuid="b8b1da09-8d83-4d01-90b3-aa88d4ceca73">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="05790523-5656-414b-bd46-11afdfc44586"/>
+				</reportElement>
+				<textElement textAlignment="Right"/>
+				<textFieldExpression><![CDATA[$F{trang_51}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.###;#,##0.###-">
+				<reportElement x="494" y="0" width="61" height="30" uuid="cadbd49d-b4ba-408c-8c38-8697a3c3213c">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="280754ab-5a5f-4462-9314-acfefeba0dc9"/>
+				</reportElement>
+				<textElement textAlignment="Right"/>
+				<textFieldExpression><![CDATA[$F{ngao_nau}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<summary>
+		<band height="43" splitType="Stretch">
+			<textField>
+				<reportElement x="0" y="0" width="340" height="30" uuid="42054e69-284e-4c05-91a0-d4a42926c2c3">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="be352458-7e6d-4bcb-8d99-215651a39a4c"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Tổng"]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.##" isBlankWhenNull="true">
+				<reportElement x="340" y="0" width="215" height="30" uuid="45ab43f9-fd40-405b-9174-e8942bac5fb9">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="2baff5cb-381e-4928-b0ba-24ec442183d4"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{M_Product_ID}]]></textFieldExpression>
+			</textField>
+		</band>
+	</summary>
+</jasperReport>

@@ -1,0 +1,921 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.20.0.final using JasperReports Library version 6.20.0-2bc7ab61c56f459e8176eb05c7705e145cd400ad  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Sub_chiphi" pageWidth="800" pageHeight="595" orientation="Landscape" columnWidth="800" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="3caf149e-9cd3-4746-b817-264542f239e2">
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="psql"/>
+	<parameter name="StartDate" class="java.util.Date"/>
+	<parameter name="EndDate" class="java.util.Date"/>
+	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
+	<parameter name="slb" class="java.lang.Double" isForPrompting="false"/>
+	<parameter name="slb1" class="java.lang.Double" isForPrompting="false"/>
+	<parameter name="slb5" class="java.lang.Double" isForPrompting="false"/>
+	<parameter name="slnt" class="java.lang.Double" isForPrompting="false"/>
+	<parameter name="slnm" class="java.lang.Double" isForPrompting="false"/>
+	<parameter name="sl_trongky" class="java.lang.Double" isForPrompting="false"/>
+	<queryString language="SQL">
+		<![CDATA[WITH params AS (
+    SELECT
+        $P{StartDate}::date AS start_date,
+        $P{EndDate}::date AS end_date,
+        date_trunc('year', $P{EndDate}::date)::date AS year_start
+),
+dongia AS (
+    SELECT DISTINCT ON (dgl.hsv_luongnasa_id)
+        dg.startdate, dg.enddate, nasa."name", nasa.value,
+        dgl.hsv_dinhmuc AS dgb, dgl.amountdg2 AS dgb1, dgl.amountdg1 AS dgb5,
+        dgl.hsv_dinhmuc1 AS dgnt, dgl.hsv_dinhmuc2 AS dgnm
+    FROM hsv_dongia dg
+    JOIN hsv_nkdongialine dgl ON dg.hsv_dongia_id = dgl.hsv_dongia_id
+    JOIN hsv_luongnasa nasa ON nasa.hsv_luongnasa_id = dgl.hsv_luongnasa_id
+    WHERE
+        dg.hsv_loaidongia_id = 1000057
+        AND dg.ad_client_id = $P{AD_CLIENT_ID}
+        AND $P{EndDate}::date BETWEEN dg.startdate AND dg.enddate
+    ORDER BY dgl.hsv_luongnasa_id, dg.startdate DESC
+),
+base_data AS (
+    SELECT
+        io.movementqty,
+        hh.M_AttributeSet_ID,
+        tt.hsv_c_thuoctinh_id
+    FROM m_inoutline io
+    JOIN m_inout iol ON io.m_inout_id = iol.m_inout_id
+        AND iol.docstatus IN ('CO', 'CL')
+        AND iol.issotrx = 'Y'
+        AND iol.movementdate BETWEEN $P{StartDate} AND $P{EndDate}
+        AND iol.AD_org_id = 1000027
+    JOIN m_product hh ON io.m_product_id = hh.m_product_id
+        AND hh.M_AttributeSet_ID IN (1000000, 1000062, 1000018)
+    LEFT JOIN (
+        SELECT tt.m_attributesetinstance_id, gtt.hsv_c_thuoctinh_id
+        FROM m_attributeinstance tt
+        JOIN m_attributevalue gtt ON tt.m_attributevalue_id = gtt.m_attributevalue_id
+            AND gtt.m_attribute_id = 1000001
+            AND gtt.hsv_c_thuoctinh_id IN (1000013, 1000005, 1000006, 1000007, 1000019)
+        WHERE tt.ad_client_id = $P{AD_CLIENT_ID}
+    ) tt ON io.m_attributesetinstance_id = tt.m_attributesetinstance_id
+    WHERE io.ad_client_id = $P{AD_CLIENT_ID}
+),
+sl_xuatban AS (
+    SELECT
+        COALESCE(SUM(CASE WHEN bd.M_AttributeSet_ID = 1000000 AND bd.hsv_c_thuoctinh_id = 1000013 THEN bd.movementqty END), 0) AS slb,
+        COALESCE(SUM(CASE WHEN bd.M_AttributeSet_ID = 1000000 AND bd.hsv_c_thuoctinh_id = 1000005 THEN bd.movementqty END), 0) AS slb1,
+        COALESCE(SUM(CASE WHEN bd.M_AttributeSet_ID = 1000000 AND bd.hsv_c_thuoctinh_id IN (1000006, 1000007, 1000019) THEN bd.movementqty END), 0) AS slb5,
+        COALESCE(SUM(CASE WHEN bd.M_AttributeSet_ID = 1000062 THEN bd.movementqty END), 0) AS slnt,
+        COALESCE(SUM(CASE WHEN bd.M_AttributeSet_ID = 1000018 THEN bd.movementqty END), 0) AS slnm
+    FROM base_data bd
+),
+fact_acct_common AS (
+    SELECT
+        fa.amtacctdr,
+        fa.amtacctcr,
+        fa.account_id,
+        fa.dateacct,
+        fa.ad_table_id,
+        fa.c_bpartner_id,
+        fa.c_activity_id,
+        fa.record_id,
+        fa.line_id,
+        fa.m_product_id,
+        gl.IsGenerated,
+        m.C_DocType_ID,
+        hh.M_PartType_ID
+    FROM Fact_Acct fa
+    LEFT JOIN gl_journalline gl ON fa.record_id = gl.gl_journal_id
+        AND fa.line_id = gl.gl_journalline_id
+        AND fa.Account_ID = gl.Account_ID
+    LEFT JOIN gl_journal a ON a.gl_journal_id = fa.record_id
+        AND a.docstatus IN ('CO', 'CL')
+    LEFT JOIN M_Inventory m ON fa.record_id = m.M_Inventory_id
+        AND m.docstatus IN ('CO', 'CL')
+        AND fa.ad_table_id = 321
+    LEFT JOIN m_product hh ON fa.m_product_id = hh.m_product_id
+    WHERE
+        fa.AD_Client_ID = $P{AD_CLIENT_ID}
+        AND fa.AD_org_id = 1000027
+        AND fa.dateacct BETWEEN (SELECT year_start FROM params) AND (SELECT end_date FROM params)
+),
+
+
+
+all_costs AS (
+    SELECT
+        -- 01: tk LIKE '6276%'
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE t.dateacct BETWEEN p.year_start AND p.end_date
+              AND tk.value LIKE '6276%'
+              AND (t.ad_table_id <> 224 OR (t.ad_table_id = 224 AND (t.IsGenerated = 'N' OR t.line_id IS NULL)))
+              AND t.c_activity_id NOT IN (1000108, 1000217)
+        ),0) AS cp_01_total,
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE t.dateacct BETWEEN p.start_date AND p.end_date
+              AND tk.value LIKE '6276%'
+              AND (t.ad_table_id <> 224 OR (t.ad_table_id = 224 AND (t.IsGenerated = 'N' OR t.line_id IS NULL)))
+              AND t.c_activity_id NOT IN (1000108, 1000217)
+        ),0) AS cp_01_period,
+
+        -- 02: tk LIKE '6275%' & ad_table_id = 318 & specific BPartners
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE tk.value LIKE '6275%'
+              AND t.ad_table_id = 318
+              AND t.C_BPartner_ID IN (1000147, 1000741)
+              AND t.c_activity_id NOT IN (1000108, 1000217)
+              AND t.dateacct BETWEEN p.year_start AND p.end_date
+        ),0) AS cp_02_total,
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE tk.value LIKE '6275%'
+              AND t.ad_table_id = 318
+              AND t.C_BPartner_ID IN (1000147, 1000741)
+              AND t.c_activity_id NOT IN (1000108, 1000217)
+              AND t.dateacct BETWEEN p.start_date AND p.end_date
+        ),0) AS cp_02_period,
+
+        -- 03: tk LIKE '6275%' & ad_table_id = 318 & BPartner = 1000247
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE tk.value LIKE '6275%'
+              AND t.ad_table_id = 318
+              AND t.C_BPartner_ID = 1000247
+              AND t.c_activity_id NOT IN (1000108, 1000217)
+              AND t.dateacct BETWEEN p.year_start AND p.end_date
+        ),0) AS cp_03_total,
+        
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE tk.value LIKE '6275%'
+              AND t.ad_table_id = 318
+              AND t.C_BPartner_ID = 1000247
+              AND t.c_activity_id NOT IN (1000108, 1000217)
+              AND t.dateacct BETWEEN p.start_date AND p.end_date
+        ),0) AS cp_03_period,
+
+        -- 04: tk starting '6275' with special 318 bpartner inclusion OR general (exclude 224 generated)
+       SUM(t.amtacctdr - t.amtacctcr) 
+             FILTER (
+             		WHERE t.dateacct BETWEEN p.year_start AND p.end_date             
+                     AND (t.ad_table_id = 318 AND t.C_BPartner_ID IN (1000147, 1000741, 1000247) )                     
+                     OR (
+                     		t.ad_table_id <> 224 
+	                     or (t.ad_table_id = 224 AND t.IsGenerated = 'N' )
+	                     or (t.ad_table_id = 224 AND t.line_id IS NULL )                   
+                     	)                                 
+                     AND LEFT(tk.value,4) IN ('6275')
+                     and t.c_activity_id NOT IN (1000108, 1000217)
+            ) AS cp_04_total,
+ 	SUM(t.amtacctdr - t.amtacctcr) 
+	FILTER (
+    	WHERE t.dateacct BETWEEN p.start_date AND p.end_date
+    	AND (	            
+          		( 
+         			t.ad_table_id <> 224 
+		             OR (t.ad_table_id = 224 AND t.IsGenerated = 'N')
+		             OR (t.ad_table_id = 224 AND t.line_id IS NULL)                     
+        		) and not (t.ad_table_id = 318 AND t.C_BPartner_ID IN (1000147, 1000741, 1000247))
+      		)
+     	AND LEFT(tk.value,4) IN ('6275')
+      	AND t.c_activity_id NOT IN (1000108, 1000217)
+) 		AS cp_04_period,
+
+
+        -- 05..08: tk in ('6278%') & ad_table_id = 321 & specific M_PartType_ID
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE tk.value LIKE '6278%'
+              AND t.ad_table_id = 321
+              AND t.C_DocType_ID IN (1000167,1000164)
+              AND t.M_PartType_ID = 1000076
+              AND t.dateacct BETWEEN p.year_start AND p.end_date
+        ),0) AS cp_05_total,
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE tk.value LIKE '6278%'
+              AND t.ad_table_id = 321
+              AND t.C_DocType_ID IN (1000167,1000164)
+              AND t.M_PartType_ID = 1000076
+              AND t.dateacct BETWEEN p.start_date AND p.end_date
+        ),0) AS cp_05_period,
+
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE tk.value LIKE '6278%'
+              AND t.ad_table_id = 321
+              AND t.C_DocType_ID IN (1000167,1000164)
+              AND t.M_PartType_ID = 1000077
+              AND t.dateacct BETWEEN p.year_start AND p.end_date
+        ),0) AS cp_06_total,
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE tk.value LIKE '6278%'
+              AND t.ad_table_id = 321
+              AND t.C_DocType_ID IN (1000167,1000164)
+              AND t.M_PartType_ID = 1000077
+              AND t.dateacct BETWEEN p.start_date AND p.end_date
+        ),0) AS cp_06_period,
+
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE tk.value LIKE '6278%'
+              AND t.ad_table_id = 321
+              AND t.C_DocType_ID IN (1000167,1000164)
+              AND t.M_PartType_ID = 1000078
+              AND t.dateacct BETWEEN p.year_start AND p.end_date
+        ),0) AS cp_07_total,
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE tk.value LIKE '6278%'
+              AND t.ad_table_id = 321
+              AND t.C_DocType_ID IN (1000167,1000164)
+              AND t.M_PartType_ID = 1000078
+              AND t.dateacct BETWEEN p.start_date AND p.end_date
+        ),0) AS cp_07_period,
+
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE tk.value LIKE '6278%'
+              AND t.ad_table_id = 321
+              AND t.C_DocType_ID IN (1000167,1000164)
+              AND t.M_PartType_ID = 1000079
+              AND t.dateacct BETWEEN p.year_start AND p.end_date
+        ),0) AS cp_08_total,
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE tk.value LIKE '6278%'
+              AND t.ad_table_id = 321
+              AND t.C_DocType_ID IN (1000167,1000164)
+              AND t.M_PartType_ID = 1000079
+              AND t.dateacct BETWEEN p.start_date AND p.end_date
+        ),0) AS cp_08_period,
+
+        -- 09: parttype 1000080 (tk 6278/6272)
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE t.dateacct BETWEEN p.year_start AND p.end_date
+              AND t.ad_table_id = 321
+              AND t.C_DocType_ID IN (1000167,1000164)
+              AND t.M_PartType_ID = 1000080
+              AND tk.value LIKE '6272%'
+        ),0) AS cp_09_total,
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE t.dateacct BETWEEN p.start_date AND p.end_date
+              AND t.ad_table_id = 321
+              AND t.C_DocType_ID IN (1000167,1000164)
+              AND t.M_PartType_ID = 1000080
+              AND tk.value LIKE '6272%'
+        ),0) AS cp_09_period,
+--select m_parttype_id,*  from m_product where m_parttype_id = 1000081 and ad_client_id  = 1000003
+        -- 10: parttype 1000081 (tk 6278/6272)
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE t.dateacct BETWEEN p.year_start AND p.end_date
+              AND t.ad_table_id = 321
+              AND t.C_DocType_ID IN (1000167,1000164)
+              AND t.M_PartType_ID = 1000081 
+              AND LEFT(tk.value,4) IN ('6272')
+        ),0) AS cp_10_total,
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE t.dateacct BETWEEN p.start_date AND p.end_date
+              AND t.ad_table_id = 321
+              AND t.C_DocType_ID IN (1000167,1000164)
+              AND t.M_PartType_ID = 1000081
+              AND LEFT(tk.value,4) IN ('6272')
+        ),0) AS cp_10_period,
+
+        -- 11: TK 6278/6272 trừ các parttype 05..10
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE t.dateacct BETWEEN p.year_start AND p.end_date
+              AND LEFT(tk.value,4) IN ('6278','6272')
+              AND COALESCE(t.M_PartType_ID,0) NOT IN (1000076,1000077,1000078,1000079,1000080,1000081)
+             -- AND (t.ad_table_id <> 224 OR (t.ad_table_id = 224 AND (t.IsGenerated = 'N' OR t.line_id IS NULL)))
+              AND t.c_activity_id NOT IN (1000108,1000217)
+           
+              AND t.ad_table_id in (321,318)
+        ),0) AS cp_11_total,
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE t.dateacct BETWEEN p.start_date AND p.end_date
+              AND LEFT(tk.value,4) IN ('6278','6272')
+              AND COALESCE(t.M_PartType_ID,0) NOT IN (1000076,1000077,1000078,1000079,1000080,1000081)
+--              AND (t.ad_table_id <> 224 OR (t.ad_table_id = 224 AND (t.IsGenerated = 'N' OR t.line_id IS NULL)))
+             AND t.c_activity_id NOT IN (1000108,1000217)
+              AND t.ad_table_id in (321,318)
+        ),0) AS cp_11_period,
+
+        -- 12: tk LIKE '6277%'
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE tk.value LIKE '6277%'
+              AND (t.ad_table_id <> 224 OR (t.ad_table_id = 224 AND (t.IsGenerated = 'N' OR t.line_id IS NULL)))
+              AND t.dateacct BETWEEN p.year_start AND p.end_date
+        ),0) AS cp_12_total,
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE tk.value LIKE '6277%'
+              AND (t.ad_table_id <> 224 OR (t.ad_table_id = 224 AND (t.IsGenerated = 'N' OR t.line_id IS NULL)))
+              AND t.dateacct BETWEEN p.start_date AND p.end_date
+        ),0) AS cp_12_period,
+
+        -- 13: tk LIKE '6412%'
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE tk.value LIKE '6412%'
+              AND (t.ad_table_id <> 224 OR (t.ad_table_id = 224 AND (t.IsGenerated = 'N' OR t.line_id IS NULL)))
+              AND t.dateacct BETWEEN p.year_start AND p.end_date
+              and t.c_activity_id NOT IN (1000108,1000217)
+        ),0) AS cp_13_total,
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE tk.value LIKE '6412%'
+              AND (t.ad_table_id <> 224 OR (t.ad_table_id = 224 AND (t.IsGenerated = 'N' OR t.line_id IS NULL)))
+              AND t.dateacct BETWEEN p.start_date AND p.end_date
+              and  t.c_activity_id NOT IN (1000108,1000217)
+        ),0) AS cp_13_period,
+
+        -- 14: tk LIKE '6352%'
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE tk.value LIKE '6352%'
+              AND (t.ad_table_id <> 224 OR (t.ad_table_id = 224 AND (t.IsGenerated = 'N' OR t.line_id IS NULL)))
+              AND t.dateacct BETWEEN p.year_start AND p.end_date
+        ),0) AS cp_14_total,
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE tk.value LIKE '6352%'
+              AND (t.ad_table_id <> 224 OR (t.ad_table_id = 224 AND (t.IsGenerated = 'N' OR t.line_id IS NULL)))
+              AND t.dateacct BETWEEN p.start_date AND p.end_date
+        ),0) AS cp_14_period,
+
+        -- 15: tk IN ('6273','6274')
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE tk.value IN ('6273','6274')
+              AND (t.ad_table_id <> 224 OR (t.ad_table_id = 224 AND (t.IsGenerated = 'N' OR t.line_id IS NULL)))
+              AND t.dateacct BETWEEN p.year_start AND p.end_date
+        ),0) AS cp_15_total,
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE tk.value IN ('6273','6274')
+              AND (t.ad_table_id <> 224 OR (t.ad_table_id = 224 AND (t.IsGenerated = 'N' OR t.line_id IS NULL)))
+              AND t.dateacct BETWEEN p.start_date AND p.end_date
+        ),0) AS cp_15_period,
+
+        -- 16: tk LIKE '6221%'
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE tk.value LIKE '6221%'
+              AND (t.ad_table_id <> 224 OR (t.ad_table_id = 224 AND (t.IsGenerated = 'N' OR t.line_id IS NULL)))
+              AND t.dateacct BETWEEN p.year_start AND p.end_date
+        ),0) AS cp_16_total,
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE tk.value LIKE '6221%'
+              AND (t.ad_table_id <> 224 OR (t.ad_table_id = 224 AND (t.IsGenerated = 'N' OR t.line_id IS NULL)))
+              AND t.dateacct BETWEEN p.start_date AND p.end_date
+        ),0) AS cp_16_period,
+
+        -- 17: LEFT IN ('6421','6411','6271')
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE LEFT(tk.value,4) IN ('6421','6411','6271')
+              AND (t.ad_table_id <> 224 OR (t.ad_table_id = 224 AND (t.IsGenerated = 'N' OR t.line_id IS NULL)))
+              AND t.dateacct BETWEEN p.year_start AND p.end_date
+        ),0) AS cp_17_total,
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE LEFT(tk.value,4) IN ('6421','6411','6271')
+              AND (t.ad_table_id <> 224 OR (t.ad_table_id = 224 AND (t.IsGenerated = 'N' OR t.line_id IS NULL)))
+              AND t.dateacct BETWEEN p.start_date AND p.end_date
+        ),0) AS cp_17_period,
+
+        -- 18: tk IN ('6423','6424')
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE tk.value IN ('6423','6424')
+              AND (t.ad_table_id <> 224 OR (t.ad_table_id = 224 AND (t.IsGenerated = 'N' OR t.line_id IS NULL)))
+              AND t.dateacct BETWEEN p.year_start AND p.end_date
+        ),0) AS cp_18_total,
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE tk.value IN ('6423','6424')
+              AND (t.ad_table_id <> 224 OR (t.ad_table_id = 224 AND (t.IsGenerated = 'N' OR t.line_id IS NULL)))
+              AND t.dateacct BETWEEN p.start_date AND p.end_date
+        ),0) AS cp_18_period,
+
+        -- 19: tk LIKE '6418%'
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE tk.value LIKE '6418%'
+              AND (t.ad_table_id <> 224 OR (t.ad_table_id = 224 AND (t.IsGenerated = 'N' OR t.line_id IS NULL)))
+              AND t.dateacct BETWEEN p.year_start AND p.end_date
+        ),0) AS cp_19_total,
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE tk.value LIKE '6418%'
+              AND (t.ad_table_id <> 224 OR (t.ad_table_id = 224 AND (t.IsGenerated = 'N' OR t.line_id IS NULL)))
+              AND t.dateacct BETWEEN p.start_date AND p.end_date
+        ),0) AS cp_19_period,
+
+        -- 20: tk IN ('6422','6426')
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE tk.value IN ('6422','6426')
+              AND (t.ad_table_id <> 224 OR (t.ad_table_id = 224 AND (t.IsGenerated = 'N' OR t.line_id IS NULL)))
+              AND t.dateacct BETWEEN p.year_start AND p.end_date
+        ),0) AS cp_20_total,
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE tk.value IN ('6422','6426')
+              AND (t.ad_table_id <> 224 OR (t.ad_table_id = 224 AND (t.IsGenerated = 'N' OR t.line_id IS NULL)))
+              AND t.dateacct BETWEEN p.start_date AND p.end_date
+        ),0) AS cp_20_period
+
+    FROM fact_acct_common t
+    JOIN c_elementvalue tk ON t.account_id = tk.c_elementvalue_id AND tk.AD_Client_ID = $P{AD_CLIENT_ID}
+    JOIN params p ON TRUE
+)
+SELECT
+    k.id::INT4 AS stt,
+    dg.name,
+    k.cp,
+    dg.dgb,
+    dg.dgb1,
+    dg.dgb5,
+    dg.dgnt,
+    dg.dgnm,
+    dg.dgb * xb.slb + xb.slb1 * dg.dgb1 + dg.dgb5 * xb.slb5 + dg.dgnt * xb.slnt + dg.dgnm * xb.slnm AS tong_cpdm,
+    dg.dgb * $P{slb} + $P{slb1} * dg.dgb1 + dg.dgb5 * $P{slb5} + dg.dgnt * $P{slnt} + dg.dgnm * $P{slnm} AS cplk_dm,
+    k.cplk
+FROM (
+         SELECT '01' AS id, cp_01_period AS cp, cp_01_total AS cplk FROM all_costs
+    UNION ALL SELECT '02', cp_02_period, cp_02_total FROM all_costs
+    UNION ALL SELECT '03', cp_03_period, cp_03_total FROM all_costs
+    UNION ALL SELECT '04', cp_04_period, cp_04_total FROM all_costs
+    UNION ALL SELECT '05', cp_05_period, cp_05_total FROM all_costs
+    UNION ALL SELECT '06', cp_06_period, cp_06_total FROM all_costs
+    UNION ALL SELECT '07', cp_07_period, cp_07_total FROM all_costs
+    UNION ALL SELECT '08', cp_08_period, cp_08_total FROM all_costs
+    UNION ALL SELECT '09', cp_09_period, cp_09_total FROM all_costs
+    UNION ALL SELECT '10', cp_10_period, cp_10_total FROM all_costs
+    UNION ALL SELECT '11', cp_11_period, cp_11_total FROM all_costs
+    UNION ALL SELECT '12', cp_12_period, cp_12_total FROM all_costs
+    UNION ALL SELECT '13', cp_13_period, cp_13_total FROM all_costs
+    UNION ALL SELECT '14', cp_14_period, cp_14_total FROM all_costs
+    UNION ALL SELECT '15', cp_15_period, cp_15_total FROM all_costs
+    UNION ALL SELECT '16', cp_16_period, cp_16_total FROM all_costs
+    UNION ALL SELECT '17', cp_17_period, cp_17_total FROM all_costs
+    UNION ALL SELECT '18', cp_18_period, cp_18_total FROM all_costs
+    UNION ALL SELECT '19', cp_19_period, cp_19_total FROM all_costs
+    UNION ALL SELECT '20', cp_20_period, cp_20_total FROM all_costs
+) AS k
+LEFT JOIN sl_xuatban xb ON TRUE
+LEFT JOIN dongia dg ON dg.value = k.id
+ORDER BY k.id::INT4;]]>
+	</queryString>
+	<field name="stt" class="java.lang.Integer">
+		<property name="com.jaspersoft.studio.field.name" value="stt"/>
+		<property name="com.jaspersoft.studio.field.label" value="stt"/>
+	</field>
+	<field name="name" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="name"/>
+		<property name="com.jaspersoft.studio.field.label" value="name"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="hsv_luongnasa"/>
+	</field>
+	<field name="cp" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="cp"/>
+		<property name="com.jaspersoft.studio.field.label" value="cp"/>
+	</field>
+	<field name="dgb" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="dgb"/>
+		<property name="com.jaspersoft.studio.field.label" value="dgb"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="hsv_nkdongialine"/>
+	</field>
+	<field name="dgb1" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="dgb1"/>
+		<property name="com.jaspersoft.studio.field.label" value="dgb1"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="hsv_nkdongialine"/>
+	</field>
+	<field name="dgb5" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="dgb5"/>
+		<property name="com.jaspersoft.studio.field.label" value="dgb5"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="hsv_nkdongialine"/>
+	</field>
+	<field name="dgnt" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="dgnt"/>
+		<property name="com.jaspersoft.studio.field.label" value="dgnt"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="hsv_nkdongialine"/>
+	</field>
+	<field name="dgnm" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="dgnm"/>
+		<property name="com.jaspersoft.studio.field.label" value="dgnm"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="hsv_nkdongialine"/>
+	</field>
+	<field name="tong_cpdm" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="tong_cpdm"/>
+		<property name="com.jaspersoft.studio.field.label" value="tong_cpdm"/>
+	</field>
+	<field name="cplk_dm" class="java.lang.Double">
+		<property name="com.jaspersoft.studio.field.name" value="cplk_dm"/>
+		<property name="com.jaspersoft.studio.field.label" value="cplk_dm"/>
+	</field>
+	<field name="cplk" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="cplk"/>
+		<property name="com.jaspersoft.studio.field.label" value="cplk"/>
+	</field>
+	<variable name="sum_cp" class="java.lang.Double" resetType="Group" resetGroup="Group1" calculation="Sum">
+		<variableExpression><![CDATA[$F{cp}]]></variableExpression>
+	</variable>
+	<variable name="sum_dgb" class="java.lang.Double" resetType="Group" resetGroup="Group1" calculation="Sum">
+		<variableExpression><![CDATA[$F{dgb}]]></variableExpression>
+	</variable>
+	<variable name="sum_dgb1" class="java.lang.Double" resetType="Group" resetGroup="Group1" calculation="Sum">
+		<variableExpression><![CDATA[$F{dgb1}]]></variableExpression>
+	</variable>
+	<variable name="sum_dgb5" class="java.lang.Double" resetType="Group" resetGroup="Group1" calculation="Sum">
+		<variableExpression><![CDATA[$F{dgb5}]]></variableExpression>
+	</variable>
+	<variable name="sum_dgnt" class="java.lang.Double" resetType="Group" resetGroup="Group1" calculation="Sum">
+		<variableExpression><![CDATA[$F{dgnt}]]></variableExpression>
+	</variable>
+	<variable name="sum_dgnm" class="java.lang.Double" resetType="Group" resetGroup="Group1" calculation="Sum">
+		<variableExpression><![CDATA[$F{dgnm}]]></variableExpression>
+	</variable>
+	<variable name="sum_cpdm" class="java.lang.Double" resetType="Group" resetGroup="Group1" calculation="Sum">
+		<variableExpression><![CDATA[$F{tong_cpdm}]]></variableExpression>
+	</variable>
+	<variable name="sum_lechtrongky" class="java.lang.Double" resetType="Group" resetGroup="Group1" calculation="Sum">
+		<variableExpression><![CDATA[$F{cp}.doubleValue()-$F{tong_cpdm}.doubleValue()]]></variableExpression>
+	</variable>
+	<variable name="sum_lechluyke" class="java.lang.Double" resetType="Group" resetGroup="Group1" calculation="Sum">
+		<variableExpression><![CDATA[$F{cplk}.doubleValue()-$F{cplk_dm}.doubleValue()]]></variableExpression>
+	</variable>
+	<group name="Group1">
+		<groupFooter>
+			<band height="30">
+				<textField pattern="#,##0" isBlankWhenNull="true">
+					<reportElement x="495" y="0" width="55" height="30" uuid="b8cd7f00-b5d9-4041-a144-c7c8a67618ea">
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					</reportElement>
+					<box leftPadding="2" rightPadding="2">
+						<pen lineWidth="0.5"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{sum_dgnm}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0" isBlankWhenNull="true">
+					<reportElement x="710" y="0" width="90" height="30" uuid="802969b6-d7fe-4f6a-8d48-fe57eec4ecba">
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					</reportElement>
+					<box leftPadding="2" rightPadding="2">
+						<pen lineWidth="0.5"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{sum_lechluyke}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0" isBlankWhenNull="true">
+					<reportElement x="385" y="0" width="55" height="30" uuid="ebdc828c-5d00-43ae-bfe5-cbd93a5070e5">
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					</reportElement>
+					<box leftPadding="2" rightPadding="2">
+						<pen lineWidth="0.5"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{sum_dgb5}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0" isBlankWhenNull="true">
+					<reportElement x="330" y="0" width="55" height="30" uuid="3db48179-87c5-466f-b7c9-b8556c6d79c3">
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					</reportElement>
+					<box leftPadding="2" rightPadding="2">
+						<pen lineWidth="0.5"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{sum_dgb1}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0" isBlankWhenNull="true">
+					<reportElement x="630" y="0" width="80" height="30" uuid="30c004da-2e99-44bd-a5a9-1df050f0a0ff"/>
+					<box leftPadding="2" rightPadding="2">
+						<pen lineWidth="0.5"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{sum_lechtrongky}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0" isBlankWhenNull="true">
+					<reportElement x="440" y="0" width="55" height="30" uuid="d1bddc0d-e565-41fd-82a8-37e20006ae29">
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					</reportElement>
+					<box leftPadding="2" rightPadding="2">
+						<pen lineWidth="0.5"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{sum_dgnt}]]></textFieldExpression>
+				</textField>
+				<textField>
+					<reportElement x="0" y="0" width="190" height="30" uuid="4119585f-2a86-4db2-990d-fd415ad453f0">
+						<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					</reportElement>
+					<box leftPadding="2" rightPadding="2">
+						<pen lineWidth="0.5"/>
+					</box>
+					<textElement textAlignment="Left" verticalAlignment="Middle">
+						<font fontName="Arial" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA["Cộng nhóm"]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0" isBlankWhenNull="true">
+					<reportElement x="550" y="0" width="80" height="30" uuid="f05fe780-851a-40ac-872c-61be5e558911">
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					</reportElement>
+					<box leftPadding="2" rightPadding="2">
+						<pen lineWidth="0.5"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{sum_cpdm}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0" isBlankWhenNull="true">
+					<reportElement x="190" y="0" width="85" height="30" uuid="4160cee3-d47e-445d-aa7c-ff20e202f969"/>
+					<box leftPadding="2" rightPadding="2">
+						<pen lineWidth="0.5"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{sum_cp}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0" isBlankWhenNull="true">
+					<reportElement x="275" y="0" width="55" height="30" uuid="032ee4f5-7216-49f2-b1bb-c19910b682d8">
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					</reportElement>
+					<box leftPadding="2" rightPadding="2">
+						<pen lineWidth="0.5"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{sum_dgb}]]></textFieldExpression>
+				</textField>
+			</band>
+		</groupFooter>
+	</group>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<columnHeader>
+		<band height="29" splitType="Stretch">
+			<staticText>
+				<reportElement x="0" y="-1" width="30" height="30" uuid="4ed204c1-3008-43e5-8ed6-3aa3bf1e2dae"/>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<text><![CDATA[II]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="30" y="-1" width="770" height="30" uuid="e0df05a2-ea19-41d7-a7db-89ab265d204b"/>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font fontName="Arial" size="11" isBold="true"/>
+				</textElement>
+				<text><![CDATA[Thành phẩm ngao]]></text>
+			</staticText>
+		</band>
+	</columnHeader>
+	<detail>
+		<band height="30">
+			<textField>
+				<reportElement x="0" y="0" width="30" height="30" uuid="ffae7319-abbb-4492-89c6-3708f3071c2c">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{stt}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="30" y="0" width="160" height="30" uuid="548c3a06-9237-4ada-8eb8-487324440a28">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{name}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="190" y="0" width="85" height="30" uuid="1746c596-8ccd-45bd-88d3-01f3fd518ca6"/>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{cp}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="275" y="0" width="55" height="30" uuid="538ef09f-16d7-449e-ba76-b7c4023f793e">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{dgb}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="330" y="0" width="55" height="30" uuid="a936b3fc-bacd-4558-b814-3d98e060d5e9">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{dgb1}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="385" y="0" width="55" height="30" uuid="6b2da13b-a6bd-42ee-b755-cba21ece2332">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{dgb5}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="440" y="0" width="55" height="30" uuid="2ab7dcb3-2a93-40a6-867a-a94e7057e521">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{dgnt}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="495" y="0" width="55" height="30" uuid="8b14a721-33e7-4368-bcb9-49a60a28b8c0">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{dgnm}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="550" y="0" width="80" height="30" uuid="9ab2daef-d89f-4d12-bb42-2c4d4587393d">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{tong_cpdm}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="630" y="0" width="80" height="30" uuid="46769eb2-8df4-4e80-ae72-2878209b86d1"/>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{cp}.doubleValue()-$F{tong_cpdm}.doubleValue()]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="710" y="0" width="90" height="30" uuid="f4af4069-8501-4d80-bd8a-c09b28708145">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{cplk}.doubleValue()-$F{cplk_dm}.doubleValue()]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+	<summary>
+		<band height="30">
+			<textField>
+				<reportElement x="0" y="0" width="190" height="30" uuid="99863b2f-a2f2-4fba-838e-5960e5b38806">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA["CP vượt định mức/1 kg Ngao theo đơn hàng"]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="630" y="0" width="80" height="30" uuid="e4d2f8ea-4e63-47a5-8ca9-497abb1d7b94"/>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$P{sl_trongky}==0?0:$V{sum_lechtrongky}/$P{sl_trongky}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="440" y="0" width="55" height="30" uuid="1592e0fe-e20a-41fd-9d37-81a6cdc25ead">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="190" y="0" width="85" height="30" uuid="4a17942b-c888-4bd3-9c34-096a7250247f"/>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="275" y="0" width="55" height="30" uuid="5a226352-c144-41a7-a6df-8f44a68a6f5e">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="550" y="0" width="80" height="30" uuid="173cf895-b7f0-41e3-aa1c-dbb546c8a4bb">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="710" y="0" width="90" height="30" uuid="3856aad5-afae-40ea-9ae8-eac6061a2e1d">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[($P{slb}+$P{slb1}+$P{slb5}+$P{slnt}+$P{slnm})==0?0:$V{sum_lechluyke}/($P{slb}+$P{slb1}+$P{slb5}+$P{slnt}+$P{slnm})]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="330" y="0" width="55" height="30" uuid="5b4fc00a-1bcb-412e-9399-34a151b82978">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="385" y="0" width="55" height="30" uuid="7b365b32-53fe-4db3-9110-0d120be44049">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement x="495" y="0" width="55" height="30" uuid="406b0961-c9a5-4af1-91d5-2917284fb175">
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true"/>
+				</textElement>
+			</textField>
+		</band>
+	</summary>
+</jasperReport>
