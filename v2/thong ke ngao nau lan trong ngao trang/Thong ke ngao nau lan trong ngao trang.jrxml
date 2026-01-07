@@ -27,7 +27,7 @@
     join m_attributevalue mav on mav.m_attributevalue_id = ma.m_attributevalue_id 
     WHERE m.ad_client_id = $P{AD_CLIENT_ID}
       AND m.movementdate <= $P{EndDate} 
-      and hh.m_product_id = 1000017
+      and hh.m_product_id = 1019435
 
 ),
 giao_dich_2 as (
@@ -43,15 +43,16 @@ giao_dich_2 as (
     JOIN m_locator kho ON m.m_locator_id = kho.m_locator_id
     WHERE m.ad_client_id = $P{AD_CLIENT_ID}
       AND m.movementdate <= $P{EndDate} 
-      and hh.m_product_id = 1000017
+      and hh.m_product_id = 1019435
 ),
 chuyen_kho as (
 	select coalesce(sum(mmv.movementqty),0) as qty 
 	from m_movement mm
 	join m_movementline mmv on mm.m_movement_id = mmv.m_movement_id 
 	where mmv.ad_client_id = $P{AD_CLIENT_ID} and mm.movementdate >= $P{StartDate} and mm.movementdate <= $P{EndDate} 
-	and mm.docstatus in ('CL','CO') and mmv.m_product_id = 1000302 and mmv.m_locator_id = 1000297 and mmv.m_locatorto_id = 1000251
+	and mm.docstatus in ('CL','CO') and mmv.m_product_id = 1019436 and mmv.m_locator_id = 1000303 and mmv.m_locatorto_id = 1000301
 ),
+
 nhap_mua_tt as (
 	select sum(miv.movementqty) as qty 
 	from m_inout mi 
@@ -59,7 +60,7 @@ nhap_mua_tt as (
 	join m_attributeinstance ma on ma.m_attributesetinstance_id = miv.m_attributesetinstance_id
 	join m_attributevalue mav on mav.m_attributevalue_id = ma.m_attributevalue_id
 	where mi.ad_client_id = $P{AD_CLIENT_ID}
-	and miv.m_product_id = 1000017 and ma.m_attribute_id =1000022 and mav.hsv_c_thuoctinh_id = 1000021
+	and miv.m_product_id = 1019435 and ma.m_attribute_id =1000156 and mav.hsv_c_thuoctinh_id = 1000147
 	and mi.movementdate BETWEEN $P{StartDate} AND $P{EndDate} and mi.docstatus in ('CL','CO')
 	
 ),
@@ -68,7 +69,7 @@ nhap_mua as (
 	from m_inout mi 
 	join m_inoutline miv on mi.m_inout_id = miv.m_inout_id 
 	where mi.ad_client_id = $P{AD_CLIENT_ID}
-	and miv.m_product_id = 1000017 
+	and miv.m_product_id = 1019435 
 	and mi.movementdate BETWEEN $P{StartDate} AND $P{EndDate} and mi.docstatus in ('CL','CO')
 	
 ),
@@ -107,8 +108,8 @@ kq AS (
     select 1 as id,'Tồn đầu kỳ' as noidung, sum(ngao_nau) as ngao_nau , sum(ngao_nl) as ngao_nl 
     from (
         select sum(t.dudau) FILTER (
-             where  t.M_Attribute_ID=1000022 
-             and  t.hsv_C_thuoctinh_ID=1000021
+             where  t.M_Attribute_ID=1000156 
+             and  t.hsv_C_thuoctinh_ID=1000147
         ) as ngao_nau, 0 as ngao_nl
         from ton_kho t
         union all 
@@ -132,8 +133,8 @@ kq AS (
     select 3 as id,'Tồn cuối kỳ' as noidung, sum(ngao_nau) as ngao_nau , sum(ngao_nl) as ngao_nl 
     from (
         select sum(t.ducuoi) FILTER (
-             where  t.M_Attribute_ID=1000022 
-             and  t.hsv_C_thuoctinh_ID=1000021
+            where  t.M_Attribute_ID=1000156 
+             and  t.hsv_C_thuoctinh_ID=1000147
         ) as ngao_nau, 0 as ngao_nl
         from ton_kho t
         union all 
@@ -147,8 +148,8 @@ kq AS (
            sum(ngao_nau) as ngao_nau , sum(ngao_nl) as ngao_nl 
     from (
         select 1.15 * sum(t.qty) FILTER (
-            where t.hsv_loaimat_id = 1000020
-            and t.c_campaign_id = 1000007
+            where t.hsv_loaimat_id = 1000128
+    
         ) as ngao_nau , 0 as ngao_nl 
         from nhap_kho t
         union all 
@@ -173,12 +174,12 @@ kq6 AS (
         6 AS id,
         'Thành phẩm nhập kho từ nguyên liệu' AS noidung,
         SUM(qty) FILTER (
-            WHERE hsv_loaimat_id = 1000020
-              AND c_campaign_id IN (1000093,1000094,1000018)
+            WHERE hsv_loaimat_id = 1000128
+              AND c_campaign_id IN  (1000100,1000104)
         ) AS ngao_nau,
         SUM(qty) FILTER (
-            WHERE hsv_loaimat_id = 1000021
-              AND c_campaign_id IN (1000093,1000094,1000018)
+            WHERE hsv_loaimat_id = 1000147
+              AND c_campaign_id IN  (1000100,1000104)
         ) AS ngao_trang
     FROM nhap_kho
 ),

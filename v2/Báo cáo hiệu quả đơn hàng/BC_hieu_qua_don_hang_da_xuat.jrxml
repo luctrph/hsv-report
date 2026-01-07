@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Created with Jaspersoft Studio version 6.20.0.final using JasperReports Library version 6.20.0-2bc7ab61c56f459e8176eb05c7705e145cd400ad  -->
-<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="BC_hieu_qua_don_hang" pageWidth="1005" pageHeight="595" orientation="Landscape" columnWidth="965" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="8f1c392a-6944-4e29-b682-0333018c284a">
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="BC_hieu_qua_don_hang_da_xuat" pageWidth="1005" pageHeight="595" orientation="Landscape" columnWidth="965" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="8f1c392a-6944-4e29-b682-0333018c284a">
 	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="psql"/>
 	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
 	<property name="net.sf.jasperreports.export.xls.exclude.origin.keep.first.band.1" value="columnHeader"/>
@@ -28,95 +28,154 @@
 	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.group.3" value="ProductGroup"/>
 	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.report.3" value="ProductReport"/>
 	<property name="net.sf.jasperreports.export.xlsx.ignore.cell.border" value="false"/>
+	<style name="trang">
+		<conditionalStyle>
+			<conditionExpression><![CDATA[$V{colorFlag} ==true]]></conditionExpression>
+			<style mode="Opaque" backcolor="#E6E6E6"/>
+		</conditionalStyle>
+	</style>
 	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
 	<parameter name="StartDate" class="java.util.Date"/>
 	<parameter name="EndDate" class="java.util.Date"/>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String">
+		<defaultValueExpression><![CDATA["dev/"]]></defaultValueExpression>
+	</parameter>
 	<parameter name="C_Currency_ID" class="java.lang.Integer"/>
 	<queryString>
-		<![CDATA[SELECT 
-    co.c_order_id,
-    hh.m_product_id,
-    CONCAT(co.documentno,'_',TO_CHAR(co.dateordered,'DD-MM-YYYY')) AS dh,
-    hh.name,
-    cov.qtyordered,
-    cov.priceentered,
-    cov.linenetamt,
-    COALESCE(k.tygia,1) AS tygia,
-    cov.linenetamt * COALESCE(k.tygia,1) AS vnd,
-    cov.qtyordered * COALESCE(z.hsv_dinhmuc,0) AS nguyenlieu,
-    COALESCE((j.vc * COALESCE(k.tygia,1) * cov.qtyordered)/26000,0) AS cpvc,
-    cov.qtyordered * COALESCE(cp_dm.cpdm,0) AS cpdm,
-    cov.qtydelivered,
-    cc.iso_code 
-FROM c_order co
-JOIN c_orderline cov ON co.c_order_id = cov.c_order_id
-join c_currency cc on cc.c_currency_id = co.c_currency_id 
-JOIN m_product hh ON hh.m_product_id = cov.m_product_id AND hh.m_attributeset_id in (1000199)
-JOIN m_attributeinstance ma ON ma.m_attributesetinstance_id = cov.m_attributesetinstance_id AND ma.M_Attribute_ID in (1000146)
+		<![CDATA[-- Bước 1: Xác định các đơn hàng (orders) liên quan trong khoảng thời gian báo cáo.
+WITH relevant_orders AS (
+    SELECT DISTINCT ci.c_order_id
+    FROM c_invoice ci
+    WHERE ci.ad_client_id = $P{AD_CLIENT_ID}
+      AND ci.dateacct BETWEEN $P{StartDate} AND $P{EndDate}      
+      AND ci.issotrx = 'Y'
+      AND ci.docstatus IN ('CL', 'CO')
+      AND right(ci.documentno, 1) <> 'N'
+),
+-- Các CTE tính toán giờ đây sẽ JOIN với relevant_orders để chỉ xử lý trên dữ liệu cần thiết
+tong_chi_phi AS (
+    SELECT
+        civ2.c_order_id,
+        SUM(CASE WHEN cd.docbasetype = 'APC' THEN -1 * civ2.linenetamt ELSE civ2.linenetamt END) AS tien
+    FROM c_invoiceline civ2
+    JOIN c_invoice ci2 ON ci2.c_invoice_id = civ2.c_invoice_id
+    JOIN c_charge cc ON cc.c_charge_id = civ2.c_charge_id AND cc.hsv_vanchuyen = 'Y'
+    JOIN c_doctype cd ON cd.c_doctype_id = ci2.c_doctype_id
+    -- Tối ưu: Chỉ tính toán trên các order liên quan
+    JOIN relevant_orders ro ON ro.c_order_id = civ2.c_order_id
+    WHERE ci2.issotrx = 'N'
+      AND ci2.docstatus IN ('CL', 'CO')
+      AND ci2.ad_client_id = $P{AD_CLIENT_ID}
+    GROUP BY civ2.c_order_id
+),
 
--- Lấy tỷ giá mới nhất cho từng đơn hàng
-LEFT JOIN LATERAL (
-    SELECT cr.multiplyrate AS tygia
-    FROM c_conversion_rate cr
-    WHERE cr.ad_client_id = $P{AD_CLIENT_ID}
-      AND cr.c_currency_id = co.c_currency_id
-      AND cr.c_conversiontype_id = co.c_conversiontype_id
-      AND co.dateordered BETWEEN cr.validfrom AND COALESCE(cr.validto, co.dateordered)
-    ORDER BY cr.validfrom DESC
-    LIMIT 1
-) k ON TRUE
-
--- Lấy đơn giá cước vận chuyển
-LEFT JOIN LATERAL (
-    SELECT dgl.hsv_dinhmuc1 AS vc
-    FROM hsv_dongia dg
-    JOIN hsv_nkdongialine dgl ON dg.hsv_dongia_id = dgl.hsv_dongia_id
-    WHERE dg.ad_client_id = $P{AD_CLIENT_ID}
-      AND dg.hsv_loaidongia_id in (1000074)
-      AND dgl.hsv_cangbien_id = co.hsv_cangbien_id
-      AND co.dateordered BETWEEN dg.startdate AND dg.enddate
-    LIMIT 1
-) j ON TRUE
-
--- Lấy đơn giá định mức
-LEFT JOIN LATERAL (
-    SELECT dgl.amountdg1 AS cpdm
-    FROM hsv_dongia dg
-    JOIN hsv_nkdongialine dgl ON dg.hsv_dongia_id = dgl.hsv_dongia_id
-    WHERE dg.ad_client_id = $P{AD_CLIENT_ID}
-      AND dg.hsv_loaidongia_id in (1000072)
-      AND dgl.m_attributevalue_id = ma.m_attributevalue_id
-      AND co.dateordered BETWEEN dg.startdate AND dg.enddate
-    LIMIT 1
-) cp_dm ON TRUE
-
--- Lấy định mức sản phẩm
-LEFT JOIN LATERAL (
-    SELECT dgl.hsv_dinhmuc
+--select * from tong_chi_phi 
+tong_sl AS (
+    SELECT
+        ci2.c_order_id,
+        SUM(civ2.qtyinvoiced) AS sl_tong
+    FROM c_invoice ci2
+    JOIN c_invoiceline civ2 ON ci2.c_invoice_id = civ2.c_invoice_id
+    JOIN m_product hh2 ON hh2.m_product_id = civ2.m_product_id AND hh2.m_attributeset_id in (1000199)
+    -- Tối ưu: Chỉ tính toán trên các order liên quan
+    WHERE ci2.c_order_id IN (SELECT c_order_id FROM relevant_orders) -- Dùng IN hoặc JOIN đều được
+      AND ci2.issotrx = 'Y'
+      AND ci2.docstatus IN ('CL', 'CO')
+      AND ci2.ad_client_id = $P{AD_CLIENT_ID}
+      AND ci2.dateacct BETWEEN $P{StartDate} AND $P{EndDate} -- Giữ lại để tận dụng index
+    GROUP BY ci2.c_order_id
+),
+-- Các CTE tra cứu định mức không cần thay đổi nhiều vì đã lọc theo ngày
+dm_nl AS (
+    SELECT
+        dgl.m_product_id,
+        dgl.hsv_dinhmuc,
+        dg.startdate,
+        dg.enddate
     FROM hsv_dongia dg
     JOIN hsv_nkdongialine dgl ON dg.hsv_dongia_id = dgl.hsv_dongia_id
     WHERE dg.ad_client_id = $P{AD_CLIENT_ID}
       AND dg.hsv_loaidongia_id in (1000073)
-      AND dgl.m_product_id = hh.m_product_id
-      AND co.dateordered BETWEEN dg.startdate AND dg.enddate
+      AND dg.enddate >= $P{StartDate}
+      AND dg.startdate <= $P{EndDate}
+),
+dm_cuoc_bien AS (
+    SELECT
+        dgl.hsv_dinhmuc1 AS vc,
+        dgl.hsv_cangbien_id,
+        dg.startdate,
+        dg.enddate
+    FROM hsv_dongia dg
+    JOIN hsv_nkdongialine dgl ON dg.hsv_dongia_id = dgl.hsv_dongia_id
+    WHERE dg.ad_client_id = $P{AD_CLIENT_ID}
+      AND dg.hsv_loaidongia_id in (1000074)
+      AND dg.enddate >= $P{StartDate}
+      AND dg.startdate <= $P{EndDate}
+),
+cp_dm_sx AS (
+    SELECT
+        dgl.m_attributevalue_id,
+        dgl.amountdg1 AS cpdm,
+        dg.startdate,
+        dg.enddate
+    FROM hsv_dongia dg
+    JOIN hsv_nkdongialine dgl ON dg.hsv_dongia_id = dgl.hsv_dongia_id
+    WHERE dg.ad_client_id = $P{AD_CLIENT_ID}
+      AND dg.hsv_loaidongia_id in (1000072)
+      AND dg.enddate >= $P{StartDate}
+      AND dg.startdate <= $P{EndDate}
+)
+SELECT
+    row_number() OVER (ORDER BY co.documentno) as stt,
+    co.documentno || '_' || TO_CHAR(co.dateordered, 'DD-MM-YYYY') AS dh,
+    hh.name,
+    civ.qtyinvoiced AS qtyordered,
+    civ.priceentered AS priceentered,
+    civ.linenetamt,
+    case when ci.c_currency_id <> 234 then tygia.multiplyrate else 1 end as tygia ,
+    case when ci.c_currency_id <> 234 then civ.linenetamt * tygia.multiplyrate  else civ.linenetamt end AS vnd,
+    civ.qtyinvoiced * COALESCE(dm_nl.hsv_dinhmuc, 0) AS nguyenlieu,
+    tong_chi_phi.tien, 
+    COALESCE(civ.qtyinvoiced * tong_chi_phi.tien / NULLIF(tong_sl.sl_tong, 0), 0) AS cpvc,
+    CASE WHEN tong_chi_phi.tien IS NULL THEN  COALESCE(civ.qtyinvoiced * tygia.multiplyrate *dm_cuoc_bien.vc / 24000, NULL)  end  AS dm_cpvc,
+    civ.qtyinvoiced * COALESCE(cp_dm_sx.cpdm, 0) AS cpdm_sx,
+    cc.iso_code 
+FROM c_invoice ci
+JOIN c_invoiceline civ ON ci.c_invoice_id = civ.c_invoice_id
+join c_currency cc on cc.c_currency_id = ci.c_currency_id 
+JOIN m_product hh ON hh.m_product_id = civ.m_product_id AND hh.m_attributeset_id in (1000199)
+JOIN m_attributeinstance ma ON ma.m_attributesetinstance_id = civ.m_attributesetinstance_id AND ma.m_attribute_id in (1000146)
+LEFT JOIN c_order co ON co.c_order_id = ci.c_order_id
+-- Tối ưu: Thay thế CTE `tygia` bằng LEFT JOIN LATERAL để tăng hiệu quả
+LEFT JOIN LATERAL (
+    SELECT cr.multiplyrate
+    FROM c_conversion_rate cr
+    WHERE cr.c_currency_id = ci.c_currency_id
+      AND ci.dateacct BETWEEN cr.validfrom AND COALESCE(cr.validto, ci.dateacct)
+      AND cr.c_conversiontype_id = ci.c_conversiontype_id
+      AND cr.ad_client_id = ci.ad_client_id
+    ORDER BY cr.validfrom DESC
     LIMIT 1
-) z ON TRUE
-WHERE co.issotrx = 'Y'
- and co.docstatus in ('CO') 
-  AND cov.qtyinvoiced = 0
-  AND co.dateordered BETWEEN $P{StartDate} AND $P{EndDate}
-  and co.c_currency_id = $P{C_Currency_ID}
-ORDER BY co.documentno;]]>
+) tygia ON true
+LEFT JOIN dm_nl ON dm_nl.m_product_id = hh.m_product_id
+    AND ci.dateacct BETWEEN dm_nl.startdate AND dm_nl.enddate
+LEFT JOIN tong_chi_phi ON tong_chi_phi.c_order_id = co.c_order_id
+LEFT JOIN tong_sl ON tong_sl.c_order_id = co.c_order_id
+LEFT JOIN cp_dm_sx ON cp_dm_sx.m_attributevalue_id = ma.m_attributevalue_id
+    AND ci.dateacct BETWEEN cp_dm_sx.startdate AND cp_dm_sx.enddate
+LEFT JOIN dm_cuoc_bien ON dm_cuoc_bien.hsv_cangbien_id = co.hsv_cangbien_id
+    AND ci.dateacct BETWEEN dm_cuoc_bien.startdate AND dm_cuoc_bien.enddate
+WHERE ci.ad_client_id = $P{AD_CLIENT_ID}
+  AND ci.dateacct BETWEEN $P{StartDate} AND $P{EndDate}
+  AND ci.issotrx = 'Y'
+  AND ci.docstatus IN ('CL', 'CO')
+  AND right(ci.documentno, 1) <> 'N'
+  and ci.c_currency_id = $P{C_Currency_ID}
+  AND civ.qtyinvoiced <> 0;]]>
 	</queryString>
-	<field name="c_order_id" class="java.math.BigDecimal">
-		<property name="com.jaspersoft.studio.field.name" value="c_order_id"/>
-		<property name="com.jaspersoft.studio.field.label" value="c_order_id"/>
-		<property name="com.jaspersoft.studio.field.tree.path" value="c_order"/>
-	</field>
-	<field name="m_product_id" class="java.math.BigDecimal">
-		<property name="com.jaspersoft.studio.field.name" value="m_product_id"/>
-		<property name="com.jaspersoft.studio.field.label" value="m_product_id"/>
-		<property name="com.jaspersoft.studio.field.tree.path" value="m_product"/>
+	<field name="stt" class="java.lang.Long">
+		<property name="com.jaspersoft.studio.field.name" value="stt"/>
+		<property name="com.jaspersoft.studio.field.label" value="stt"/>
 	</field>
 	<field name="dh" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="dh"/>
@@ -130,17 +189,17 @@ ORDER BY co.documentno;]]>
 	<field name="qtyordered" class="java.math.BigDecimal">
 		<property name="com.jaspersoft.studio.field.name" value="qtyordered"/>
 		<property name="com.jaspersoft.studio.field.label" value="qtyordered"/>
-		<property name="com.jaspersoft.studio.field.tree.path" value="c_orderline"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_invoiceline"/>
 	</field>
 	<field name="priceentered" class="java.math.BigDecimal">
 		<property name="com.jaspersoft.studio.field.name" value="priceentered"/>
 		<property name="com.jaspersoft.studio.field.label" value="priceentered"/>
-		<property name="com.jaspersoft.studio.field.tree.path" value="c_orderline"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_invoiceline"/>
 	</field>
 	<field name="linenetamt" class="java.math.BigDecimal">
 		<property name="com.jaspersoft.studio.field.name" value="linenetamt"/>
 		<property name="com.jaspersoft.studio.field.label" value="linenetamt"/>
-		<property name="com.jaspersoft.studio.field.tree.path" value="c_orderline"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_invoiceline"/>
 	</field>
 	<field name="tygia" class="java.math.BigDecimal">
 		<property name="com.jaspersoft.studio.field.name" value="tygia"/>
@@ -155,18 +214,21 @@ ORDER BY co.documentno;]]>
 		<property name="com.jaspersoft.studio.field.name" value="nguyenlieu"/>
 		<property name="com.jaspersoft.studio.field.label" value="nguyenlieu"/>
 	</field>
+	<field name="tien" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="tien"/>
+		<property name="com.jaspersoft.studio.field.label" value="tien"/>
+	</field>
 	<field name="cpvc" class="java.math.BigDecimal">
 		<property name="com.jaspersoft.studio.field.name" value="cpvc"/>
 		<property name="com.jaspersoft.studio.field.label" value="cpvc"/>
 	</field>
-	<field name="cpdm" class="java.math.BigDecimal">
-		<property name="com.jaspersoft.studio.field.name" value="cpdm"/>
-		<property name="com.jaspersoft.studio.field.label" value="cpdm"/>
+	<field name="dm_cpvc" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="dm_cpvc"/>
+		<property name="com.jaspersoft.studio.field.label" value="dm_cpvc"/>
 	</field>
-	<field name="qtydelivered" class="java.math.BigDecimal">
-		<property name="com.jaspersoft.studio.field.name" value="qtydelivered"/>
-		<property name="com.jaspersoft.studio.field.label" value="qtydelivered"/>
-		<property name="com.jaspersoft.studio.field.tree.path" value="c_orderline"/>
+	<field name="cpdm_sx" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="cpdm_sx"/>
+		<property name="com.jaspersoft.studio.field.label" value="cpdm_sx"/>
 	</field>
 	<field name="iso_code" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="iso_code"/>
@@ -188,17 +250,24 @@ ORDER BY co.documentno;]]>
 	<variable name="sum_vc" class="java.lang.Double" calculation="Sum">
 		<variableExpression><![CDATA[$F{cpvc}]]></variableExpression>
 	</variable>
-	<variable name="sum_da_xuat" class="java.lang.Double" calculation="Sum">
-		<variableExpression><![CDATA[$F{qtydelivered}]]></variableExpression>
+	<variable name="sum_cpdm_sx" class="java.lang.Double" calculation="Sum">
+		<variableExpression><![CDATA[$F{cpdm_sx}]]></variableExpression>
 	</variable>
-	<variable name="sum_cpdm" class="java.lang.Double" calculation="Sum">
-		<variableExpression><![CDATA[$F{cpdm}]]></variableExpression>
+	<variable name="colorFlag" class="java.lang.Boolean">
+		<variableExpression><![CDATA[$F{dh}.equals($V{previousPO}) ? $V{colorFlag} : ! $V{colorFlag}]]></variableExpression>
+		<initialValueExpression><![CDATA[false]]></initialValueExpression>
+	</variable>
+	<variable name="previousPO" class="java.lang.String">
+		<variableExpression><![CDATA[$F{dh}]]></variableExpression>
+	</variable>
+	<variable name="sum_cpdm_vc" class="java.lang.Double" calculation="Sum">
+		<variableExpression><![CDATA[$F{dm_cpvc}]]></variableExpression>
 	</variable>
 	<group name="Group1">
 		<groupFooter>
 			<band height="40">
 				<textField pattern="#,##0" isBlankWhenNull="true">
-					<reportElement x="440" y="0" width="75" height="40" uuid="84bdda7c-5f55-4430-a124-ec2c122306ed">
+					<reportElement x="489" y="0" width="75" height="40" uuid="84bdda7c-5f55-4430-a124-ec2c122306ed">
 						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="2cdf437d-8c20-489f-a158-4e991f073510"/>
 					</reportElement>
 					<box leftPadding="2" rightPadding="2">
@@ -213,8 +282,8 @@ ORDER BY co.documentno;]]>
 					</textElement>
 					<textFieldExpression><![CDATA[$V{sum_tt_vnd}]]></textFieldExpression>
 				</textField>
-				<textField pattern="#,##0" isBlankWhenNull="true">
-					<reportElement x="890" y="0" width="75" height="40" uuid="97ab81e1-c6a5-4ee9-88e5-539e1a20476c">
+				<textField pattern="#,##0.##" isBlankWhenNull="true">
+					<reportElement x="914" y="0" width="50" height="40" uuid="97ab81e1-c6a5-4ee9-88e5-539e1a20476c">
 						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="e0a46936-831b-4f08-907a-bbf4af2bd91a"/>
 						<property name="com.jaspersoft.studio.unit.y" value="px"/>
 					</reportElement>
@@ -228,10 +297,10 @@ ORDER BY co.documentno;]]>
 					<textElement textAlignment="Right" verticalAlignment="Middle">
 						<font fontName="Arial" size="9" isBold="true"/>
 					</textElement>
-					<textFieldExpression><![CDATA[$V{sum_da_xuat}]]></textFieldExpression>
+					<textFieldExpression><![CDATA[$V{sum_sl}==0?0:($V{sum_tt_vnd}-$V{sum_nl}-$V{sum_vc}-$V{sum_cpdm_vc}-$V{sum_cpdm_sx})/$V{sum_sl}]]></textFieldExpression>
 				</textField>
 				<textField pattern="#,##0" isBlankWhenNull="true">
-					<reportElement x="240" y="0" width="50" height="40" uuid="21f20281-b05a-4dfc-ace2-c0bd0b81cb74">
+					<reportElement x="289" y="0" width="50" height="40" uuid="21f20281-b05a-4dfc-ace2-c0bd0b81cb74">
 						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c3e09668-98e8-41e4-895c-20201b502a46"/>
 						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					</reportElement>
@@ -248,7 +317,7 @@ ORDER BY co.documentno;]]>
 					<textFieldExpression><![CDATA[$V{sum_sl}]]></textFieldExpression>
 				</textField>
 				<textField pattern="#,##0" isBlankWhenNull="true">
-					<reportElement x="515" y="0" width="75" height="40" uuid="5624b802-31b7-4774-a181-f0a72efbdd5a">
+					<reportElement x="564" y="0" width="75" height="40" uuid="5624b802-31b7-4774-a181-f0a72efbdd5a">
 						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="5c571acd-4277-451f-9e09-3551f623e878"/>
 					</reportElement>
 					<box leftPadding="2" rightPadding="2">
@@ -264,7 +333,7 @@ ORDER BY co.documentno;]]>
 					<textFieldExpression><![CDATA[$V{sum_nl}]]></textFieldExpression>
 				</textField>
 				<textField pattern="#,##0" isBlankWhenNull="true">
-					<reportElement x="340" y="0" width="50" height="40" uuid="fdd25b8c-fa41-4b16-a087-752e8a812dc2">
+					<reportElement x="389" y="0" width="50" height="40" uuid="fdd25b8c-fa41-4b16-a087-752e8a812dc2">
 						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="8569744f-85db-4c49-a165-00552a5d321c"/>
 						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					</reportElement>
@@ -281,7 +350,7 @@ ORDER BY co.documentno;]]>
 					<textFieldExpression><![CDATA[$V{sum_tt}]]></textFieldExpression>
 				</textField>
 				<textField pattern="#,##0" isBlankWhenNull="true">
-					<reportElement x="390" y="0" width="50" height="40" uuid="ffd5cc5a-7a07-4a63-904f-71be5f6bcfec">
+					<reportElement x="439" y="0" width="50" height="40" uuid="ffd5cc5a-7a07-4a63-904f-71be5f6bcfec">
 						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="89f56392-551d-4a4f-82db-ccb61cd9d7c5"/>
 						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					</reportElement>
@@ -296,8 +365,26 @@ ORDER BY co.documentno;]]>
 						<font fontName="Arial" size="9" isBold="true"/>
 					</textElement>
 				</textField>
-				<textField pattern="#,##0" isBlankWhenNull="true">
-					<reportElement x="815" y="0" width="75" height="40" uuid="bb749850-669a-4b3e-b53a-04ceb3b10fcb">
+				<textField pattern="#,##0.##" isBlankWhenNull="true">
+					<reportElement x="864" y="0" width="50" height="40" uuid="bb749850-669a-4b3e-b53a-04ceb3b10fcb">
+						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="e0a46936-831b-4f08-907a-bbf4af2bd91a"/>
+						<property name="com.jaspersoft.studio.unit.y" value="px"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
+					</reportElement>
+					<box leftPadding="2" rightPadding="2">
+						<pen lineWidth="0.5"/>
+						<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" size="9" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{sum_tt_vnd}-$V{sum_nl}-$V{sum_vc}-$V{sum_cpdm_vc}-$V{sum_cpdm_sx}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0.##" isBlankWhenNull="true">
+					<reportElement x="714" y="0" width="75" height="40" uuid="a2719c0b-6717-471f-8832-7059737bc309">
 						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="e0a46936-831b-4f08-907a-bbf4af2bd91a"/>
 						<property name="com.jaspersoft.studio.unit.y" value="px"/>
 					</reportElement>
@@ -311,26 +398,10 @@ ORDER BY co.documentno;]]>
 					<textElement textAlignment="Right" verticalAlignment="Middle">
 						<font fontName="Arial" size="9" isBold="true"/>
 					</textElement>
+					<textFieldExpression><![CDATA[$V{sum_cpdm_vc}]]></textFieldExpression>
 				</textField>
-				<textField pattern="#,##0" isBlankWhenNull="true">
-					<reportElement x="665" y="0" width="75" height="40" uuid="a2719c0b-6717-471f-8832-7059737bc309">
-						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="e0a46936-831b-4f08-907a-bbf4af2bd91a"/>
-						<property name="com.jaspersoft.studio.unit.y" value="px"/>
-					</reportElement>
-					<box leftPadding="2" rightPadding="2">
-						<pen lineWidth="0.5"/>
-						<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-						<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-						<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-						<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
-					</box>
-					<textElement textAlignment="Right" verticalAlignment="Middle">
-						<font fontName="Arial" size="9" isBold="true"/>
-					</textElement>
-					<textFieldExpression><![CDATA[$V{sum_cpdm}]]></textFieldExpression>
-				</textField>
-				<textField pattern="#,##0" isBlankWhenNull="true">
-					<reportElement x="590" y="0" width="75" height="40" uuid="dfe61801-6e45-4062-bbe8-88f7a9673f34">
+				<textField pattern="#,##0.##" isBlankWhenNull="true">
+					<reportElement x="639" y="0" width="75" height="40" uuid="dfe61801-6e45-4062-bbe8-88f7a9673f34">
 						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="7c0a945a-c8ad-4ad6-9669-82fabe337bc7"/>
 						<property name="net.sf.jasperreports.export.xls.detect.cell.type" value="true"/>
 					</reportElement>
@@ -347,8 +418,9 @@ ORDER BY co.documentno;]]>
 					<textFieldExpression><![CDATA[$V{sum_vc}]]></textFieldExpression>
 				</textField>
 				<textField>
-					<reportElement x="0" y="0" width="240" height="40" uuid="488e0f21-f541-4c07-80fe-3598fa245629">
+					<reportElement x="0" y="0" width="289" height="40" uuid="488e0f21-f541-4c07-80fe-3598fa245629">
 						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="8e275250-43c3-4e97-bc8a-6153de95d31f"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					</reportElement>
 					<box leftPadding="2" rightPadding="2">
 						<pen lineWidth="0.5"/>
@@ -363,7 +435,7 @@ ORDER BY co.documentno;]]>
 					<textFieldExpression><![CDATA["Cộng tổng"]]></textFieldExpression>
 				</textField>
 				<textField pattern="#,##0" isBlankWhenNull="true">
-					<reportElement x="290" y="0" width="50" height="40" uuid="4ed87fee-b73a-4d4a-a198-ac9a5a69f2fa">
+					<reportElement x="339" y="0" width="50" height="40" uuid="4ed87fee-b73a-4d4a-a198-ac9a5a69f2fa">
 						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="6fd85ede-77cf-4ed7-9ab8-9ed56c497480"/>
 						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					</reportElement>
@@ -378,10 +450,11 @@ ORDER BY co.documentno;]]>
 						<font fontName="Arial" size="9" isBold="true"/>
 					</textElement>
 				</textField>
-				<textField pattern="#,##0" isBlankWhenNull="true">
-					<reportElement x="740" y="0" width="75" height="40" uuid="72ff4012-9b59-4c75-b0b3-7fae000dad38">
+				<textField pattern="#,##0.##" isBlankWhenNull="true">
+					<reportElement x="789" y="0" width="75" height="40" uuid="72ff4012-9b59-4c75-b0b3-7fae000dad38">
 						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="e0a46936-831b-4f08-907a-bbf4af2bd91a"/>
 						<property name="com.jaspersoft.studio.unit.y" value="px"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					</reportElement>
 					<box leftPadding="2" rightPadding="2">
 						<pen lineWidth="0.5"/>
@@ -393,7 +466,7 @@ ORDER BY co.documentno;]]>
 					<textElement textAlignment="Right" verticalAlignment="Middle">
 						<font fontName="Arial" size="9" isBold="true"/>
 					</textElement>
-					<textFieldExpression><![CDATA[$V{sum_tt_vnd}-$V{sum_nl}-$V{sum_vc}-$V{sum_cpdm}]]></textFieldExpression>
+					<textFieldExpression><![CDATA[$V{sum_cpdm_sx}]]></textFieldExpression>
 				</textField>
 			</band>
 		</groupFooter>
@@ -402,29 +475,45 @@ ORDER BY co.documentno;]]>
 		<band splitType="Stretch"/>
 	</background>
 	<title>
-		<band height="70" splitType="Stretch">
+		<band height="96" splitType="Stretch">
 			<staticText>
-				<reportElement x="0" y="14" width="965" height="26" uuid="1cd8e396-13b9-4c7b-9967-2c74fd404f01"/>
+				<reportElement x="0" y="40" width="965" height="22" uuid="1cd8e396-13b9-4c7b-9967-2c74fd404f01">
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font fontName="Arial" size="15" isBold="true"/>
 				</textElement>
-				<text><![CDATA[BÁO CÁO HIỆU QUẢ THEO ĐƠN HÀNG]]></text>
+				<text><![CDATA[BÁO CÁO HIỆU QUẢ THEO ĐƠN HÀNG ĐÃ XUẤT]]></text>
 			</staticText>
-			<textField>
-				<reportElement x="0" y="40" width="965" height="30" uuid="0ef80739-cfe7-4345-9d26-a6919b46f222">
+			<textField isBlankWhenNull="true">
+				<reportElement x="0" y="62" width="965" height="34" uuid="0ef80739-cfe7-4345-9d26-a6919b46f222">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 				</reportElement>
 				<textElement textAlignment="Center" markup="html">
 					<font fontName="Arial" size="12" isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA["Kỳ báo cáo : " + new SimpleDateFormat("dd/MM/yyyy").format($P{StartDate}) + " To "  + new SimpleDateFormat("dd/MM/yyyy").format($P{EndDate}) +"\n Tỷ giá:"+$F{iso_code}]]></textFieldExpression>
+				<textFieldExpression><![CDATA["Kỳ báo cáo : " + new SimpleDateFormat("dd/MM/yyyy").format($P{StartDate}) + " To "  + new SimpleDateFormat("dd/MM/yyyy").format($P{EndDate}) + "\n Tỷ giá:"+$F{iso_code}]]></textFieldExpression>
 			</textField>
+			<subreport>
+				<reportElement x="0" y="0" width="964" height="40" uuid="46a62b08-83dc-4b15-9472-827db839d0a0"/>
+				<subreportParameter name="AD_CLIENT_ID">
+					<subreportParameterExpression><![CDATA[$P{AD_CLIENT_ID}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="StartDate">
+					<subreportParameterExpression><![CDATA[$P{StartDate}]]></subreportParameterExpression>
+				</subreportParameter>
+				<subreportParameter name="EndDate">
+					<subreportParameterExpression><![CDATA[$P{EndDate}]]></subreportParameterExpression>
+				</subreportParameter>
+				<connectionExpression><![CDATA[$P{REPORT_CONNECTION}]]></connectionExpression>
+				<subreportExpression><![CDATA[$P{SUBREPORT_DIR}+"CompanyHeader.jasper"]]></subreportExpression>
+			</subreport>
 		</band>
 	</title>
 	<columnHeader>
 		<band height="30" splitType="Stretch">
 			<staticText>
-				<reportElement x="0" y="0" width="120" height="30" uuid="e4127fb4-294e-41b9-942e-0b1aa809d66e">
+				<reportElement x="39" y="0" width="120" height="30" uuid="e4127fb4-294e-41b9-942e-0b1aa809d66e">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="d2e8d91e-970c-4bff-acae-685c949c48de"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
@@ -441,9 +530,8 @@ ORDER BY co.documentno;]]>
 				<text><![CDATA[Số đơn hàng]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="120" y="0" width="120" height="30" uuid="9d7071b1-a6e6-4f46-987d-f6c17a6ddba9">
+				<reportElement x="159" y="0" width="130" height="30" uuid="9d7071b1-a6e6-4f46-987d-f6c17a6ddba9">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="8e275250-43c3-4e97-bc8a-6153de95d31f"/>
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box>
 					<pen lineWidth="0.5"/>
@@ -458,7 +546,7 @@ ORDER BY co.documentno;]]>
 				<text><![CDATA[Sản phẩm]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="240" y="0" width="50" height="30" uuid="82c956d5-b2c5-405a-bf57-1f298a63509c">
+				<reportElement x="289" y="0" width="50" height="30" uuid="82c956d5-b2c5-405a-bf57-1f298a63509c">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c3e09668-98e8-41e4-895c-20201b502a46"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
@@ -475,7 +563,7 @@ ORDER BY co.documentno;]]>
 				<text><![CDATA[Số lượng]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="290" y="0" width="50" height="30" uuid="b37b2d52-c404-4eb4-8515-1b3098ecd1f3">
+				<reportElement x="339" y="0" width="50" height="30" uuid="b37b2d52-c404-4eb4-8515-1b3098ecd1f3">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="6fd85ede-77cf-4ed7-9ab8-9ed56c497480"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
@@ -492,7 +580,7 @@ ORDER BY co.documentno;]]>
 				<text><![CDATA[Đơn giá]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="340" y="0" width="50" height="30" uuid="f8bc6bdb-02a4-4a08-b291-72cd48f364a1">
+				<reportElement x="389" y="0" width="50" height="30" uuid="f8bc6bdb-02a4-4a08-b291-72cd48f364a1">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="8569744f-85db-4c49-a165-00552a5d321c"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
@@ -509,7 +597,7 @@ ORDER BY co.documentno;]]>
 				<text><![CDATA[Thành tiền]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="390" y="0" width="50" height="30" uuid="8212329c-664d-470e-8cf7-51ad3edff5a3">
+				<reportElement x="439" y="0" width="50" height="30" uuid="8212329c-664d-470e-8cf7-51ad3edff5a3">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="89f56392-551d-4a4f-82db-ccb61cd9d7c5"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
@@ -526,7 +614,7 @@ ORDER BY co.documentno;]]>
 				<text><![CDATA[Tỷ giá]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="440" y="0" width="75" height="30" uuid="77eb93f1-8560-49b9-a68f-4928d3c6f26b">
+				<reportElement x="489" y="0" width="75" height="30" uuid="77eb93f1-8560-49b9-a68f-4928d3c6f26b">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="2cdf437d-8c20-489f-a158-4e991f073510"/>
 				</reportElement>
 				<box>
@@ -542,7 +630,7 @@ ORDER BY co.documentno;]]>
 				<text><![CDATA[TT VND]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="515" y="0" width="75" height="30" uuid="d673a48e-7b43-4b5e-8684-0431d1a46a2a">
+				<reportElement x="564" y="0" width="75" height="30" uuid="d673a48e-7b43-4b5e-8684-0431d1a46a2a">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="5c571acd-4277-451f-9e09-3551f623e878"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
@@ -559,7 +647,7 @@ ORDER BY co.documentno;]]>
 				<text><![CDATA[Nguyên liệu]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="590" y="0" width="75" height="30" uuid="607e1e92-8d9d-4dd9-a56b-89c55998b1d6">
+				<reportElement x="639" y="0" width="75" height="30" uuid="607e1e92-8d9d-4dd9-a56b-89c55998b1d6">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="7c0a945a-c8ad-4ad6-9669-82fabe337bc7"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
@@ -576,9 +664,27 @@ ORDER BY co.documentno;]]>
 				<text><![CDATA[VC biển]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="665" y="0" width="75" height="30" uuid="43613514-43d9-4848-a2e0-5cb21c36680d">
+				<reportElement x="714" y="0" width="75" height="30" uuid="43613514-43d9-4848-a2e0-5cb21c36680d">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="e0a46936-831b-4f08-907a-bbf4af2bd91a"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="10" isBold="true"/>
+				</textElement>
+				<text><![CDATA[VC biển chưa hạch toán]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="789" y="0" width="75" height="30" uuid="9306430f-f0f8-430e-bf12-6e6956e13c82">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="e0a46936-831b-4f08-907a-bbf4af2bd91a"/>
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box>
 					<pen lineWidth="0.5"/>
@@ -593,9 +699,10 @@ ORDER BY co.documentno;]]>
 				<text><![CDATA[Chi phí định mức]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="740" y="0" width="75" height="30" uuid="9306430f-f0f8-430e-bf12-6e6956e13c82">
+				<reportElement x="864" y="0" width="50" height="30" uuid="e441822b-b4b4-4c31-aaf6-86ac2d50adb7">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="e0a46936-831b-4f08-907a-bbf4af2bd91a"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box>
 					<pen lineWidth="0.5"/>
@@ -610,7 +717,7 @@ ORDER BY co.documentno;]]>
 				<text><![CDATA[Chênh lệch]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="815" y="0" width="75" height="30" uuid="e441822b-b4b4-4c31-aaf6-86ac2d50adb7">
+				<reportElement x="914" y="0" width="50" height="30" uuid="86521af0-1f9f-46c5-b068-d092b775748c">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="e0a46936-831b-4f08-907a-bbf4af2bd91a"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
@@ -627,9 +734,9 @@ ORDER BY co.documentno;]]>
 				<text><![CDATA[chênh lệch/kg]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="890" y="0" width="75" height="30" uuid="86521af0-1f9f-46c5-b068-d092b775748c">
-					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="e0a46936-831b-4f08-907a-bbf4af2bd91a"/>
-					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+				<reportElement x="0" y="0" width="39" height="30" uuid="38f5512a-6453-4bf5-95b5-d9e962080ccf">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c3e09668-98e8-41e4-895c-20201b502a46"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box>
 					<pen lineWidth="0.5"/>
@@ -641,14 +748,14 @@ ORDER BY co.documentno;]]>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font fontName="Arial" size="10" isBold="true"/>
 				</textElement>
-				<text><![CDATA[đã xuất]]></text>
+				<text><![CDATA[STT]]></text>
 			</staticText>
 		</band>
 	</columnHeader>
 	<detail>
 		<band height="30" splitType="Stretch">
 			<textField>
-				<reportElement x="0" y="0" width="120" height="30" uuid="17e78f4b-66e3-4c0c-8ce1-b4b83372a5d9">
+				<reportElement style="trang" mode="Opaque" x="39" y="0" width="120" height="30" uuid="17e78f4b-66e3-4c0c-8ce1-b4b83372a5d9">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="d2e8d91e-970c-4bff-acae-685c949c48de"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
@@ -659,14 +766,15 @@ ORDER BY co.documentno;]]>
 					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
 					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
 				</box>
-				<textElement textAlignment="Center" verticalAlignment="Middle">
+				<textElement textAlignment="Left" verticalAlignment="Middle">
 					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{dh}]]></textFieldExpression>
 			</textField>
 			<textField>
-				<reportElement x="120" y="0" width="120" height="30" uuid="7399ea6a-2e64-4f9c-807b-6e92eb747fbc">
+				<reportElement style="trang" mode="Opaque" x="159" y="0" width="130" height="30" uuid="7399ea6a-2e64-4f9c-807b-6e92eb747fbc">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="8e275250-43c3-4e97-bc8a-6153de95d31f"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
@@ -680,8 +788,8 @@ ORDER BY co.documentno;]]>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{name}]]></textFieldExpression>
 			</textField>
-			<textField pattern="#,##0" isBlankWhenNull="true">
-				<reportElement x="240" y="0" width="50" height="30" uuid="996b92c6-a740-45a5-98cb-e6bd9625399e">
+			<textField pattern="#,##0.###;#,##0.###-" isBlankWhenNull="true">
+				<reportElement style="trang" mode="Opaque" x="289" y="0" width="50" height="30" uuid="996b92c6-a740-45a5-98cb-e6bd9625399e">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c3e09668-98e8-41e4-895c-20201b502a46"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
@@ -698,7 +806,7 @@ ORDER BY co.documentno;]]>
 				<textFieldExpression><![CDATA[$F{qtyordered}]]></textFieldExpression>
 			</textField>
 			<textField pattern="#,##0.##" isBlankWhenNull="true">
-				<reportElement x="290" y="0" width="50" height="30" uuid="74640267-cca3-429a-a8f5-15432c3c5a19">
+				<reportElement style="trang" mode="Opaque" x="339" y="0" width="50" height="30" uuid="74640267-cca3-429a-a8f5-15432c3c5a19">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="6fd85ede-77cf-4ed7-9ab8-9ed56c497480"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
@@ -715,7 +823,7 @@ ORDER BY co.documentno;]]>
 				<textFieldExpression><![CDATA[$F{priceentered}]]></textFieldExpression>
 			</textField>
 			<textField pattern="#,##0" isBlankWhenNull="true">
-				<reportElement x="340" y="0" width="50" height="30" uuid="ebdd5b6d-feab-4a0f-b350-384072b50029">
+				<reportElement style="trang" mode="Opaque" x="389" y="0" width="50" height="30" uuid="ebdd5b6d-feab-4a0f-b350-384072b50029">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="8569744f-85db-4c49-a165-00552a5d321c"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
@@ -731,8 +839,8 @@ ORDER BY co.documentno;]]>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{linenetamt}]]></textFieldExpression>
 			</textField>
-			<textField pattern="#,##0" isBlankWhenNull="true">
-				<reportElement x="390" y="0" width="50" height="30" uuid="be1ad833-76f2-4ccf-ae6c-e37bff8f57fc">
+			<textField pattern="#,##0.##" isBlankWhenNull="true">
+				<reportElement style="trang" mode="Opaque" x="439" y="0" width="50" height="30" uuid="be1ad833-76f2-4ccf-ae6c-e37bff8f57fc">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="89f56392-551d-4a4f-82db-ccb61cd9d7c5"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
@@ -749,7 +857,7 @@ ORDER BY co.documentno;]]>
 				<textFieldExpression><![CDATA[$F{tygia}]]></textFieldExpression>
 			</textField>
 			<textField pattern="#,##0" isBlankWhenNull="true">
-				<reportElement x="440" y="0" width="75" height="30" uuid="9660eb75-37eb-4f70-a31c-a1f9ac146ab0">
+				<reportElement style="trang" mode="Opaque" x="489" y="0" width="75" height="30" uuid="9660eb75-37eb-4f70-a31c-a1f9ac146ab0">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="2cdf437d-8c20-489f-a158-4e991f073510"/>
 				</reportElement>
 				<box leftPadding="2" rightPadding="2">
@@ -765,7 +873,7 @@ ORDER BY co.documentno;]]>
 				<textFieldExpression><![CDATA[$F{vnd}]]></textFieldExpression>
 			</textField>
 			<textField pattern="#,##0" isBlankWhenNull="true">
-				<reportElement x="515" y="0" width="75" height="30" uuid="662c096b-e92f-4429-856f-eda21cc27a34">
+				<reportElement style="trang" mode="Opaque" x="564" y="0" width="75" height="30" uuid="662c096b-e92f-4429-856f-eda21cc27a34">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="5c571acd-4277-451f-9e09-3551f623e878"/>
 				</reportElement>
 				<box leftPadding="2" rightPadding="2">
@@ -781,7 +889,7 @@ ORDER BY co.documentno;]]>
 				<textFieldExpression><![CDATA[$F{nguyenlieu}]]></textFieldExpression>
 			</textField>
 			<textField pattern="#,##0" isBlankWhenNull="true">
-				<reportElement x="590" y="0" width="75" height="30" uuid="2c03d27f-60a2-41b5-8783-bb66cb8b6955">
+				<reportElement style="trang" mode="Opaque" x="639" y="0" width="75" height="30" uuid="2c03d27f-60a2-41b5-8783-bb66cb8b6955">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="7c0a945a-c8ad-4ad6-9669-82fabe337bc7"/>
 					<property name="net.sf.jasperreports.export.xls.detect.cell.type" value="true"/>
 				</reportElement>
@@ -797,8 +905,8 @@ ORDER BY co.documentno;]]>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{cpvc}]]></textFieldExpression>
 			</textField>
-			<textField pattern="#,##0" isBlankWhenNull="true">
-				<reportElement x="665" y="0" width="75" height="30" uuid="e857af30-911d-49ee-9d98-5dbe7d89a67e">
+			<textField pattern="#,##0.##" isBlankWhenNull="true">
+				<reportElement style="trang" mode="Opaque" x="714" y="0" width="75" height="30" uuid="e857af30-911d-49ee-9d98-5dbe7d89a67e">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="e0a46936-831b-4f08-907a-bbf4af2bd91a"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
@@ -812,12 +920,13 @@ ORDER BY co.documentno;]]>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
 					<font fontName="Arial" size="9"/>
 				</textElement>
-				<textFieldExpression><![CDATA[new java.text.DecimalFormat("###0.##").format($F{cpdm})]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{dm_cpvc}]]></textFieldExpression>
 			</textField>
 			<textField pattern="#,##0" isBlankWhenNull="true">
-				<reportElement x="740" y="0" width="75" height="30" uuid="94868e7e-a076-42e6-986f-0897c12d280f">
+				<reportElement style="trang" mode="Opaque" x="789" y="0" width="75" height="30" uuid="94868e7e-a076-42e6-986f-0897c12d280f">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="e0a46936-831b-4f08-907a-bbf4af2bd91a"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
@@ -829,12 +938,13 @@ ORDER BY co.documentno;]]>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
 					<font fontName="Arial" size="9"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{vnd}.doubleValue()-$F{nguyenlieu}.doubleValue()-$F{cpvc}.doubleValue()-$F{cpdm}.doubleValue()]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{cpdm_sx}]]></textFieldExpression>
 			</textField>
 			<textField pattern="#,##0" isBlankWhenNull="true">
-				<reportElement x="815" y="0" width="75" height="30" uuid="02c15ecf-3322-49d8-aae4-b69220c87bdf">
+				<reportElement style="trang" mode="Opaque" x="864" y="0" width="50" height="30" uuid="02c15ecf-3322-49d8-aae4-b69220c87bdf">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="e0a46936-831b-4f08-907a-bbf4af2bd91a"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
@@ -846,10 +956,14 @@ ORDER BY co.documentno;]]>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
 					<font fontName="Arial" size="9"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{qtyordered}.doubleValue()==0?0:($F{vnd}.doubleValue()-$F{nguyenlieu}.doubleValue()-$F{cpvc}.doubleValue()-$F{cpdm}.doubleValue())/$F{qtyordered}.doubleValue()]]></textFieldExpression>
+				<textFieldExpression><![CDATA[($F{vnd} == null ? 0 : $F{vnd}.doubleValue())
+- ($F{nguyenlieu} == null ? 0 : $F{nguyenlieu}.doubleValue())
+- ($F{cpvc} == null ? 0 : $F{cpvc}.doubleValue())
+- ($F{cpdm_sx} == null ? 0 : $F{cpdm_sx}.doubleValue())
+- ($F{dm_cpvc} == null ? 0 : $F{dm_cpvc}.doubleValue())]]></textFieldExpression>
 			</textField>
 			<textField pattern="#,##0" isBlankWhenNull="true">
-				<reportElement x="890" y="0" width="75" height="30" uuid="9255eb79-5090-42e5-bccd-025aafbd1f8c">
+				<reportElement style="trang" mode="Opaque" x="914" y="0" width="50" height="30" uuid="9255eb79-5090-42e5-bccd-025aafbd1f8c">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="e0a46936-831b-4f08-907a-bbf4af2bd91a"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
@@ -863,8 +977,84 @@ ORDER BY co.documentno;]]>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
 					<font fontName="Arial" size="9"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{qtydelivered}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[(
+   ($F{qtyordered} == null ? 0 : $F{qtyordered}.doubleValue()) == 0 
+   ? 0 
+   : (
+        ($F{vnd} == null ? 0 : $F{vnd}.doubleValue())
+        - ($F{nguyenlieu} == null ? 0 : $F{nguyenlieu}.doubleValue())
+        - ($F{cpvc} == null ? 0 : $F{cpvc}.doubleValue())
+        - ($F{cpdm_sx} == null ? 0 : $F{cpdm_sx}.doubleValue())
+        - ($F{dm_cpvc} == null ? 0 : $F{dm_cpvc}.doubleValue())
+     ) 
+     / ($F{qtyordered} == null ? 0 : $F{qtyordered}.doubleValue())
+)]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement style="trang" mode="Opaque" x="0" y="0" width="39" height="30" uuid="be4ea658-fd6d-41a4-95b3-ada5ed929a7f">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="e0a46936-831b-4f08-907a-bbf4af2bd91a"/>
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{stt}]]></textFieldExpression>
 			</textField>
 		</band>
 	</detail>
+	<summary>
+		<band height="36">
+			<textField pattern="" isBlankWhenNull="false">
+				<reportElement key="textField-4" x="714" y="1" width="251" height="19" forecolor="#000000" backcolor="#FFFFFF" uuid="8bdb8efd-4f7b-42f0-a5f0-a8f62660411a"/>
+				<box>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font size="10"/>
+				</textElement>
+				<textFieldExpression><![CDATA["Ngày in: " + new SimpleDateFormat("dd/MM/yyyy hh24:mm").format(new Date())]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement key="staticText-8" positionType="Float" stretchType="RelativeToTallestObject" x="789" y="20" width="176" height="16" uuid="d46aa651-da01-41c5-854d-4b5ba7ba3db6"/>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Kiểm soát]]></text>
+			</staticText>
+			<staticText>
+				<reportElement key="staticText-8" positionType="Float" stretchType="RelativeToTallestObject" x="0" y="20" width="289" height="16" uuid="21bbefc5-c0b7-4855-944d-f085b0916c4f">
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.25"/>
+					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="12" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Lập biểu]]></text>
+			</staticText>
+		</band>
+	</summary>
 </jasperReport>
