@@ -11,12 +11,12 @@
 		<![CDATA[select id, 'II. Kết quả  đánh bắt' as dm,concat('2.',row_number() over(order by id)) as stt, noidung, sl, tt,dg,dinhmuc,luyke  
 	from(
 		select 4 as id,   'Ngao Đánh bắt chuyển kho' as noidung, 
-		coalesce(sum(case when ci.movementdate >= $P{StartDate} then civ.productionqty end),0)  as sl ,
-		coalesce(sum(case when ci.movementdate >= $P{StartDate} then 10000 * civ.productionqty end),0) as tt,
+		coalesce(sum(case when ci.movementdate >= $P{StartDate} then civ.movementqty  end),0)  as sl ,
+		coalesce(sum(case when ci.movementdate >= $P{StartDate} then 10000 * civ.movementqty end),0) as tt,
 		10000 as dg, 10000 as dinhmuc,
-		coalesce(sum(case when ci.movementdate>= '01-01-2017' then  10000 * civ.productionqty end),0) as luyke
-		from m_productionplan civ
-			join m_production ci on civ.m_production_id=ci.m_production_id  and ci.docstatus in ('CO','CL') and ci.AD_Org_ID=1000049
+		coalesce(sum(case when ci.movementdate>= '01-01-2017' then  10000 * civ.movementqty end),0) as luyke
+		from m_movement ci
+			join m_movementline   civ on civ.m_movement_id=ci.m_movement_id  and ci.docstatus in ('CO','CL') and ci.AD_Org_ID=1000049
 			and   ci.movementdate<=$P{EndDate} 
 			join m_product hh on civ.m_product_id=hh.m_product_id  and hh.M_Product_ID =1000017
 		where civ.ad_client_id=$P{AD_CLIENT_ID} and civ.m_locator_id = 1000122 and (ci.c_bpartner_id = $P{C_BPartner_ID} or $P{C_BPartner_ID} is null) 
@@ -32,7 +32,7 @@
 			coalesce(sum(case when ci.dateacct>='01-01-2017' then civ.linenetamt end),0) as luyke  
 			from c_invoice ci 
 			join c_invoiceline civ on ci.c_invoice_id = civ.c_invoice_id  and ci.issotrx = 'Y'
-			where civ.m_product_id = 1017197 and ci.docstatus in ('CL','CO')
+			where civ.m_product_id in (1017197,1018094) and ci.docstatus in ('CL','CO')
 			and ci.ad_org_id = 1000049 and ci.ad_client_id = $P{AD_CLIENT_ID} and (ci.c_bpartner_id = $P{C_BPartner_ID} or $P{C_BPartner_ID} is null) 
 			and ci.dateacct<=$P{EndDate}
 		) as t
@@ -47,12 +47,12 @@
 			
 			from c_invoice ci 
 			join c_invoiceline civ on ci.c_invoice_id = civ.c_invoice_id  and ci.issotrx = 'Y'
-			where civ.m_product_id <> 1017197 and ci.docstatus in ('CL','CO')
+			where civ.m_product_id not in  (1017197,1018094) and ci.docstatus in ('CL','CO')
 			and ci.ad_org_id = 1000049 and ci.ad_client_id = $P{AD_CLIENT_ID}
 			 and ci.dateacct<=$P{EndDate} and (ci.c_bpartner_id = $P{C_BPartner_ID} or $P{C_BPartner_ID} is null) 
 		) as t	
 		union all
-		
+
 		select 7 as id,'thu nhập khác (711)' as noidung, null::int4 as sl, coalesce(sum(case when dateacct>=$P{StartDate} then  amtacctcr-amtacctdr end),0) as tt,null::int4 as dg,
 		 null as dinhmuc,coalesce(sum(case when dateacct >= '01-01-2017' then  amtacctcr-amtacctdr end),0) as luyke 
 		from(

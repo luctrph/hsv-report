@@ -27,34 +27,20 @@ FROM (
         fa.dateacct AS ngay,
         fa.amtsourcecr AS co,
         fa.amtsourcedr AS "no"
-    FROM
-        fact_acct fa
-    JOIN
-        c_payment cp
-        ON cp.c_payment_id = fa.record_id
-        -- Lọc sớm
-        AND cp.docstatus IN ('CO','CL')
-        AND cp.ad_client_id = fa.ad_client_id  -- Dùng ad_client_id của fa để đảm bảo khớp
-    JOIN
-        c_elementvalue ce
-        ON fa.account_id = ce.c_elementvalue_id
-        -- Lọc sớm
-        AND ce.isbankaccount = 'Y'
-        AND ce.ad_client_id = fa.ad_client_id
-    JOIN
-        c_bankaccount cb
-        ON ce.c_bankaccount_id = cb.c_bankaccount_id
-        AND cb.ad_client_id = fa.ad_client_id
+  
+    FROM fact_acct fa
+    left JOIN c_payment cp ON cp.c_payment_id = fa.record_id AND cp.docstatus IN ('CO','CL') 
+	left join c_elementvalue ce ON fa.account_id = ce.c_elementvalue_id AND ce.isbankaccount = 'Y'
+	left join c_bankaccount cb ON cp.c_bankaccount_id = cb.c_bankaccount_id 
     WHERE
         -- Các điều kiện lọc chính trên bảng fact_acct
         fa.ad_table_id = 335
         AND fa.ad_client_id = $P{AD_CLIENT_ID}
         AND fa.dateacct <= $P{EndDate}
         -- Điều kiện ràng buộc tiền tệ phức tạp
-        AND (
-            (cb.c_currency_id = 100 AND fa.c_currency_id <> 100) OR
-            (cb.c_currency_id = 234 AND fa.c_currency_id <> 234)
-        )
+        AND 
+            cb.c_currency_id <> fa.c_currency_id 
+        
 ) AS k;]]>
 	</queryString>
 	<field name="stt" class="java.lang.Long">

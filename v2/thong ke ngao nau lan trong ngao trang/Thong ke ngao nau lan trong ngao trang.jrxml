@@ -51,8 +51,8 @@ chuyen_kho as (
 	join m_movementline mmv on mm.m_movement_id = mmv.m_movement_id 
 	where mmv.ad_client_id = $P{AD_CLIENT_ID} and mm.movementdate >= $P{StartDate} and mm.movementdate <= $P{EndDate} 
 	and mm.docstatus in ('CL','CO') and mmv.m_product_id = 1019436 and mmv.m_locator_id = 1000303 and mmv.m_locatorto_id = 1000301
-),
 
+),
 nhap_mua_tt as (
 	select sum(miv.movementqty) as qty 
 	from m_inout mi 
@@ -62,7 +62,7 @@ nhap_mua_tt as (
 	where mi.ad_client_id = $P{AD_CLIENT_ID}
 	and miv.m_product_id = 1019435 and ma.m_attribute_id =1000156 and mav.hsv_c_thuoctinh_id = 1000147
 	and mi.movementdate BETWEEN $P{StartDate} AND $P{EndDate} and mi.docstatus in ('CL','CO')
-	
+		
 ),
 nhap_mua as (
 	select sum(miv.movementqty) as qty 
@@ -94,6 +94,31 @@ ton_kho AS (
     FROM giao_dich t
     GROUP BY t.m_attribute_id, t.hsv_c_thuoctinh_id
 ),
+
+xuat_ban AS (
+    SELECT
+        SUM(CASE 
+            WHEN mav.hsv_c_thuoctinh_id = 1000147 THEN miv.movementqty 
+            ELSE 0 
+        END) AS ngao_nau,
+        SUM(CASE 
+            WHEN mav.hsv_c_thuoctinh_id = 1000148 THEN miv.movementqty 
+            ELSE 0 
+        END) AS ngao_trang
+    FROM m_inout mi
+    JOIN m_inoutline miv ON mi.m_inout_id = miv.m_inout_id
+    JOIN m_product p ON p.m_product_id = miv.m_product_id
+    JOIN m_attributeinstance ma 
+        ON ma.m_attributesetinstance_id = miv.m_attributesetinstance_id
+    JOIN m_attributevalue mav 
+        ON mav.m_attributevalue_id = ma.m_attributevalue_id
+    WHERE mi.ad_client_id = $P{AD_CLIENT_ID}
+      AND mi.docstatus IN ('CL','CO') and mi.issotrx = 'Y'
+      AND mi.movementdate BETWEEN $P{StartDate} AND $P{EndDate}
+      AND miv.m_product_id IN (1019435,1019436)
+      AND p.m_attributeset_id = 1000205
+      AND mav.hsv_c_thuoctinh_id IN (1000147,1000148)
+),
 ton_kho_2 AS (
     SELECT
         SUM(CASE WHEN t.movementdate < $P{StartDate} THEN t.movementqty ELSE 0 END) AS dudau,
@@ -109,7 +134,7 @@ kq AS (
     from (
         select sum(t.dudau) FILTER (
              where  t.M_Attribute_ID=1000156 
-             and  t.hsv_C_thuoctinh_ID=1000147
+             and  t.hsv_C_thuoctinh_ID=1000147 
         ) as ngao_nau, 0 as ngao_nl
         from ton_kho t
         union all 
@@ -130,10 +155,10 @@ kq AS (
 
     union all 
 
-    select 3 as id,'Tồn cuối kỳ' as noidung, sum(ngao_nau) as ngao_nau , sum(ngao_nl) as ngao_nl 
+   select 3 as id,'Tồn cuối kỳ' as noidung, sum(ngao_nau) as ngao_nau , sum(ngao_nl) as ngao_nl 
     from (
         select sum(t.ducuoi) FILTER (
-            where  t.M_Attribute_ID=1000156 
+             where  t.M_Attribute_ID=1000156 
              and  t.hsv_C_thuoctinh_ID=1000147
         ) as ngao_nau, 0 as ngao_nl
         from ton_kho t
@@ -142,30 +167,63 @@ kq AS (
         from ton_kho_2
     ) as k
 
-    union all 
+--    union all 
+--
+--    select 4 as id,'Ngao sử dụng tại long hải' as noidung,
+--           sum(ngao_nau) as ngao_nau , sum(ngao_nl) as ngao_nl 
+--    from (
+--        select 1.15 * sum(t.qty) FILTER (
+--            where t.hsv_loaimat_id = 1000128 
+--            and t.c_campaign_id = 99999999999
+--        ) as ngao_nau , 0 as ngao_nl 
+--        from nhap_kho t
+--        union all 
+--        select 0 as ngao_nau , sum(t.qty) as ngao_nl 
+--        from chuyen_kho t
+--    ) as k
 
-    select 4 as id,'Ngao sử dụng tại long hải' as noidung,
-           sum(ngao_nau) as ngao_nau , sum(ngao_nl) as ngao_nl 
-    from (
-        select 1.15 * sum(t.qty) FILTER (
-            where t.hsv_loaimat_id = 1000128
-    
-        ) as ngao_nau , 0 as ngao_nl 
-        from nhap_kho t
-        union all 
-        select 0 as ngao_nau , sum(t.qty) as ngao_nl 
-        from chuyen_kho t
-    ) as k
+),
+kq41 AS (
+    SELECT
+        41 AS id,
+        '4.1 Xuất bán ngao NL, Ngâm nhã' AS noidung,
+        ngao_nau,
+        ngao_trang
+    FROM xuat_ban
 ),
 --  Chỉ tiêu 5
 kq5 AS (
-    SELECT 
+    SELECT
         5 AS id,
         'Đưa vào sử dụng trong kỳ' AS noidung,
-        SUM(CASE WHEN id = 1 THEN ngao_nau WHEN id = 2 THEN ngao_nau WHEN id = 3 THEN -ngao_nau WHEN id = 4 THEN -ngao_nau END) AS ngao_nau,
-        
-        SUM(CASE WHEN id = 1 THEN ngao_nl  WHEN id = 2 THEN ngao_nl  WHEN id = 3 THEN -ngao_nl  WHEN id = 4 THEN -ngao_nl  END) AS ngao_nl 
-    FROM kq
+
+        -- Ngao nâu
+        (
+            SUM(CASE 
+                WHEN k.id = 1 THEN k.ngao_nau
+                WHEN k.id = 2 THEN k.ngao_nau
+                WHEN k.id = 3 THEN -k.ngao_nau
+                WHEN k.id = 4 THEN -k.ngao_nau
+            END)
+            -
+            COALESCE(MAX(x.ngao_nau), 0)
+        ) AS ngao_nau,
+
+        -- Ngao trắng
+        (
+            SUM(CASE 
+                WHEN k.id = 1 THEN (k.ngao_nl - k.ngao_nau)
+                WHEN k.id = 2 THEN (k.ngao_nl - k.ngao_nau)
+                WHEN k.id = 3 THEN -(k.ngao_nl - k.ngao_nau)
+                WHEN k.id = 4 THEN -(k.ngao_nl - k.ngao_nau)
+            END)
+            -
+            COALESCE(MAX(x.ngao_trang), 0)
+        ) AS ngao_trang
+
+    FROM kq k
+    LEFT JOIN kq41 x ON 1 = 1
+    WHERE k.id BETWEEN 1 AND 4
 ),
 
 --  Chỉ tiêu 6
@@ -178,24 +236,54 @@ kq6 AS (
               AND c_campaign_id IN  (1000100,1000104)
         ) AS ngao_nau,
         SUM(qty) FILTER (
-            WHERE hsv_loaimat_id = 1000147
+            WHERE hsv_loaimat_id = 1000129
               AND c_campaign_id IN  (1000100,1000104)
         ) AS ngao_trang
     FROM nhap_kho
 ),
 
-
 --  Gom tất cả các chỉ tiêu trước (1–4)
 kq_all AS (
-    SELECT kq.id, kq.noidung,kq.ngao_nau, kq.ngao_nl- kq.ngao_nau as ngao_trang  
+
+    -- 1–4: Ngao nguyên liệu
+    SELECT 
+        id,
+        noidung,
+        ngao_nau,
+        ngao_nl - ngao_nau AS ngao_trang
     FROM kq
+    WHERE id BETWEEN 1 AND 4
+
     UNION ALL
-    SELECT kq.id, kq.noidung,kq.ngao_nau, kq.ngao_nl- kq.ngao_nau FROM kq5  kq 
+
+    -- 4.1: Xuất bán
+    SELECT 
+        id,
+        noidung,
+        ngao_nau,
+        ngao_trang
+    FROM kq41
+
     UNION ALL
-    SELECT kq.id, kq.noidung,kq.ngao_nau, kq.ngao_trang  FROM kq6 kq
+
+    -- 5: Đưa vào sử dụng (đã trừ xuất bán)
+    SELECT 
+        id,
+        noidung,
+        ngao_nau,
+        ngao_trang
+    FROM kq5
+
+    UNION ALL
+
+    -- 6: Thành phẩm
+    SELECT 
+        id,
+        noidung,
+        ngao_nau,
+        ngao_trang
+    FROM kq6
 ),
-
-
 
 -- Chỉ tiêu 7: TP ngao nâu lẫn >10% lô ngao trắng
 kq7 AS (

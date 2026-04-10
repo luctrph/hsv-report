@@ -32,7 +32,7 @@
 	<property name="net.sf.jasperreports.default.pdf.font.name" value="Arial.ttf"/>
 	<property name="net.sf.jasperreports.awt.ignore.missing.font" value="false"/>
 	<property name="net.sf.jasperreports.default.pdf.encoding" value="Cp1258"/>
-	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="One Empty Record"/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="psql"/>
 	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
 	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="0"/>
 	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="1000"/>
@@ -48,217 +48,136 @@
 	<parameter name="RESOURCE_DIR" class="java.lang.String" isForPrompting="false">
 		<defaultValueExpression><![CDATA["dev/"]]></defaultValueExpression>
 	</parameter>
-	<parameter name="C_AcctSchema_ID" class="java.lang.Integer"/>
 	<parameter name="AD_Org_ID" class="java.lang.Integer"/>
 	<parameter name="Account_ID" class="java.lang.Integer"/>
 	<parameter name="DateAcct2" class="java.util.Date"/>
 	<parameter name="DateAcct1" class="java.util.Date"/>
 	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
-	<parameter name="SUBREPORT_DIR" class="java.lang.String"/>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String">
+		<defaultValueExpression><![CDATA["dev/"]]></defaultValueExpression>
+	</parameter>
 	<parameter name="C_BP_Group_ID" class="java.lang.Integer"/>
-	<parameter name="EXPORT_TYPE" class="java.lang.String"/>
 	<queryString language="SQL">
-		<![CDATA[select t.Accountvalue,t.value,t.name,t.dudau,t.psco,t.psno,t.ducuoi
-from(   select  c_elementvalue.value as Accountvalue,c_bpartner.value,c_bpartner.name,
+		<![CDATA[SELECT
+    ev.value AS Accountvalue,
+    bp.value AS value,
+    bp.name  AS name,
 
-            sum(	CASE WHEN t.dateacct < $P{DateAcct1} and c_elementvalue.accounttype in ('A','E') THEN (t.amtacctdr-t.amtacctcr)
-                    
-                    ELSE CASE WHEN t.dateacct < $P{DateAcct1} and c_elementvalue.accounttype in ('L','O','M','R') THEN -1*(t.amtacctdr-t.amtacctcr) else 0 end
-                END) as dudau,
+    /* Dư đầu */
+    SUM(
+        CASE
+            WHEN fa.dateacct < $P{DateAcct1} THEN
+                CASE
+                    WHEN ev.accounttype IN ('A','E')
+                        THEN fa.amtacctdr - fa.amtacctcr
+                    ELSE
+                        -(fa.amtacctdr - fa.amtacctcr)
+                END
+            ELSE 0
+        END
+    ) AS dudau,
 
-            sum(	CASE WHEN t.dateacct >=$P{DateAcct1} AND t.dateacct <= $P{DateAcct2} THEN (t.amtacctcr)
-                    ELSE 0
-                END) as psco,
+    /* Phát sinh Có */
+    SUM(
+        CASE
+            WHEN fa.dateacct BETWEEN $P{DateAcct1} AND $P{DateAcct2}
+                THEN fa.amtacctcr
+            ELSE 0
+        END
+    ) AS psco,
 
-            sum(	CASE WHEN t.dateacct >= $P{DateAcct1} AND t.dateacct <= $P{DateAcct2} THEN (t.amtacctdr ) 
-                    ELSE 0
-                END) as psno,
+    /* Phát sinh Nợ */
+    SUM(
+        CASE
+            WHEN fa.dateacct BETWEEN $P{DateAcct1} AND $P{DateAcct2}
+                THEN fa.amtacctdr
+            ELSE 0
+        END
+    ) AS psno,
 
-            sum(	CASE WHEN t.dateacct <= $P{DateAcct2}and c_elementvalue.accounttype in ('A','E') THEN (t.amtacctdr-t.amtacctcr)
-                    ELSE  CASE WHEN t.dateacct <= $P{DateAcct2}and c_elementvalue.accounttype in ('L','O','M','R') THEN -1*(t.amtacctdr-t.amtacctcr) else 0 end
-                END) as ducuoi
-        from 
-            (	SELECT Fact_Acct.Account_ID,Fact_Acct.C_AcctSchema_ID,Fact_Acct.dateacct,Fact_Acct.AD_Org_ID,Fact_Acct.c_bpartner_id,Fact_Acct.amtacctcr,Fact_Acct.amtacctdr FROM Fact_Acct 
-                      join A_Asset_Addition a on Fact_Acct.record_id=a.A_Asset_Addition_id	and a.docstatus in ('CO','CL')		
-                  WHERE  
-                        Fact_Acct.Account_ID=$P{Account_ID} and 
-                        Fact_Acct.dateacct<=$P{DateAcct2}and 
-                        (Fact_Acct.C_AcctSchema_ID=$P{C_AcctSchema_ID} or $P{C_AcctSchema_ID} is null) and 
-                        (Fact_Acct.AD_Orgtrx_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-                                            and Fact_Acct.ad_table_id=53137	
-            
-                  union all
+    /* Dư cuối */
+    SUM(
+        CASE
+            WHEN fa.dateacct <= $P{DateAcct2} THEN
+                CASE
+                    WHEN ev.accounttype IN ('A','E')
+                        THEN fa.amtacctdr - fa.amtacctcr
+                    ELSE
+                        -(fa.amtacctdr - fa.amtacctcr)
+                END
+            ELSE 0
+        END
+    ) AS ducuoi
 
-                SELECT Fact_Acct.Account_ID,Fact_Acct.C_AcctSchema_ID,Fact_Acct.dateacct,Fact_Acct.AD_Org_ID,Fact_Acct.c_bpartner_id,Fact_Acct.amtacctcr,Fact_Acct.amtacctdr FROM Fact_Acct 
-                      join A_Asset_Disposed a on Fact_Acct.record_id=a.A_Asset_Disposed_id	and a.docstatus in ('CO','CL')		
-                  WHERE  
-                        Fact_Acct.Account_ID=$P{Account_ID} and 
-                        Fact_Acct.dateacct<=$P{DateAcct2}and 
-                        (Fact_Acct.C_AcctSchema_ID=$P{C_AcctSchema_ID} or $P{C_AcctSchema_ID} is null) and 
-                        (Fact_Acct.AD_Orgtrx_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-                                and Fact_Acct.ad_table_id=53127	
+FROM Fact_Acct fa
+JOIN C_ElementValue ev
+    ON ev.C_ElementValue_ID = fa.Account_ID
+JOIN C_BPartner bp
+    ON bp.C_BPartner_ID = fa.C_BPartner_ID
+   AND bp.AD_Client_ID = $P{AD_CLIENT_ID}
+   AND (bp.C_BP_Group_ID = $P{C_BP_Group_ID}
+        OR $P{C_BP_Group_ID} IS NULL)
 
-                  union all
+WHERE
+    fa.PostingType = 'A'
+    AND fa.Account_ID = $P{Account_ID}
+    AND fa.DateAcct <= $P{DateAcct2}
+    AND (fa.AD_OrgTrx_ID = $P{AD_Org_ID}
+         OR $P{AD_Org_ID} IS NULL)
 
-                SELECT Fact_Acct.Account_ID,Fact_Acct.C_AcctSchema_ID,Fact_Acct.dateacct,Fact_Acct.AD_Org_ID,Fact_Acct.c_bpartner_id,Fact_Acct.amtacctcr,Fact_Acct.amtacctdr FROM Fact_Acct 
-                      join A_Depreciation_Entry a on Fact_Acct.record_id=a.A_Depreciation_Entry_id	and a.docstatus in ('CO','CL')		
-                  WHERE  
-                        Fact_Acct.Account_ID=$P{Account_ID} and 
-                        Fact_Acct.dateacct<=$P{DateAcct2}and 
-                        (Fact_Acct.C_AcctSchema_ID=$P{C_AcctSchema_ID} or $P{C_AcctSchema_ID} is null) and 
-                        (Fact_Acct.AD_Orgtrx_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-                                and Fact_Acct.ad_table_id=53121	
+GROUP BY
+    ev.value,
+    bp.value,
+    bp.name
 
-                  union all
+HAVING
+    SUM(
+        CASE
+            WHEN fa.dateacct <= $P{DateAcct2} THEN
+                CASE
+                    WHEN ev.accounttype IN ('A','E')
+                        THEN fa.amtacctdr - fa.amtacctcr
+                    ELSE
+                        -(fa.amtacctdr - fa.amtacctcr)
+                END
+            ELSE 0
+        END
+    ) <> 0
 
-                SELECT Fact_Acct.Account_ID,Fact_Acct.C_AcctSchema_ID,Fact_Acct.dateacct,Fact_Acct.AD_Org_ID,Fact_Acct.c_bpartner_id,Fact_Acct.amtacctcr,Fact_Acct.amtacctdr FROM Fact_Acct         
-                      join C_AllocationHdr a on Fact_Acct.record_id=a.C_AllocationHdr_id	and a.docstatus in ('CO','CL')		
-                  WHERE  
-                        Fact_Acct.Account_ID=$P{Account_ID} and 
-                        Fact_Acct.dateacct<=$P{DateAcct2}and 
-                        (Fact_Acct.C_AcctSchema_ID=$P{C_AcctSchema_ID} or $P{C_AcctSchema_ID} is null) and 
-                        (Fact_Acct.AD_Orgtrx_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-                                and Fact_Acct.ad_table_id=735	
-
-                  union all
-
-                SELECT Fact_Acct.Account_ID,Fact_Acct.C_AcctSchema_ID,Fact_Acct.dateacct,Fact_Acct.AD_Org_ID,Fact_Acct.c_bpartner_id,Fact_Acct.amtacctcr,Fact_Acct.amtacctdr FROM Fact_Acct 
-                      join C_BankStatement a on Fact_Acct.record_id=a.C_BankStatement_id	and a.docstatus in ('CO','CL')		
-                  WHERE  
-                        Fact_Acct.Account_ID=$P{Account_ID} and 
-                        Fact_Acct.dateacct<=$P{DateAcct2}and 
-                        (Fact_Acct.C_AcctSchema_ID=$P{C_AcctSchema_ID} or $P{C_AcctSchema_ID} is null) and 
-                        (Fact_Acct.AD_Orgtrx_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-                                and Fact_Acct.ad_table_id=392			
-
-                  union all
-
-                SELECT Fact_Acct.Account_ID,Fact_Acct.C_AcctSchema_ID,Fact_Acct.dateacct,Fact_Acct.AD_Org_ID,Fact_Acct.c_bpartner_id,Fact_Acct.amtacctcr,Fact_Acct.amtacctdr FROM Fact_Acct 
-                      join C_Cash a on Fact_Acct.record_id=a.C_Cash_id	and a.docstatus in ('CO','CL')		
-                  WHERE  
-                        Fact_Acct.Account_ID=$P{Account_ID} and 
-                        Fact_Acct.dateacct<=$P{DateAcct2}and 
-                        (Fact_Acct.C_AcctSchema_ID=$P{C_AcctSchema_ID} or $P{C_AcctSchema_ID} is null) and 
-                        (Fact_Acct.AD_Orgtrx_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-                                and Fact_Acct.ad_table_id=407								
-                        
-                  union all
-
-                SELECT Fact_Acct.Account_ID,Fact_Acct.C_AcctSchema_ID,Fact_Acct.dateacct,Fact_Acct.AD_Org_ID,Fact_Acct.c_bpartner_id,Fact_Acct.amtacctcr,Fact_Acct.amtacctdr FROM Fact_Acct 
-                      join C_Invoice a on Fact_Acct.record_id=a.C_Invoice_id	and a.docstatus in ('CO','CL')		
-                  WHERE  
-                        Fact_Acct.Account_ID=$P{Account_ID} and 
-                        Fact_Acct.dateacct<=$P{DateAcct2}and 
-                        (Fact_Acct.C_AcctSchema_ID=$P{C_AcctSchema_ID} or $P{C_AcctSchema_ID} is null) and 
-                        (Fact_Acct.AD_Orgtrx_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-                                and Fact_Acct.ad_table_id=318		
-                        
-                  union all
-
-                SELECT Fact_Acct.Account_ID,Fact_Acct.C_AcctSchema_ID,Fact_Acct.dateacct,Fact_Acct.AD_Org_ID,Fact_Acct.c_bpartner_id,Fact_Acct.amtacctcr,Fact_Acct.amtacctdr FROM Fact_Acct 
-                      join C_Payment a on Fact_Acct.record_id=a.C_Payment_id	and a.docstatus in ('CO','CL')		
-                  WHERE  
-                        Fact_Acct.Account_ID=$P{Account_ID} and 
-                        Fact_Acct.dateacct<=$P{DateAcct2}and 
-                        (Fact_Acct.C_AcctSchema_ID=$P{C_AcctSchema_ID} or $P{C_AcctSchema_ID} is null) and 
-                        (Fact_Acct.AD_Orgtrx_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-                                and Fact_Acct.ad_table_id=335				
-                        
-                  union all
-
-                SELECT Fact_Acct.Account_ID,Fact_Acct.C_AcctSchema_ID,Fact_Acct.dateacct,Fact_Acct.AD_Org_ID,Fact_Acct.c_bpartner_id,Fact_Acct.amtacctcr,Fact_Acct.amtacctdr FROM Fact_Acct 
-                      join GL_Journal a on Fact_Acct.record_id=a.GL_Journal_id	and a.docstatus in ('CO','CL')		
-                  WHERE  
-                        Fact_Acct.Account_ID=$P{Account_ID} and 
-                        Fact_Acct.dateacct<=$P{DateAcct2}and 
-                        (Fact_Acct.C_AcctSchema_ID=$P{C_AcctSchema_ID} or $P{C_AcctSchema_ID} is null) and 
-                        (Fact_Acct.AD_Orgtrx_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-                                and Fact_Acct.ad_table_id=224	
-                        
-                  union all
-
-                SELECT Fact_Acct.Account_ID,Fact_Acct.C_AcctSchema_ID,Fact_Acct.dateacct,Fact_Acct.AD_Org_ID,Fact_Acct.c_bpartner_id,Fact_Acct.amtacctcr,Fact_Acct.amtacctdr FROM Fact_Acct 
-                      join 	M_InOut a on Fact_Acct.record_id=a.M_InOut_id	and a.docstatus in ('CO','CL')		
-                  WHERE  
-                        Fact_Acct.Account_ID=$P{Account_ID} and 
-                        Fact_Acct.dateacct<=$P{DateAcct2}and 
-                        (Fact_Acct.C_AcctSchema_ID=$P{C_AcctSchema_ID} or $P{C_AcctSchema_ID} is null) and 
-                        (Fact_Acct.AD_Orgtrx_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-                                and Fact_Acct.ad_table_id=319
-                        
-                  union all
-
-            SELECT Fact_Acct.Account_ID,Fact_Acct.C_AcctSchema_ID,Fact_Acct.dateacct,Fact_Acct.AD_Org_ID,Fact_Acct.c_bpartner_id,Fact_Acct.amtacctcr,Fact_Acct.amtacctdr FROM Fact_Acct 
-                      join 	M_Inventory a on Fact_Acct.record_id=a.M_Inventory_id	and a.docstatus in ('CO','CL')		
-                  WHERE  
-                        Fact_Acct.Account_ID=$P{Account_ID} and 
-                        Fact_Acct.dateacct<=$P{DateAcct2}and 
-                        (Fact_Acct.C_AcctSchema_ID=$P{C_AcctSchema_ID} or $P{C_AcctSchema_ID} is null) and 
-                        (Fact_Acct.AD_Orgtrx_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-                                and Fact_Acct.ad_table_id=321	
-                        
-                  union all
-
-            SELECT Fact_Acct.Account_ID,Fact_Acct.C_AcctSchema_ID,Fact_Acct.dateacct,Fact_Acct.AD_Org_ID,Fact_Acct.c_bpartner_id,Fact_Acct.amtacctcr,Fact_Acct.amtacctdr FROM Fact_Acct 
-                      join 	M_MatchInv a on Fact_Acct.record_id=a.M_MatchInv_id	
-                  WHERE  
-                        Fact_Acct.Account_ID=$P{Account_ID} and 
-                        Fact_Acct.dateacct<=$P{DateAcct2}and 
-                        (Fact_Acct.C_AcctSchema_ID=$P{C_AcctSchema_ID} or $P{C_AcctSchema_ID} is null) and 
-                        (Fact_Acct.AD_Orgtrx_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-                                and Fact_Acct.ad_table_id=472		
-                        
-                  union all
-
-                SELECT Fact_Acct.Account_ID,Fact_Acct.C_AcctSchema_ID,Fact_Acct.dateacct,Fact_Acct.AD_Org_ID,Fact_Acct.c_bpartner_id,Fact_Acct.amtacctcr,Fact_Acct.amtacctdr FROM Fact_Acct 
-                      join 	M_MatchPO a on Fact_Acct.record_id=a.M_MatchPO_id
-                  WHERE  
-                        Fact_Acct.Account_ID=$P{Account_ID} and 
-                        Fact_Acct.dateacct<=$P{DateAcct2}and 
-                        (Fact_Acct.C_AcctSchema_ID=$P{C_AcctSchema_ID} or $P{C_AcctSchema_ID} is null) and 
-                        (Fact_Acct.AD_Orgtrx_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-                                and Fact_Acct.ad_table_id=473				
-                        
-                  union all
-
-                SELECT Fact_Acct.Account_ID,Fact_Acct.C_AcctSchema_ID,Fact_Acct.dateacct,Fact_Acct.AD_Org_ID,Fact_Acct.c_bpartner_id,Fact_Acct.amtacctcr,Fact_Acct.amtacctdr FROM Fact_Acct 
-                      join 	M_Movement a on Fact_Acct.record_id=a.M_Movement_id	and a.docstatus in ('CO','CL')		
-                  WHERE  
-                        Fact_Acct.Account_ID=$P{Account_ID} and 
-                        Fact_Acct.dateacct<=$P{DateAcct2}and 
-                        (Fact_Acct.C_AcctSchema_ID=$P{C_AcctSchema_ID} or $P{C_AcctSchema_ID} is null) and 
-                        (Fact_Acct.AD_Orgtrx_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-                                and Fact_Acct.ad_table_id=323					
-                        
-                  union all
-
-                SELECT Fact_Acct.Account_ID,Fact_Acct.C_AcctSchema_ID,Fact_Acct.dateacct,Fact_Acct.AD_Org_ID,Fact_Acct.c_bpartner_id,Fact_Acct.amtacctcr,Fact_Acct.amtacctdr FROM Fact_Acct 
-                      join 	M_Production a on Fact_Acct.record_id=a.M_Production_id	and a.docstatus in ('CO','CL')		
-                  WHERE  
-                        Fact_Acct.Account_ID=$P{Account_ID} and 
-                        Fact_Acct.dateacct<=$P{DateAcct2}and 
-                        (Fact_Acct.C_AcctSchema_ID=$P{C_AcctSchema_ID} or $P{C_AcctSchema_ID} is null) and 
-                        (Fact_Acct.AD_Orgtrx_ID=$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-                                and Fact_Acct.ad_table_id=325
-                        
-            ) as t
-            inner join c_bpartner on c_bpartner.c_bpartner_id=t.c_bpartner_id and c_bpartner.AD_CLIENT_ID=$P{AD_CLIENT_ID} 
-                    and (c_bpartner.C_BP_Group_ID=$P{C_BP_Group_ID} or $P{C_BP_Group_ID} is null)
-            inner join c_elementvalue on t.account_id=c_elementvalue.c_elementvalue_id 
-
-        group by c_elementvalue.value ,c_bpartner.value,c_bpartner.name
-        order by c_bpartner.value
-        
-    ) as t    
-    where t.dudau<>0 or t.ducuoi<>0 or t.psno<>0 or t.psco<>0]]>
+ORDER BY
+    bp.value;]]>
 	</queryString>
-	<field name="value" class="java.lang.String"/>
-	<field name="name" class="java.lang.String"/>
-	<field name="psno" class="java.math.BigDecimal"/>
-	<field name="psco" class="java.math.BigDecimal"/>
-	<field name="ducuoi" class="java.math.BigDecimal"/>
-	<field name="dudau" class="java.math.BigDecimal"/>
-	<field name="accountvalue" class="java.lang.String"/>
+	<field name="accountvalue" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="accountvalue"/>
+		<property name="com.jaspersoft.studio.field.label" value="accountvalue"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_elementvalue"/>
+	</field>
+	<field name="value" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="value"/>
+		<property name="com.jaspersoft.studio.field.label" value="value"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_bpartner"/>
+	</field>
+	<field name="name" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="name"/>
+		<property name="com.jaspersoft.studio.field.label" value="name"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_bpartner"/>
+	</field>
+	<field name="dudau" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="dudau"/>
+		<property name="com.jaspersoft.studio.field.label" value="dudau"/>
+	</field>
+	<field name="psco" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="psco"/>
+		<property name="com.jaspersoft.studio.field.label" value="psco"/>
+	</field>
+	<field name="psno" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="psno"/>
+		<property name="com.jaspersoft.studio.field.label" value="psno"/>
+	</field>
+	<field name="ducuoi" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="ducuoi"/>
+		<property name="com.jaspersoft.studio.field.label" value="ducuoi"/>
+	</field>
 	<variable name="Td" class="java.math.BigDecimal" calculation="Sum">
 		<variableExpression><![CDATA[$F{dudau}]]></variableExpression>
 		<initialValueExpression><![CDATA[BigDecimal.ZERO]]></initialValueExpression>
@@ -280,7 +199,6 @@ from(   select  c_elementvalue.value as Accountvalue,c_bpartner.value,c_bpartner
 	</background>
 	<pageHeader>
 		<band height="139">
-			<printWhenExpression><![CDATA[$P{EXPORT_TYPE}==null || $P{EXPORT_TYPE}=="PDF"]]></printWhenExpression>
 			<textField>
 				<reportElement x="0" y="50" width="555" height="30" uuid="8aba7bdf-47b9-4be7-90a7-3b336b1ec0b4">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
@@ -553,7 +471,6 @@ from(   select  c_elementvalue.value as Accountvalue,c_bpartner.value,c_bpartner
 	</detail>
 	<summary>
 		<band height="79">
-			<printWhenExpression><![CDATA[$P{EXPORT_TYPE}==null || $P{EXPORT_TYPE}=="PDF"]]></printWhenExpression>
 			<staticText>
 				<reportElement x="401" y="31" width="68" height="20" uuid="e288f98f-a9bd-4f9f-a657-31a58490ff23"/>
 				<box leftPadding="2" rightPadding="2"/>
@@ -580,7 +497,7 @@ from(   select  c_elementvalue.value as Accountvalue,c_bpartner.value,c_bpartner
 				<text><![CDATA[Giám đốc]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="200" y="54" width="201" height="20" uuid="4feb1203-fb20-4441-b0f3-fd90b555f48e">
+				<reportElement x="267" y="54" width="134" height="20" uuid="4feb1203-fb20-4441-b0f3-fd90b555f48e">
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
 				<textElement textAlignment="Center">
@@ -589,7 +506,7 @@ from(   select  c_elementvalue.value as Accountvalue,c_bpartner.value,c_bpartner
 				<text><![CDATA[Kiểm soát]]></text>
 			</staticText>
 			<staticText>
-				<reportElement x="0" y="54" width="200" height="20" uuid="8d7c2722-7a95-4206-b426-d64e42bcadff">
+				<reportElement x="0" y="54" width="267" height="20" uuid="8d7c2722-7a95-4206-b426-d64e42bcadff">
 					<property name="local_mesure_unity" value="pixel"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 					<property name="com.jaspersoft.studio.unit.x" value="px"/>

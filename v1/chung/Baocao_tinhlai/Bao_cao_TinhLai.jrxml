@@ -46,104 +46,83 @@
 	</parameter>
 	<parameter name="C_BPartner_ID" class="java.lang.Integer"/>
 	<queryString>
-		<![CDATA[WITH p AS (
-    SELECT startdate, enddate
-    FROM c_period
-    WHERE c_period_id = $P{C_Period_ID}
+		<![CDATA[WITH PeriodInfo AS (
+    SELECT 
+        startdate, 
+        enddate,
+        ad_client_id
+    FROM c_period 
+    WHERE c_period_id = $P{C_Period_ID} 
       AND ad_client_id = $P{AD_CLIENT_ID}
 ),
-
--- danh sách ngày trong kỳ
-days AS (
-    SELECT generate_series(p.startdate, p.enddate, interval '1 day')::date AS ngay
-    FROM p
-),
-
--- phát sinh theo ngày
-ps_ngay AS (
-    SELECT
+RawData AS (
+    -- Gộp toàn bộ 30 cái UNION ALL cũ thành 1 lần quét bảng duy nhất
+    SELECT 
         t.c_bpartner_id,
-        t.dateacct::date AS ngay,
-        SUM(t.amtacctcr - t.amtacctdr) AS ps_ngay
+        SUM(CASE WHEN t.dateacct < p.startdate THEN (t.amtacctcr - t.amtacctdr) ELSE 0 END) AS dudau,
+        SUM(CASE WHEN t.dateacct <= p.enddate THEN (t.amtacctcr - t.amtacctdr) ELSE 0 END) AS ducuoi,
+        -- Tính toán sodu trung bình hoặc tổng số dư tùy theo logic 31 ngày của bạn
+        -- Ở đây tôi tối ưu bằng cách tính psco/psno dựa trên khoảng ngày biến thiên (0->30)
+        SUM(CASE 
+            WHEN t.dateacct <= p.enddate THEN 
+                (t.amtacctcr - t.amtacctdr) * (CASE 
+                    WHEN (p.enddate - GREATEST(t.dateacct, p.startdate) + 1) > 0 
+                    THEN (p.enddate - GREATEST(t.dateacct, p.startdate) + 1) 
+                    ELSE 0 
+                 END)
+            ELSE 0 
+        END) as sodu_tich_luy
     FROM fact_acct t
-    CROSS JOIN p
-    WHERE t.ad_client_id = $P{AD_CLIENT_ID}
-      AND t.account_id   = $P{Account_ID}
-      AND t.dateacct BETWEEN p.startdate AND p.enddate
-    GROUP BY t.c_bpartner_id, t.dateacct::date
-),
-
--- dư đầu kỳ
-du_dau AS (
-    SELECT
-        t.c_bpartner_id,
-        SUM(t.amtacctcr - t.amtacctdr) AS dudau
-    FROM fact_acct t
-    CROSS JOIN p
-    WHERE t.ad_client_id = $P{AD_CLIENT_ID}
-      AND t.account_id   = $P{Account_ID}
-      AND t.dateacct < p.startdate
+    CROSS JOIN PeriodInfo p
+    WHERE t.account_id = $P{Account_ID} 
+      AND t.ad_client_id = $P{AD_CLIENT_ID}
+      AND t.dateacct <= p.enddate
     GROUP BY t.c_bpartner_id
 ),
-
--- tạo bảng ngày + đối tác
-daily_balance AS (
-    SELECT
-        d.ngay,
-        b.c_bpartner_id,
-        COALESCE(ps.ps_ngay, 0) AS ps_ngay
-    FROM days d
-    CROSS JOIN (
-        SELECT DISTINCT c_bpartner_id
-        FROM fact_acct
-        WHERE ad_client_id = $P{AD_CLIENT_ID}
-          AND account_id   = $P{Account_ID}
-    ) b
-    LEFT JOIN ps_ngay ps
-           ON ps.c_bpartner_id = b.c_bpartner_id
-          AND ps.ngay = d.ngay
-),
-
--- tính số dư lũy kế theo ngày
-so_du_ngay AS (
-    SELECT
-        db.c_bpartner_id,
-        db.ngay,
-        COALESCE(dd.dudau, 0)
-        + SUM(db.ps_ngay) OVER (
-            PARTITION BY db.c_bpartner_id
-            ORDER BY db.ngay
-          ) AS sodu_ngay
-    FROM daily_balance db
-    LEFT JOIN du_dau dd
-           ON dd.c_bpartner_id = db.c_bpartner_id
+JournalData AS (
+    -- Tối ưu phần lấy pstno từ gl_journal
+    SELECT 
+        fc.c_bpartner_id, 
+        SUM(fc.amtacctdr) as pstno
+    FROM fact_acct fc
+    JOIN PeriodInfo p ON fc.ad_client_id = p.ad_client_id
+    JOIN gl_journalline gl ON fc.record_id = gl.gl_journal_id 
+        AND fc.line_id = gl.gl_journalline_id 
+        AND fc.Account_ID = gl.Account_ID
+    JOIN gl_journal a ON a.gl_journal_id = fc.record_id
+    WHERE gl.IsGenerated = 'N'
+      AND a.docstatus IN ('CO', 'CL')
+      AND fc.amtacctcr = 0 
+      AND fc.ad_table_id = 224
+      AND fc.dateacct BETWEEN p.startdate AND p.enddate
+    GROUP BY fc.c_bpartner_id
 )
-
-SELECT
+SELECT 
     ROW_NUMBER() OVER (ORDER BY cb.value) AS stt,
     'lx' AS nhom,
     cb.value,
     cb.name,
     rate.hsv_laisuat,
-    ROUND(MIN(sdn.sodu_ngay),0) AS dudau,
-    ROUND(MAX(sdn.sodu_ngay),0) AS ducuoi,
-    SUM(sdn.sodu_ngay * rate.hsv_laisuat / 100 / 30) AS laithang
-FROM so_du_ngay sdn
-JOIN c_bpartner cb
-     ON cb.c_bpartner_id = sdn.c_bpartner_id
-JOIN c_bpartner_rate rate
-     ON rate.c_bpartner_id = cb.c_bpartner_id
-CROSS JOIN p
-WHERE ($P{C_BPartner_ID} IS NULL OR cb.c_bpartner_id = $P{C_BPartner_ID})
-  AND rate.hsv_laisuat IS NOT null 
-  AND sdn.ngay BETWEEN rate.datefrom AND rate.dateto
-GROUP BY
-    cb.value,
-    cb.name,
-    rate.hsv_laisuat
-having sum(sdn.sodu_ngay) <> 0
-
-]]>
+    COALESCE(k.dudau, 0) AS dudau,
+    COALESCE(k.ducuoi, 0) AS ducuoi,
+    -- Công thức lãi tháng tính dựa trên số dư tích lũy chia cho 30 ngày
+    COALESCE((k.sodu_tich_luy * rate.hsv_laisuat / 100 / 30), 0) AS laithang
+FROM (
+    SELECT 
+        COALESCE(r.c_bpartner_id, j.c_bpartner_id) as c_bpartner_id,
+        r.dudau,
+        r.ducuoi,
+        r.sodu_tich_luy,
+        j.pstno
+    FROM RawData r
+    FULL OUTER JOIN JournalData j ON r.c_bpartner_id = j.c_bpartner_id
+) k
+JOIN c_bpartner cb ON cb.c_bpartner_id = k.c_bpartner_id
+JOIN c_bpartner_rate rate ON cb.c_bpartner_id = rate.c_bpartner_id
+CROSS JOIN PeriodInfo p
+WHERE (k.sodu_tich_luy <> 0 OR k.dudau <> 0 OR k.ducuoi <> 0)
+  AND (cb.c_bpartner_id = $P{C_BPartner_ID} OR $P{C_BPartner_ID} IS NULL)
+  AND p.enddate BETWEEN rate.datefrom AND rate.dateto;]]>
 	</queryString>
 	<field name="stt" class="java.lang.Long">
 		<property name="com.jaspersoft.studio.field.name" value="stt"/>

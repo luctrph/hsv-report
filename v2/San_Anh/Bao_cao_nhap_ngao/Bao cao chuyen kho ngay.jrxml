@@ -37,6 +37,7 @@
 	<queryString>
 		<![CDATA[with don_gia as (
 	select miv.hsv_lovansay_id, 
+		   mi.dateacct ,
 	       sum(miv.movementqty) as so_luong, 
 	       sum(miv.movementqty * cov.priceentered) as thanh_tien,
 	       coalesce(case when sum(miv.movementqty) <> 0 then sum(miv.movementqty * cov.priceentered)/sum(miv.movementqty) else 0 end,0) as gia
@@ -46,13 +47,13 @@
 	where miv.ad_client_id = $P{AD_CLIENT_ID}
 	  and miv.hsv_lovansay_id is not null  
 	  and mi.docstatus IN ('CO', 'CL')
-	group by miv.hsv_lovansay_id
+	group by miv.hsv_lovansay_id,mi.dateacct 
 
 ),
 so_luong as (
 	select ll.hsv_lovansay_id,ll.dateto as ngay_ket_thuc,  ll.name as ma_lo, loi.name as nguon_goc, 
-		sum(case when mml.m_product_id = 1017815 then mml.movementqty else 0 end) as ngao_yeu,
-		sum(case when mml.m_product_id = 1000302 then mml.movementqty else 0 end) as ngao_sach		
+		sum(case when mml.m_product_id = 	1019437 then mml.movementqty else 0 end) as ngao_yeu,
+		sum(case when mml.m_product_id = 1019436 then mml.movementqty else 0 end) as ngao_sach		
 	from m_movement mm 
 	join m_movementline mml on mm.m_movement_id = mml.m_movement_id 
 	join hsv_lovansay ll on ll.hsv_lovansay_id = mml.hsv_lovansay_id 
@@ -68,8 +69,8 @@ so_luong as (
 
 so_luong_all as (
 	select mml.hsv_lovansay_id,
-		sum(case when mml.m_product_id = 1017815 then mml.movementqty else 0 end) as ngao_yeu,
-		sum(case when mml.m_product_id = 1000302 then mml.movementqty else 0 end) as ngao_sach		
+		sum(case when mml.m_product_id = 1019437 then mml.movementqty else 0 end) as ngao_yeu,
+		sum(case when mml.m_product_id = 1019436 then mml.movementqty else 0 end) as ngao_sach		
 	from m_movement mm 
 	join m_movementline mml on mm.m_movement_id = mml.m_movement_id 
 	where mm.ad_client_id = $P{AD_CLIENT_ID} 
@@ -83,8 +84,8 @@ sl_chuyen_ve as (
 									when ll.dateto <> $P{EndDate} then ll.dateto  
 									end as ngay_ket_thuc,
 		ll.name as ma_lo, loi.name as nguon_goc, 
-		coalesce(sum(case when mml.m_product_id = 1017815 then mml.movementqty else 0 end),0) as ngao_yeu,
-		coalesce(sum(case when mml.m_product_id = 1000302 then mml.movementqty else 0 end),0) as ngao_sach		
+		coalesce(sum(case when mml.m_product_id = 1019437 then mml.movementqty else 0 end),0) as ngao_yeu,
+		coalesce(sum(case when mml.m_product_id = 1019436 then mml.movementqty else 0 end),0) as ngao_sach		
 	from m_movement mm 
 	join m_movementline mml on mm.m_movement_id = mml.m_movement_id 
 	join hsv_lovansay ll on ll.hsv_lovansay_id = mml.hsv_lovansay_id 
@@ -97,20 +98,23 @@ sl_chuyen_ve as (
 	group by ll.hsv_lovansay_id, ll.name, loi.name,ll.dateto 
 )
 
-select sl.ma_lo,
+select 
+	sl.ma_lo,
 	sl.nguon_goc,
 	sl.ngao_yeu,
 	sl.ngao_sach,
 	1.02*(sl.ngao_sach + sl.ngao_yeu)* dg.gia as tien_dm,
 	dg.so_luong,
 	dg.thanh_tien, 
-	dg.thanh_tien - 1.02*(sla.ngao_sach + sla.ngao_yeu)* dg.gia as chech_lech ,
+	case when sl.ngay_ket_thuc = $P{EndDate} then  dg.thanh_tien - 1.02*(sla.ngao_sach + sla.ngao_yeu)* dg.gia else 0 end as chech_lech ,
+	case when sl.ngay_ket_thuc = $P{EndDate} then dg.so_luong - (sla.ngao_sach + sla.ngao_yeu) else 0 end as chechlech,
 	case when (sla.ngao_sach + sla.ngao_yeu) <>0 then dg.so_luong /(sla.ngao_sach + sla.ngao_yeu) else 0 end tyle,
 	sl.ngay_ket_thuc
 	
 from so_luong sl
 left join don_gia dg on sl.hsv_lovansay_id = dg.hsv_lovansay_id 
 left join so_luong_all sla on sla.hsv_lovansay_id = sl.hsv_lovansay_id 
+
 union all 
 
 select 
@@ -122,6 +126,7 @@ select
 	dg.so_luong,
 	dg.thanh_tien,
 	0  as chech_lech,
+	case when  slv.ngay_ket_thuc = $P{EndDate} then dg.so_luong -(sla.ngao_sach + sla.ngao_yeu) else 0 end as chechlech,
 	case when (sla.ngao_sach + sla.ngao_yeu) <>0 then dg.so_luong /(sla.ngao_sach + sla.ngao_yeu) else 0 end tyle,
 	slv.ngay_ket_thuc  as ngay_ket_thuc 
 from sl_chuyen_ve  slv 
@@ -162,6 +167,10 @@ left join so_luong_all sla on sla.hsv_lovansay_id = slv.hsv_lovansay_id]]>
 		<property name="com.jaspersoft.studio.field.name" value="chech_lech"/>
 		<property name="com.jaspersoft.studio.field.label" value="chech_lech"/>
 	</field>
+	<field name="chechlech" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="chechlech"/>
+		<property name="com.jaspersoft.studio.field.label" value="chechlech"/>
+	</field>
 	<field name="tyle" class="java.math.BigDecimal">
 		<property name="com.jaspersoft.studio.field.name" value="tyle"/>
 		<property name="com.jaspersoft.studio.field.label" value="tyle"/>
@@ -199,11 +208,14 @@ left join so_luong_all sla on sla.hsv_lovansay_id = slv.hsv_lovansay_id]]>
 	<variable name="sum_chech_lech" class="java.lang.Double" calculation="Sum">
 		<variableExpression><![CDATA[$F{chech_lech}]]></variableExpression>
 	</variable>
+	<variable name="sum_chechlech" class="java.lang.Double" calculation="Sum">
+		<variableExpression><![CDATA[$F{chechlech}]]></variableExpression>
+	</variable>
 	<group name="Group1" minHeightToStartNewPage="30">
 		<groupFooter>
 			<band height="26">
 				<textField pattern="#,##0" isBlankWhenNull="true">
-					<reportElement positionType="Float" x="329" y="0" width="99" height="26" uuid="15aabfb6-6bbf-4b04-a46a-ab27750f2069">
+					<reportElement positionType="Float" x="309" y="0" width="81" height="26" uuid="15aabfb6-6bbf-4b04-a46a-ab27750f2069">
 						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="7027e9ec-fd15-413a-9a60-af4d712e469e"/>
 						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 						<property name="com.jaspersoft.studio.unit.height" value="px"/>
@@ -221,9 +233,8 @@ left join so_luong_all sla on sla.hsv_lovansay_id = slv.hsv_lovansay_id]]>
 					<textFieldExpression><![CDATA[$V{tien_dm}]]></textFieldExpression>
 				</textField>
 				<textField pattern="#,##0" isBlankWhenNull="true">
-					<reportElement positionType="Float" x="428" y="0" width="69" height="26" uuid="8cc9aa27-5571-416b-a1fa-439b11154127">
+					<reportElement positionType="Float" x="390" y="0" width="60" height="26" uuid="8cc9aa27-5571-416b-a1fa-439b11154127">
 						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="10ea712b-3c17-404e-a697-0ea497cd2920"/>
-						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 						<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					</reportElement>
 					<box padding="2">
@@ -255,7 +266,7 @@ left join so_luong_all sla on sla.hsv_lovansay_id = slv.hsv_lovansay_id]]>
 					</textElement>
 				</textField>
 				<textField pattern="#,##0" isBlankWhenNull="true">
-					<reportElement positionType="Float" x="209" y="0" width="60" height="26" uuid="47bd00cb-f9db-4d4a-95c0-da487d5da46e">
+					<reportElement positionType="Float" x="209" y="0" width="45" height="26" uuid="47bd00cb-f9db-4d4a-95c0-da487d5da46e">
 						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c9418d72-30aa-4e2c-b533-09bbdcc6d3c6"/>
 						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 						<property name="com.jaspersoft.studio.unit.height" value="px"/>
@@ -273,7 +284,7 @@ left join so_luong_all sla on sla.hsv_lovansay_id = slv.hsv_lovansay_id]]>
 					<textFieldExpression><![CDATA[$V{sum_ngao_yeu}]]></textFieldExpression>
 				</textField>
 				<textField pattern="#,##0" isBlankWhenNull="true">
-					<reportElement positionType="Float" x="497" y="0" width="82" height="26" uuid="4381aebb-6905-4a16-b689-d66dcb797bda">
+					<reportElement positionType="Float" x="450" y="0" width="82" height="26" uuid="4381aebb-6905-4a16-b689-d66dcb797bda">
 						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="401d9ef6-5f4c-4482-8ce9-729d226d3a1a"/>
 						<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					</reportElement>
@@ -290,10 +301,10 @@ left join so_luong_all sla on sla.hsv_lovansay_id = slv.hsv_lovansay_id]]>
 					<textFieldExpression><![CDATA[$V{sum_tt}]]></textFieldExpression>
 				</textField>
 				<textField pattern="#,##0" isBlankWhenNull="true">
-					<reportElement positionType="Float" x="269" y="0" width="60" height="26" uuid="4d739f0b-adf7-4300-9964-f7ca012f0fed">
+					<reportElement positionType="Float" x="254" y="0" width="55" height="26" uuid="4d739f0b-adf7-4300-9964-f7ca012f0fed">
 						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="7027e9ec-fd15-413a-9a60-af4d712e469e"/>
-						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					</reportElement>
 					<box padding="2">
 						<pen lineWidth="0.5"/>
@@ -341,7 +352,7 @@ left join so_luong_all sla on sla.hsv_lovansay_id = slv.hsv_lovansay_id]]>
 					<textFieldExpression><![CDATA["Cộng nhóm"]]></textFieldExpression>
 				</textField>
 				<textField pattern="#,##0" isBlankWhenNull="true">
-					<reportElement positionType="Float" x="579" y="0" width="80" height="26" uuid="304f9927-500a-4edc-8752-ca460b9ee782">
+					<reportElement positionType="Float" x="532" y="0" width="80" height="26" uuid="304f9927-500a-4edc-8752-ca460b9ee782">
 						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="401d9ef6-5f4c-4482-8ce9-729d226d3a1a"/>
 						<property name="com.jaspersoft.studio.unit.height" value="px"/>
 					</reportElement>
@@ -356,6 +367,23 @@ left join so_luong_all sla on sla.hsv_lovansay_id = slv.hsv_lovansay_id]]>
 						<font fontName="Arial" isBold="true"/>
 					</textElement>
 					<textFieldExpression><![CDATA[$V{sum_chech_lech}]]></textFieldExpression>
+				</textField>
+				<textField pattern="#,##0.##" isBlankWhenNull="true">
+					<reportElement positionType="Float" x="612" y="0" width="47" height="26" uuid="3e4ed042-8d41-4a98-939c-bf609a06711c">
+						<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="401d9ef6-5f4c-4482-8ce9-729d226d3a1a"/>
+						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					</reportElement>
+					<box padding="2">
+						<pen lineWidth="0.5"/>
+						<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+						<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					</box>
+					<textElement textAlignment="Right" verticalAlignment="Middle">
+						<font fontName="Arial" isBold="true"/>
+					</textElement>
+					<textFieldExpression><![CDATA[$V{sum_chechlech}]]></textFieldExpression>
 				</textField>
 			</band>
 		</groupFooter>
@@ -455,9 +483,9 @@ left join so_luong_all sla on sla.hsv_lovansay_id = slv.hsv_lovansay_id]]>
 		</band>
 	</title>
 	<columnHeader>
-		<band height="37" splitType="Stretch">
+		<band height="50" splitType="Stretch">
 			<staticText>
-				<reportElement positionType="Float" x="700" y="0" width="100" height="37" uuid="f459d889-a880-4134-823b-a5351d16b0da">
+				<reportElement positionType="Float" x="700" y="0" width="100" height="50" uuid="f459d889-a880-4134-823b-a5351d16b0da">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="401d9ef6-5f4c-4482-8ce9-729d226d3a1a"/>
 				</reportElement>
 				<box padding="2">
@@ -473,9 +501,8 @@ left join so_luong_all sla on sla.hsv_lovansay_id = slv.hsv_lovansay_id]]>
 				<text><![CDATA[Ghi chú]]></text>
 			</staticText>
 			<staticText>
-				<reportElement positionType="Float" x="428" y="0" width="69" height="37" uuid="162724c2-5b59-4f3b-8e0f-1c1f792f5d9a">
+				<reportElement positionType="Float" x="390" y="0" width="60" height="50" uuid="162724c2-5b59-4f3b-8e0f-1c1f792f5d9a">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="10ea712b-3c17-404e-a697-0ea497cd2920"/>
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box padding="2">
 					<pen lineWidth="0.5"/>
@@ -490,7 +517,7 @@ left join so_luong_all sla on sla.hsv_lovansay_id = slv.hsv_lovansay_id]]>
 				<text><![CDATA[SL ngao mua của lô]]></text>
 			</staticText>
 			<staticText>
-				<reportElement positionType="Float" x="0" y="0" width="29" height="37" uuid="cef5d2e2-1616-4cac-b03e-8fe85e500f18">
+				<reportElement positionType="Float" x="0" y="0" width="29" height="50" uuid="cef5d2e2-1616-4cac-b03e-8fe85e500f18">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="66662f85-50cc-48ca-8bcd-30e3d20599a0"/>
 				</reportElement>
 				<box padding="2">
@@ -506,7 +533,7 @@ left join so_luong_all sla on sla.hsv_lovansay_id = slv.hsv_lovansay_id]]>
 				<text><![CDATA[STT]]></text>
 			</staticText>
 			<staticText>
-				<reportElement positionType="Float" x="119" y="0" width="90" height="37" uuid="bd462869-b1d7-4331-be62-9b304501c27b">
+				<reportElement positionType="Float" x="119" y="0" width="90" height="50" uuid="bd462869-b1d7-4331-be62-9b304501c27b">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="7fde9135-3a2d-49c7-93bc-8e50a19978df"/>
 				</reportElement>
 				<box padding="2">
@@ -522,7 +549,7 @@ left join so_luong_all sla on sla.hsv_lovansay_id = slv.hsv_lovansay_id]]>
 				<text><![CDATA[Nguồn gốc]]></text>
 			</staticText>
 			<staticText>
-				<reportElement positionType="Float" x="659" y="0" width="41" height="37" uuid="59754ba5-9fef-4297-9160-209c6f6d36c5">
+				<reportElement positionType="Float" x="659" y="0" width="41" height="50" uuid="59754ba5-9fef-4297-9160-209c6f6d36c5">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="401d9ef6-5f4c-4482-8ce9-729d226d3a1a"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
@@ -539,9 +566,8 @@ left join so_luong_all sla on sla.hsv_lovansay_id = slv.hsv_lovansay_id]]>
 				<text><![CDATA[Tỷ lệ thu hồi]]></text>
 			</staticText>
 			<staticText>
-				<reportElement positionType="Float" x="209" y="0" width="60" height="37" uuid="372e3aa8-06b6-4b30-816f-9797476eaaef">
+				<reportElement positionType="Float" x="209" y="0" width="45" height="50" uuid="372e3aa8-06b6-4b30-816f-9797476eaaef">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c9418d72-30aa-4e2c-b533-09bbdcc6d3c6"/>
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box padding="2">
 					<pen lineWidth="0.5"/>
@@ -556,7 +582,7 @@ left join so_luong_all sla on sla.hsv_lovansay_id = slv.hsv_lovansay_id]]>
 				<text><![CDATA[SL ngao yếu]]></text>
 			</staticText>
 			<staticText>
-				<reportElement positionType="Float" x="269" y="0" width="60" height="37" uuid="d56efdf2-391f-497c-821c-42c6ff7cd230">
+				<reportElement positionType="Float" x="254" y="0" width="55" height="50" uuid="d56efdf2-391f-497c-821c-42c6ff7cd230">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="7027e9ec-fd15-413a-9a60-af4d712e469e"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
@@ -573,7 +599,7 @@ left join so_luong_all sla on sla.hsv_lovansay_id = slv.hsv_lovansay_id]]>
 				<text><![CDATA[SL ngao ngâm nhã sạch]]></text>
 			</staticText>
 			<staticText>
-				<reportElement positionType="Float" x="29" y="0" width="90" height="37" uuid="7e928e54-172b-4dce-a153-71fc718fa3b2">
+				<reportElement positionType="Float" x="29" y="0" width="90" height="50" uuid="7e928e54-172b-4dce-a153-71fc718fa3b2">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="66662f85-50cc-48ca-8bcd-30e3d20599a0"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
@@ -590,7 +616,7 @@ left join so_luong_all sla on sla.hsv_lovansay_id = slv.hsv_lovansay_id]]>
 				<text><![CDATA[Mã lô]]></text>
 			</staticText>
 			<staticText>
-				<reportElement positionType="Float" x="497" y="0" width="82" height="37" uuid="094c1f92-80a1-47d3-b036-d2cba486a582">
+				<reportElement positionType="Float" x="450" y="0" width="82" height="50" uuid="094c1f92-80a1-47d3-b036-d2cba486a582">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="401d9ef6-5f4c-4482-8ce9-729d226d3a1a"/>
 				</reportElement>
 				<box padding="2">
@@ -606,7 +632,7 @@ left join so_luong_all sla on sla.hsv_lovansay_id = slv.hsv_lovansay_id]]>
 				<text><![CDATA[Thành tiền mua của lô]]></text>
 			</staticText>
 			<staticText>
-				<reportElement positionType="Float" x="329" y="0" width="99" height="37" uuid="4cb6871a-c3fe-4989-be1c-d92a501a1124">
+				<reportElement positionType="Float" x="309" y="0" width="81" height="50" uuid="4cb6871a-c3fe-4989-be1c-d92a501a1124">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="10ea712b-3c17-404e-a697-0ea497cd2920"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
@@ -623,7 +649,7 @@ left join so_luong_all sla on sla.hsv_lovansay_id = slv.hsv_lovansay_id]]>
 				<text><![CDATA[Tiền ngao chuyển ĐM (SL *DGBQ*1.02)]]></text>
 			</staticText>
 			<staticText>
-				<reportElement positionType="Float" x="579" y="0" width="80" height="37" uuid="529edaa6-bc40-45fb-b120-3aeb785a1148">
+				<reportElement positionType="Float" x="532" y="0" width="80" height="50" uuid="529edaa6-bc40-45fb-b120-3aeb785a1148">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="401d9ef6-5f4c-4482-8ce9-729d226d3a1a"/>
 				</reportElement>
 				<box padding="2">
@@ -637,6 +663,23 @@ left join so_luong_all sla on sla.hsv_lovansay_id = slv.hsv_lovansay_id]]>
 					<font fontName="Arial" size="10" isBold="true"/>
 				</textElement>
 				<text><![CDATA[Tiền mua - tiền chuyển DM]]></text>
+			</staticText>
+			<staticText>
+				<reportElement positionType="Float" x="612" y="0" width="47" height="50" uuid="7b4a6039-f517-41f1-8e8b-db94a073dc18">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="401d9ef6-5f4c-4482-8ce9-729d226d3a1a"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" size="10" isBold="true"/>
+				</textElement>
+				<text><![CDATA[SL mua - sl ngâm nhã ]]></text>
 			</staticText>
 		</band>
 	</columnHeader>
@@ -712,9 +755,8 @@ left join so_luong_all sla on sla.hsv_lovansay_id = slv.hsv_lovansay_id]]>
 				<textFieldExpression><![CDATA[$F{nguon_goc}]]></textFieldExpression>
 			</textField>
 			<textField pattern="#,##0" isBlankWhenNull="true">
-				<reportElement positionType="Float" x="209" y="0" width="60" height="26" uuid="6feb7553-af56-4a27-a8e1-7910cb801246">
+				<reportElement positionType="Float" x="209" y="0" width="45" height="26" uuid="6feb7553-af56-4a27-a8e1-7910cb801246">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c9418d72-30aa-4e2c-b533-09bbdcc6d3c6"/>
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 				</reportElement>
 				<box padding="2">
@@ -730,7 +772,7 @@ left join so_luong_all sla on sla.hsv_lovansay_id = slv.hsv_lovansay_id]]>
 				<textFieldExpression><![CDATA[$F{ngao_yeu}]]></textFieldExpression>
 			</textField>
 			<textField pattern="#,##0" isBlankWhenNull="true">
-				<reportElement positionType="Float" x="269" y="0" width="60" height="26" uuid="d45e039c-5ca1-4215-9b97-c2f241737216">
+				<reportElement positionType="Float" x="254" y="0" width="55" height="26" uuid="d45e039c-5ca1-4215-9b97-c2f241737216">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="7027e9ec-fd15-413a-9a60-af4d712e469e"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
@@ -748,7 +790,7 @@ left join so_luong_all sla on sla.hsv_lovansay_id = slv.hsv_lovansay_id]]>
 				<textFieldExpression><![CDATA[$F{ngao_sach}]]></textFieldExpression>
 			</textField>
 			<textField pattern="#,##0" isBlankWhenNull="true">
-				<reportElement positionType="Float" x="428" y="0" width="69" height="26" uuid="dac368c3-fb10-4fdc-a50c-d611a7c1385d">
+				<reportElement positionType="Float" x="390" y="0" width="60" height="26" uuid="dac368c3-fb10-4fdc-a50c-d611a7c1385d">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="10ea712b-3c17-404e-a697-0ea497cd2920"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
@@ -766,7 +808,7 @@ left join so_luong_all sla on sla.hsv_lovansay_id = slv.hsv_lovansay_id]]>
 				<textFieldExpression><![CDATA[$F{so_luong}]]></textFieldExpression>
 			</textField>
 			<textField pattern="#,##0" isBlankWhenNull="true">
-				<reportElement positionType="Float" x="497" y="0" width="82" height="26" uuid="988d25fd-8e12-4659-b30d-8e43366d1aef">
+				<reportElement positionType="Float" x="450" y="0" width="82" height="26" uuid="988d25fd-8e12-4659-b30d-8e43366d1aef">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="401d9ef6-5f4c-4482-8ce9-729d226d3a1a"/>
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 				</reportElement>
@@ -800,7 +842,7 @@ left join so_luong_all sla on sla.hsv_lovansay_id = slv.hsv_lovansay_id]]>
 				<textFieldExpression><![CDATA[$F{tyle}]]></textFieldExpression>
 			</textField>
 			<textField pattern="#,##0" isBlankWhenNull="true">
-				<reportElement positionType="Float" x="329" y="0" width="99" height="26" uuid="ebfc6d31-ccd8-4693-901f-68f7814ffdc2">
+				<reportElement positionType="Float" x="309" y="0" width="81" height="26" uuid="ebfc6d31-ccd8-4693-901f-68f7814ffdc2">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="7027e9ec-fd15-413a-9a60-af4d712e469e"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
@@ -818,7 +860,7 @@ left join so_luong_all sla on sla.hsv_lovansay_id = slv.hsv_lovansay_id]]>
 				<textFieldExpression><![CDATA[$F{tien_dm}]]></textFieldExpression>
 			</textField>
 			<textField pattern="#,##0" isBlankWhenNull="true">
-				<reportElement positionType="Float" x="579" y="0" width="80" height="26" uuid="4ad54dae-b957-480f-a7d9-42d67f14862f">
+				<reportElement positionType="Float" x="532" y="0" width="80" height="26" uuid="4ad54dae-b957-480f-a7d9-42d67f14862f">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="401d9ef6-5f4c-4482-8ce9-729d226d3a1a"/>
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
 				</reportElement>
@@ -833,6 +875,23 @@ left join so_luong_all sla on sla.hsv_lovansay_id = slv.hsv_lovansay_id]]>
 					<font fontName="Arial"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{chech_lech}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0.##" isBlankWhenNull="true">
+				<reportElement positionType="Float" x="612" y="0" width="47" height="26" uuid="49352ad0-35b3-4a04-8b94-e3685b5b9b3e">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="401d9ef6-5f4c-4482-8ce9-729d226d3a1a"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box padding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<leftPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<bottomPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+					<rightPen lineWidth="1.0" lineStyle="Solid" lineColor="#000000"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{chechlech}]]></textFieldExpression>
 			</textField>
 		</band>
 	</detail>
