@@ -1,0 +1,1093 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Jaspersoft Studio version 6.20.0.final using JasperReports Library version 6.20.0-2bc7ab61c56f459e8176eb05c7705e145cd400ad  -->
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="hach_toan_luong" pageWidth="1080" pageHeight="709" orientation="Landscape" columnWidth="1080" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="f36939f8-610e-4105-80ec-11593e266e7b">
+	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
+	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.rows" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.columns" value="true"/>
+	<property name="net.sf.jasperreports.export.xls.ignore.cell.border" value="false"/>
+	<property name="net.sf.jasperreports.export.xls.detect.cell.type" value="true"/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="psql"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w1" value="0"/>
+	<property name="com.jaspersoft.studio.data.sql.SQLQueryDesigner.sash.w2" value="1000"/>
+	<property name="com.jaspersoft.studio.unit." value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.pageHeight" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.pageWidth" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.topMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.bottomMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.leftMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.rightMargin" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.columnWidth" value="pixel"/>
+	<property name="com.jaspersoft.studio.unit.columnSpacing" value="pixel"/>
+	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
+	<parameter name="C_Period_ID" class="java.lang.Integer"/>
+	<parameter name="SUBREPORT_DIR" class="java.lang.String">
+		<defaultValueExpression><![CDATA["dev/"]]></defaultValueExpression>
+	</parameter>
+	<parameter name="AD_Org_ID" class="java.lang.Integer"/>
+	<parameter name="C_DocType_ID" class="java.lang.Integer"/>
+	<parameter name="GL_Category_ID" class="java.lang.Integer"/>
+	<queryString language="SQL">
+		<![CDATA[WITH p AS (
+    SELECT startdate AS period_startdate,
+           enddate   AS period_enddate
+    FROM c_period
+    WHERE c_period_id = $P{C_Period_ID}
+      AND ad_client_id = $P{AD_CLIENT_ID}
+),
+
+dm_header as (
+	SELECT 
+    cp.enddate AS ngay,
+    tye.name   AS c_type,
+    org.name   AS org_name,
+    sche.name  AS sche_name,
+    gl.name    AS gl_name
+	FROM c_period cp
+	CROSS JOIN C_DocType tye
+	CROSS JOIN C_AcctSchema sche
+	CROSS JOIN GL_Category gl
+	LEFT JOIN AD_Org org 
+	       ON org.ad_org_id = $P{AD_Org_ID}
+	      AND org.ad_client_id = $P{AD_CLIENT_ID}
+	WHERE cp.ad_client_id = $P{AD_CLIENT_ID}
+	  AND cp.c_period_id  = $P{C_Period_ID}
+	  AND tye.c_doctype_id = $P{C_DocType_ID}
+	  AND sche.ad_client_id = $P{AD_CLIENT_ID}
+	  AND gl.GL_Category_ID = $P{GL_Category_ID}
+	  AND ($P{AD_Org_ID} IS NULL OR org.ad_org_id IS NOT NULL)
+),
+dm_chi_tiet as (
+SELECT row_number() over(order by lb.hsv_luongbep_id)*10 as stt,
+    org.name AS org,
+    lb.hsv_cotluong,
+    lb.name AS cotluong,
+    cb.value AS doitac,
+    cb.name  AS doitac_name,
+    ce.value AS tk,
+    ac.value AS hoatdong,
+    lb.c_currency_id AS currency
+FROM hsv_luongbep lb
+JOIN ad_org org 
+     ON org.ad_org_id = lb.ad_org_id 
+JOIN c_bpartner cb 
+     ON cb.c_bpartner_id = lb.c_bpartner_id  
+JOIN c_elementvalue ce 
+     ON ce.c_elementvalue_id = lb.account_id 
+JOIN c_activity ac 
+     ON ac.c_activity_id = lb.c_activity_id 
+WHERE lb.ad_client_id = $P{AD_CLIENT_ID}
+  AND lb.hsv_cotluong IN ('tru_bhxh','tru_anca','tru_congdoan','luong_conlai','luong','ht_anca','ht_bhxh','luong_ck','TRU_TTNCN')
+
+ ),
+ 
+tong_luong AS (
+    SELECT nkl.hsv_toluong_id,
+           sum(nklsp.amount) AS tongluong
+    FROM hsv_nkluongsp nklsp
+    LEFT JOIN hsv_nkluong nkl ON nkl.hsv_nkluong_id = nklsp.hsv_nkluong_id
+    WHERE nkl.c_period_id = $P{C_Period_ID}
+      AND nklsp.isactive = 'Y'
+      AND nkl.isactive   = 'Y'
+    GROUP BY nkl.hsv_toluong_id
+),
+
+tong_cong AS (
+    SELECT nkl.hsv_toluong_id,
+           sum(nklnv.hsv_ngaycong * nklnv.hsv_hesoluong) AS tongcong
+    FROM hsv_nkluongnv nklnv
+    LEFT JOIN hsv_nkluong nkl ON nkl.hsv_nkluong_id = nklnv.hsv_nkluong_id
+    WHERE nkl.c_period_id = $P{C_Period_ID}
+      AND nklnv.isactive = 'Y'
+      AND nkl.isactive   = 'Y'
+    GROUP BY nkl.hsv_toluong_id
+),
+
+che_do AS (
+    SELECT DISTINCT ON (tl.hsv_toluong_id)
+        tl.hsv_toluong_id,
+        coalesce(hsv_maxHTBHXH,   0) AS hsv_maxHTBHXH,
+        coalesce(cdl.hsv_ht_anca, 0) AS hsv_ht_anca,
+        coalesce(cdl.hsv_muc_tc2, 0) AS hsv_muc_tc2,
+        coalesce(cdl.hsv_muc_tc3, 0) AS hsv_muc_tc3,
+        coalesce(cdl.hsv_bddem,   0) AS hsv_bddem,
+        coalesce(cdl.hsv_tlbhxh,  0) AS hsv_tlbhxh,
+        coalesce(cdl.hsv_tlkpcd,  0) AS hsv_tlkpcd,
+        coalesce(cdl.hsv_Max_KPCD,0) AS hsv_max_kpcd,
+        coalesce(cdl.hsv_muc_anca,0) AS hsv_muc_anca,
+        coalesce(cdl.hsv_andem,   0) AS hsv_andem,
+        coalesce(cdl.hsv_antangca2,0) AS hsv_antangca2,
+        coalesce(cdl.hsv_antangca3,0) AS hsv_antangca3,
+        coalesce(cdl.hsv_tlhtbhxh, 0) AS hsv_tlhtbhxh,
+        coalesce(cdl.hsv_cdkbhxh,  0) AS hsv_cdkbhxh,
+        coalesce(cdl.hsv_TLKPCDM,  0) AS hsv_TLKPCDM
+    FROM hsv_chedo cd
+    LEFT JOIN hsv_cd_luong cdl ON cd.hsv_chedo_id = cdl.hsv_chedo_id AND cdl.isactive = 'Y'
+    LEFT JOIN hsv_toluong  tl  ON tl.hsv_chedo_id = cd.hsv_chedo_id  AND tl.isactive  = 'Y'
+    CROSS JOIN p pd
+    WHERE pd.period_enddate   <= cdl.dateto
+      AND pd.period_enddate   >= cdl.datefrom
+      AND pd.period_startdate >= cdl.datefrom
+      AND pd.period_startdate <= cdl.dateto
+      AND cd.isactive = 'Y'
+    ORDER BY tl.hsv_toluong_id, cdl.dateto DESC
+),
+
+chuyen_khoan AS (
+    SELECT vck.hsv_nhanvien_id,
+           vck.hsv_toluong_id,
+           coalesce(vck.hsv_ckluong, 0) AS luongck
+    FROM hsv_chuyenkhoan vck
+    CROSS JOIN p pd
+    WHERE pd.period_enddate   <= vck.dateto
+      AND pd.period_enddate   >= vck.datefrom
+      AND pd.period_startdate >= vck.datefrom
+      AND pd.period_startdate <= vck.dateto
+      AND vck.ad_client_id = $P{AD_CLIENT_ID}
+      AND vck.isactive = 'Y'
+),
+
+luong_cung AS (
+    SELECT lc.hsv_toluong_id,
+           lc.hsv_nhanvien_id          AS a1,
+           coalesce(hsv_phucap,  0)    AS hsv_phucap,
+           coalesce(hsv_luongcd, 0)    AS hsv_luongcd,
+           coalesce(hsv_maxcong, 0)    AS hsv_maxcong,
+           coalesce(congmax,     0)    AS congmax,
+           coalesce(lc.hsv_vl,  'N')  AS hsv_vl   -- ✏️ THÊM: cờ thu nhập vãng lai
+    FROM hsv_luongcung lc
+    CROSS JOIN p pd
+    WHERE pd.period_enddate   <= lc.dateto
+      AND pd.period_enddate   >= lc.datefrom
+      AND pd.period_startdate >= lc.datefrom
+      AND pd.period_startdate <= lc.dateto
+      AND lc.ad_client_id = $P{AD_CLIENT_ID}
+      AND lc.isactive = 'Y'
+),
+
+chi_tiet_luong_bhxh AS (
+    SELECT b.ad_org_id,
+        CASE WHEN a.hsv_luongbhxh > b.hsv_luongbhxh THEN a.hsv_luongbhxh ELSE 0   END AS hsv_luongbhxh,
+        CASE WHEN a.hsv_luongbhxh > b.hsv_luongbhxh THEN a.hsv_htbhxh             END AS hsv_htbhxh,
+        b.hsv_toluong_id,
+        b.hsv_nhanvien_id,
+        b.hsv_ngaycong,
+        b.hsv_hesoluong,
+        b.hsv_ngayanca,
+        b.hsv_ngaytangca2,
+        b.hsv_congdem,
+        b.hsv_ckluong,
+        b.hsv_ngaytangca3,
+        b.hsv_luongspnv,
+        b.hsv_phucapnv
+    FROM (
+        SELECT nv.hsv_nhanvien_id,
+               MAX(nv.hsv_ngaycong)         AS ngaycongk,
+               coalesce(bhxh.hsv_luongbhxh, 0) AS hsv_luongbhxh,
+               bhxh.hsv_htbhxh                 AS hsv_htbhxh
+        FROM hsv_nkluong nk
+        JOIN hsv_nkluongnv    nv   ON nk.hsv_nkluong_id  = nv.hsv_nkluong_id
+        JOIN hsv_luongbhxhline bhxh ON bhxh.hsv_nhanvien_id = nv.hsv_nhanvien_id AND bhxh.hsv_luongbhxh > 0
+        CROSS JOIN p pd
+        WHERE nk.ad_client_id = $P{AD_CLIENT_ID}
+          AND nk.c_period_id  = $P{C_Period_ID}
+          AND pd.period_enddate   <= bhxh.dateto
+          AND pd.period_enddate   >= bhxh.datefrom
+          AND pd.period_startdate >= bhxh.datefrom
+          AND pd.period_startdate <= bhxh.dateto
+        GROUP BY nv.hsv_nhanvien_id, bhxh.hsv_luongbhxh, bhxh.hsv_htbhxh
+    ) AS a
+    RIGHT JOIN (
+        SELECT hsv_nkluongnv_id,
+               0                                  AS hsv_luongbhxh,
+               nkl.ad_org_id,
+               nkl.hsv_toluong_id,
+               nklnv.hsv_nhanvien_id,
+               coalesce(hsv_ngaycong,         0) AS hsv_ngaycong,
+               coalesce(nklnv.hsv_hesoluong,  0) AS hsv_hesoluong,
+               coalesce(nklnv.hsv_ngayanca,   0) AS hsv_ngayanca,
+               coalesce(nklnv.hsv_ngaytangca2,0) AS hsv_ngaytangca2,
+               coalesce(nklnv.hsv_congdem,    0) AS hsv_congdem,
+               coalesce(nklnv.hsv_ckluong,    0) AS hsv_ckluong,
+               coalesce(nklnv.hsv_ngaytangca3,0) AS hsv_ngaytangca3,
+               coalesce(nklnv.hsv_luongspnv,  0) AS hsv_luongspnv,
+               coalesce(nklnv.hsv_phucap,     0) AS hsv_phucapnv
+        FROM hsv_NkluongNV nklnv
+        JOIN hsv_nkluong nkl ON nkl.hsv_nkluong_id = nklnv.hsv_nkluong_id
+        WHERE nkl.ad_client_id = $P{AD_CLIENT_ID}
+          AND nkl.c_period_id  = $P{C_Period_ID}
+          AND nklnv.isactive   = 'Y'
+    ) AS b ON a.hsv_nhanvien_id = b.hsv_nhanvien_id AND a.ngaycongk = b.hsv_ngaycong
+),
+
+nguoi_pt AS (
+    SELECT hsv_nhanvien_id,
+           count(hsv_nknguoipt_id) AS songuoi_pt
+    FROM hsv_nknguoipt npt
+    CROSS JOIN p pd
+    WHERE ad_client_id = $P{AD_CLIENT_ID}
+      AND (pd.period_enddate <= npt.dateto OR npt.dateto IS NULL)
+      AND pd.period_enddate   >= npt.datefrom
+      AND pd.period_startdate >= npt.datefrom
+      AND (pd.period_startdate <= npt.dateto OR npt.dateto IS NULL)
+      AND npt.isactive = 'Y'
+    GROUP BY hsv_nhanvien_id
+),
+
+chedo_tncn AS (
+    SELECT coalesce(hsv_gtgcbt,   0) AS hsv_gtgcbt,
+           coalesce(hsv_GTGCNPT,  0) AS hsv_GTGCNPT
+    FROM hsv_CDTTNCN cdtn
+    CROSS JOIN p pd
+    WHERE ad_client_id = $P{AD_CLIENT_ID}
+      AND pd.period_enddate   <= cdtn.dateto
+      AND pd.period_enddate   >= cdtn.datefrom
+      AND pd.period_startdate >= cdtn.datefrom
+      AND pd.period_startdate <= cdtn.dateto
+),
+
+tong_the_lv1 AS (
+    SELECT k.ad_org_id,
+           k.hsv_toluong_id,
+           k.hsv_nhanvien_id                                                    AS a1,
+           hsv_ngaycong                                                          AS ngay_cong,
+           hsv_luongbhxh                                                         AS luong_cb,
+           CASE WHEN tongcong <> 0
+                THEN (hsv_ngaycong * hsv_hesoluong) * (tongluong / tongcong)
+                ELSE 0 END                                                       AS a4,
+           CASE WHEN k.hsv_htbhxh = 'Y' THEN w.hsv_maxHTBHXH ELSE 0 END       AS maxHTBHXH,
+           hsv_ngayanca * hsv_ht_anca                                            AS anca,
+           (hsv_ngaytangca2 * hsv_muc_tc2
+            + hsv_ngaytangca3 * hsv_muc_tc3
+            + hsv_congdem * hsv_bddem)                                           AS t_tang_ca,
+           hsv_luongspnv                                                         AS luongspnv,
+           hsv_luongbhxh * hsv_tlbhxh / 100                                     AS t_total_bhxh,
+           				   
+           w.hsv_tlkpcd                                                          AS hsv_tlkpcd,
+           w.hsv_max_kpcd                                                        AS hsv_max_kpcd,
+           w.hsv_muc_anca  * k.hsv_ngayanca
+            + k.hsv_congdem    * w.hsv_andem
+            + k.hsv_ngaytangca2 * w.hsv_antangca2
+            + k.hsv_ngaytangca3 * w.hsv_antangca3                               AS a11,
+           k.hsv_ckluong                                                         AS a13,
+           hsv_hesoluong                                                         AS a15,
+           hsv_tlhtbhxh / 100                                                   AS a16,
+           coalesce(CASE WHEN hsv_ngaycong <> 0 THEN t.hsv_phucap ELSE 0 END, 0) AS hsv_phucap,
+           hsv_phucapnv,
+           t.hsv_luongcd                                                         AS hsv_luongcd,
+           t.hsv_maxcong                                                         AS hsv_maxcong,
+           t.congmax                                                             AS congmax,
+           hsv_hesoluong                                                         AS hesoluong,
+           w.hsv_cdkbhxh                                                        AS hsv_cdkbhxh,
+           w.hsv_TLKPCDM                                                        AS hsv_TLKPCDM,
+           t.hsv_vl                                                             AS hsv_vl,      -- ✏️ THÊM
+           k.hsv_congdem * w.hsv_andem                                          AS anca_dem     -- ✏️ THÊM: ăn ca đêm
+    FROM chi_tiet_luong_bhxh k
+    LEFT JOIN chuyen_khoan AS g ON k.hsv_toluong_id = g.hsv_toluong_id AND k.hsv_nhanvien_id = g.hsv_nhanvien_id
+    LEFT JOIN che_do       AS w ON w.hsv_toluong_id = k.hsv_toluong_id
+    LEFT JOIN tong_cong    AS z ON k.hsv_toluong_id = z.hsv_toluong_id
+    LEFT JOIN tong_luong   AS h ON k.hsv_toluong_id = h.hsv_toluong_id
+    LEFT JOIN luong_cung   AS t ON k.hsv_toluong_id = t.hsv_toluong_id AND k.hsv_nhanvien_id = t.a1
+),
+tong_the_lv2 AS (
+    SELECT t.ad_org_id,
+           t.hsv_toluong_id,
+           a1,
+           ngay_cong,
+           hesoluong,
+           luong_cb,
+           coalesce(a4, 0)   AS a4,
+           CASE WHEN ngay_cong = 0 THEN 0
+                WHEN (luong_cb * a16) < maxHTBHXH THEN (luong_cb * a16)
+                ELSE maxHTBHXH END  AS maxHTBHXH,
+           anca,
+           t_tang_ca ,
+           luongspnv
+            + t.hsv_phucap
+            + CASE WHEN t.hsv_maxcong <> 0 AND ngay_cong >= congmax
+                   THEN t.hsv_luongcd / t.hsv_maxcong * a15 * congmax
+                   WHEN hsv_maxcong <> 0
+                   THEN t.hsv_luongcd / t.hsv_maxcong * a15 * ngay_cong
+                   ELSE 0 END                                               AS luong_pc_khac,
+           hsv_phucapnv,
+           t_total_bhxh,
+           t.hsv_tlkpcd                                                     AS hsv_tlkpcd,
+           t.hsv_Max_KPCD                                                   AS hsv_max_kpcd,
+           coalesce(a11, 0)  AS a11,
+           coalesce(a13, 0)  AS a13,
+           coalesce(a15, 0)  AS a15,
+           t.hsv_cdkbhxh     AS hsv_cdkbhxh,
+           t.hsv_TLKPCDM     AS hsv_tlkpcdm,
+           t.hsv_vl          AS hsv_vl,     -- ✏️ THÊM
+           coalesce(t.anca_dem, 0) AS anca_dem  -- ✏️ THÊM
+    FROM tong_the_lv1 AS t
+),
+
+tong_the_lv3 AS (
+    SELECT t.hsv_toluong_id,
+           tl.name  AS a0,
+           nv.hsv_nhanvien_id as a1,
+           nv.name  AS hoten,
+           nv.cmtnd,
+           nv.iban,
+           cb.name  AS nh,
+           ngay_cong,
+           hesoluong,
+           luong_cb,
+           a4,
+           coalesce(maxHTBHXH, 0)             AS maxHTBHXH,
+           coalesce(anca, 0)           AS anca,
+           t_tang_ca ,
+           coalesce(luong_pc_khac, 0)  AS luong_pc_khac,
+           coalesce(a4, 0) + coalesce(t_tang_ca , 0) + coalesce(luong_pc_khac, 0) AS a9,
+           coalesce(hsv_phucapnv, 0)   AS hsv_phucapnv,
+           coalesce(t_total_bhxh, 0)            AS t_total_bhxh,
+           coalesce(a11, 0)            AS a11,
+           case           	  
+               WHEN ngay_cong = 0 THEN 0
+               WHEN coalesce(t.hsv_max_kpcd, 0) <> 0 THEN
+                   LEAST(
+                       (   (coalesce(a4,0) + coalesce(luong_pc_khac,0) + coalesce(hsv_phucapnv,0) + coalesce(t_tang_ca,0))
+                         - (coalesce(t_total_bhxh,0) - coalesce(maxHTBHXH,0))
+                         - (coalesce(a11,0) - coalesce(anca,0))
+                       ) * coalesce(t.hsv_tlkpcd, 0) / 100,
+                       t.hsv_max_kpcd
+                   )
+               ELSE
+                   CASE
+                       WHEN luong_cb > 0 THEN luong_cb * coalesce(t.hsv_tlkpcdm, 0) / 100
+                       ELSE coalesce(t.hsv_cdkbhxh, 0)
+                   END
+           END AS tru_cd,
+           a13,
+           a15,
+           CASE WHEN nv.hsv_ctv = 'Y' THEN 0 ELSE npt.songuoi_pt END                              AS songuoi_pt,
+           CASE WHEN nv.hsv_ctv = 'Y' THEN 0 ELSE tncn.hsv_gtgcbt END                             AS gtbt,
+           CASE WHEN nv.hsv_ctv = 'Y' THEN 0 ELSE tncn.hsv_GTGCNPT * coalesce(npt.songuoi_pt, 0) END AS gtgcnpt,
+           nv.hsv_ctv,
+           t.hsv_vl                                                                                 AS hsv_vl,   -- ✏️ THÊM
+           coalesce(t.anca_dem, 0)                                                                  AS anca_dem  -- ✏️ THÊM
+           
+    FROM tong_the_lv2 t
+    JOIN hsv_toluong   tl  ON t.hsv_toluong_id    = tl.hsv_toluong_id
+    JOIN hsv_nhanvien  nv  ON t.a1                = nv.hsv_nhanvien_id
+    LEFT JOIN c_bank   cb  ON cb.c_bank_id        = nv.c_bank_id
+    LEFT JOIN nguoi_pt npt ON npt.hsv_nhanvien_id = nv.hsv_nhanvien_id
+    LEFT JOIN chedo_tncn tncn ON TRUE
+    WHERE (t.ad_org_id = $P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)
+),
+
+
+tong_the_lv4 AS (
+    SELECT hsv_toluong_id ,a0,a1, hoten, cmtnd, iban AS stk, nh,
+           coalesce(ngay_cong, 0)                                   AS ngay_cong,
+           hesoluong,
+           ngay_cong * hesoluong                                    AS hsqd,
+            coalesce(luong_cb, 0)   AS luong_cb,
+           coalesce(a4, 0) + coalesce(luong_pc_khac, 0)            AS luongsp,
+           hsv_phucapnv                                             AS pc_khac,
+           coalesce(t_tang_ca , 0)                                          AS pc_andem,
+           coalesce(a4,0) + coalesce(luong_pc_khac,0) + hsv_phucapnv + coalesce(t_tang_ca ,0) AS tong_luong,
+           maxHTBHXH                                                        AS htbhxh,
+           t_total_bhxh - maxHTBHXH       AS tru_bhxh,
+           a11 - anca                                               AS tru_tien_an,
+           tru_cd  as tru_cd,
+
+           -- ✏️ THÊM: khoản trừ 10% thu nhập vãng lai = (tổng lương - anca_dem) × 10%
+           CASE
+               WHEN hsv_vl = 'Y'
+            
+               THEN ROUND(
+                       (  coalesce(a4,0)
+                        + coalesce(luong_pc_khac,0)
+                        + coalesce(hsv_phucapnv,0)
+                        + coalesce(t_tang_ca ,0)
+                        - coalesce(anca_dem,0)  -  coalesce(t_tang_ca ,0)       -- trừ tiền ăn ca đêm
+                       ) * 0.10, 0)
+               ELSE 0
+           END AS tru_vl,
+
+           -- ✏️ SỬA: thuclinh trừ thêm tru_vl khi là vãng lai
+               coalesce(a4,0) + coalesce(luong_pc_khac,0) + hsv_phucapnv + coalesce(t_tang_ca ,0)
+           - (coalesce(a11,0) - coalesce(anca,0)) --tien an
+           -  (coalesce(t_total_bhxh,0) - coalesce(maxHTBHXH,0))   --bhxh
+           - coalesce(tru_cd,0)
+                
+              AS thuclinh,
+
+           coalesce(songuoi_pt, 0)                                  AS songuoi_pt,
+           gtbt,
+           gtgcnpt,
+
+           -- ✏️ SỬA: tnct = 0 nếu là thu nhập vãng lai (đã trừ 10% ở tru_vl, không tính biểu lũy tiến)
+           case           	  
+               WHEN hsv_vl = 'Y' THEN  (  coalesce(a4,0)
+                        + coalesce(luong_pc_khac,0)
+                        + coalesce(hsv_phucapnv,0)
+                        + coalesce(t_tang_ca ,0)
+                        - coalesce(anca_dem,0)-  coalesce(t_tang_ca , 0)         
+                       )
+               WHEN   (coalesce(a4,0) + coalesce(luong_pc_khac,0) + hsv_phucapnv + coalesce(t_tang_ca ,0))
+                    - t_tang_ca 
+                    - (t_total_bhxh - maxHTBHXH) -- bhxh
+                    - (coalesce(gtbt,0) --tnbt 
+                    	+ coalesce(gtgcnpt,0) --gtgcnpt
+                    	) < 0 THEN 0
+               ELSE   (coalesce(a4,0) + coalesce(luong_pc_khac,0) + hsv_phucapnv + coalesce(t_tang_ca ,0))
+                     - t_tang_ca 
+                    - (t_total_bhxh - maxHTBHXH) -- bhxh
+                    - (coalesce(gtbt,0) + coalesce(gtgcnpt,0))
+           END AS tnct,
+           
+  
+               
+           hsv_ctv,
+           hsv_vl,   -- ✏️ THÊM: giữ để dùng trong tax_cte
+           a9
+         
+    FROM tong_the_lv3
+    WHERE coalesce(a9, 0) <> 0
+),
+
+tong_the_lv5 as (
+select hsv_toluong_id,a0,hoten,cmtnd,stk,nh,ngay_cong ,hesoluong ,luong_cb ,luongsp, pc_khac,
+pc_andem,tong_luong,htbhxh,tru_bhxh ,tru_tien_an ,tru_cd ,thuclinh, songuoi_pt ,gtbt ,gtgcnpt ,tnct,
+
+ case           	  
+               WHEN hsv_vl = 'Y'        THEN tru_vl               
+               WHEN tnct <= 10000000    THEN tnct * 0.05
+               WHEN tnct <= 30000000    THEN tnct * 0.10  - 500000
+               WHEN tnct <= 60000000    THEN tnct * 0.20  - 3500000
+               WHEN tnct <= 100000000   THEN tnct * 0.30  - 9500000
+               ELSE                          tnct * 0.35  - 14500000
+           END AS thue_tncn
+
+
+from tong_the_lv4 
+),
+
+tong_the_final_1 as (
+	select  sum(tru_tien_an) as tru_tien_an,sum(tru_cd) as tru_cd ,sum(htbhxh +tru_bhxh) as bhxh ,sum(thue_tncn) as thue_tncn,sum(round(thuclinh-thue_tncn,0)) as conlai 
+	from tong_the_lv5  
+),
+tong_the_final_2 as (
+	select  cb.value as doitac,cb.name as doitac_name,ac.value as hoatdong,ev.value as tk,
+	sum(thuclinh-thue_tncn) as conlai,sum(luongsp+pc_khac) as luong,sum(htbhxh) as ht_bhxh,
+	sum(pc_andem) as pc_andem 
+	from tong_the_lv5 lv5
+	join  hsv_toluong tl on tl.hsv_toluong_id = lv5.hsv_toluong_id 
+	join c_bpartner cb on cb.c_bpartner_id = tl.c_bpartner_id 
+	join c_activity ac on ac.c_activity_id = tl.c_activity_id
+	join c_elementvalue ev on ev.c_elementvalue_id = tl.account_id
+	group by cb.value ,cb.name,ac.value ,ev.value 
+)
+
+select header_org,header_sche, header_sct,header_desc,header_type,header_gl,header_date,header_period,
+detail_org,detail_sct,row_number() over()  *10 as detail_stt,detail_desc,detail_doitac,detail_tk,detail_hoatdong
+,detail_curencty,detail_tno,detail_tco
+from (
+select  case when dt.stt = 10 then   dm.org_name else null end as header_org
+,case when dt.stt = 10 then  dm.sche_name else null end as header_sche
+,case when dt.stt = 10 then concat('LNG.', to_char(dm.ngay,'DDMMYY')) else null end  as header_sct
+,case when dt.stt = 10 then concat('Chi phí tiền lương ', dm.org_name, to_char(dm.ngay,' MM/YYYY')) else null end as header_desc
+, case when dt.stt = 10 then dm.c_type else null end as header_type
+, case when dt.stt = 10 then dm.gl_name else null end as header_gl
+,case when dt.stt = 10 then to_char(dm.ngay,'YYYY-MM-DD') else null end  as header_date
+,case when dt.stt = 10 then to_char(dm.ngay,'MM-YYYY') else null end as header_period,
+dm.org_name as detail_org, concat('LNG.', to_char(dm.ngay,'DDMMYY'))  as detail_sct, stt  as detail_stt,
+concat('Chi phí ',dt.cotluong,' - ',dt.doitac_name)  as detail_desc ,
+doitac as detail_doitac,tk as detail_tk,
+dt.hoatdong as detail_hoatdong,dt.currency as detail_curencty,0 as detail_tno,
+ CASE dt.hsv_cotluong
+    WHEN 'tru_bhxh' THEN round(fn.bhxh,0)
+    WHEN 'tru_anca' THEN round(fn.tru_tien_an,0)
+    when 'tru_congdoan' then round(fn.tru_cd,0)
+    when 'TRU_TTNCN' then round(fn.thue_tncn,0)
+    when 'luong_ck' then round(fn.conlai,0)
+END AS detail_tco,dt.hsv_cotluong
+from dm_header dm
+cross join dm_chi_tiet dt
+cross join tong_the_final_1 fn 
+where dt.hsv_cotluong in ('tru_bhxh','tru_anca','tru_congdoan','TRU_TTNCN','luong_ck') 
+
+union all 
+
+select  null  as header_org
+	,null as header_sche
+	,null as header_sct
+	,null as header_desc
+	,null as header_type
+	,null as header_gl
+	,null as header_date
+	,null as header_period,
+	dm.org_name as detail_org, concat('LNG.', to_char(dm.ngay,'DDMMYY'))  as detail_sct, 
+	stt as detail_stt,
+	concat('Chi phí ',dt.cotluong,' - ',fn.doitac_name)  as detail_desc ,
+	fn.doitac as detail_doitac,
+	case  when dt.hsv_cotluong in ('luong_conlai', 'ht_bhxh' , 'ht_anca','luong_ck') then dt.tk
+	else fn.tk end as detail_tk,
+	fn.hoatdong as detail_hoatdong,dt.currency as detail_curencty,
+	 CASE dt.hsv_cotluong
+	   	when 'luong' then round(fn.luong,0)
+	   	when 'ht_anca' then round (fn.pc_andem,0)
+	   	when 'ht_bhxh' then round (fn.ht_bhxh,0)
+	   	when 'luong_ck' then round (fn.conlai,0) 
+	   	else 0
+	END AS detail_tno,
+	CASE dt.hsv_cotluong
+WHEN 'luong_conlai' THEN round(fn.conlai ,0) else 0 end  
+	    as detail_tco,dt.hsv_cotluong
+from dm_header dm
+cross join dm_chi_tiet dt
+cross join tong_the_final_2 fn 
+where dt.hsv_cotluong in ('luong_conlai','luong','ht_anca','ht_bhxh','luong_ck') 
+) as k
+where detail_tno+detail_tco <>0]]>
+	</queryString>
+	<field name="header_org" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="header_org"/>
+		<property name="com.jaspersoft.studio.field.label" value="header_org"/>
+	</field>
+	<field name="header_sche" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="header_sche"/>
+		<property name="com.jaspersoft.studio.field.label" value="header_sche"/>
+	</field>
+	<field name="header_sct" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="header_sct"/>
+		<property name="com.jaspersoft.studio.field.label" value="header_sct"/>
+	</field>
+	<field name="header_desc" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="header_desc"/>
+		<property name="com.jaspersoft.studio.field.label" value="header_desc"/>
+	</field>
+	<field name="header_type" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="header_type"/>
+		<property name="com.jaspersoft.studio.field.label" value="header_type"/>
+	</field>
+	<field name="header_gl" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="header_gl"/>
+		<property name="com.jaspersoft.studio.field.label" value="header_gl"/>
+	</field>
+	<field name="header_date" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="header_date"/>
+		<property name="com.jaspersoft.studio.field.label" value="header_date"/>
+	</field>
+	<field name="header_period" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="header_period"/>
+		<property name="com.jaspersoft.studio.field.label" value="header_period"/>
+	</field>
+	<field name="detail_org" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="detail_org"/>
+		<property name="com.jaspersoft.studio.field.label" value="detail_org"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="ad_org"/>
+	</field>
+	<field name="detail_sct" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="detail_sct"/>
+		<property name="com.jaspersoft.studio.field.label" value="detail_sct"/>
+	</field>
+	<field name="detail_stt" class="java.lang.Long">
+		<property name="com.jaspersoft.studio.field.name" value="detail_stt"/>
+		<property name="com.jaspersoft.studio.field.label" value="detail_stt"/>
+	</field>
+	<field name="detail_desc" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="detail_desc"/>
+		<property name="com.jaspersoft.studio.field.label" value="detail_desc"/>
+	</field>
+	<field name="detail_doitac" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="detail_doitac"/>
+		<property name="com.jaspersoft.studio.field.label" value="detail_doitac"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_bpartner"/>
+	</field>
+	<field name="detail_tk" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="detail_tk"/>
+		<property name="com.jaspersoft.studio.field.label" value="detail_tk"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_elementvalue"/>
+	</field>
+	<field name="detail_hoatdong" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="detail_hoatdong"/>
+		<property name="com.jaspersoft.studio.field.label" value="detail_hoatdong"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_activity"/>
+	</field>
+	<field name="detail_curencty" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="detail_curencty"/>
+		<property name="com.jaspersoft.studio.field.label" value="detail_curencty"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="hsv_luongbep"/>
+	</field>
+	<field name="detail_tno" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="detail_tno"/>
+		<property name="com.jaspersoft.studio.field.label" value="detail_tno"/>
+	</field>
+	<field name="detail_tco" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="detail_tco"/>
+		<property name="com.jaspersoft.studio.field.label" value="detail_tco"/>
+	</field>
+	<variable name="sum_co" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{detail_tco}]]></variableExpression>
+	</variable>
+	<variable name="sum_no" class="java.math.BigDecimal" calculation="Sum">
+		<variableExpression><![CDATA[$F{detail_tno}]]></variableExpression>
+	</variable>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="30">
+			<staticText>
+				<reportElement x="720" y="0" width="60" height="30" uuid="275cfbf3-413a-4803-9bef-0b0ff0380852">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c51600af-23ca-415d-894f-25ef56524fa8"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[GL_JournalLine>C_BPartner_ID[Value]]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="540" y="0" width="60" height="30" uuid="e9b06c0f-b68b-4e0f-8501-af0d659f2a70">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="2a348f0e-57c6-419d-abdf-93b42d14de7a"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[GL_JournalLine>GL_Journal_ID[DocumentNo]]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="900" y="0" width="60" height="30" uuid="10b37c38-e876-414d-92cb-bc5a04b3efa5">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="4cc3b33f-9f87-4fa7-be1b-4917d65f8db9"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[GL_JournalLine>C_Currency_ID]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="360" y="0" width="60" height="30" uuid="a2fb1e67-3c70-49e4-917d-c2a17a14b006">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="066ce693-44e7-47d3-b566-b5ddb1a40057"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[DateDoc]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="960" y="0" width="60" height="30" uuid="9e878cee-22eb-4105-a893-48a7eb08ab5d">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="49e55137-605d-43ca-a050-17b5cdee2b12"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[GL_JournalLine>AmtSourceDr]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="600" y="0" width="60" height="30" uuid="c40a141d-fa20-4c2c-ba13-987885396849">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="2a348f0e-57c6-419d-abdf-93b42d14de7a"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[GL_JournalLine>Line]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="420" y="0" width="60" height="30" uuid="af5396d7-1427-46c9-96cb-6a0da03871e8">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="f110c9d4-47d3-4800-9f5d-e1679bdd845f"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[C_Period_ID[Name]]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="660" y="0" width="60" height="30" uuid="e30ed389-535e-4281-b025-e8aa07c8807f">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="1a0d4f47-cb63-42f0-9b7e-c2478b20a465"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[GL_JournalLine>Description]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="840" y="0" width="60" height="30" uuid="43d7dfb8-a1fa-4bcd-8fa2-17572e210577">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="8ddd8014-b76e-4b76-b04e-e5174041f58f"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[GL_JournalLine>C_Activity_ID[Value]]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="180" y="0" width="60" height="30" uuid="c590d63e-a247-4c94-8874-281fae26a09b">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="76663413-3feb-45fb-88cf-fee1186972c8"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[Description]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="1020" y="0" width="60" height="30" uuid="72bd0960-489a-4c1d-bdea-a26faa9d4369">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="acf19882-8a15-4b90-802d-52cb6d3abc56"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[GL_JournalLine>AmtSourceCr]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="480" y="0" width="60" height="30" uuid="d3892bec-0543-41bb-9592-bc9b127718e1">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="2a348f0e-57c6-419d-abdf-93b42d14de7a"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[GL_JournalLine>AD_Org_ID[Name]]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="120" y="0" width="60" height="30" uuid="7fd3899f-a645-40e9-9b0f-1c8c9e6d7cc8">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="3120a5d8-5ab0-444a-9b08-d77abb2badec"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[DocumentNo]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="60" y="0" width="60" height="30" uuid="5c01d251-e3f1-465c-8c39-37f616358411">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="d7fbc9af-7155-47c8-af32-db514cbe3b05"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[C_AcctSchema_ID[Name]]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="780" y="0" width="60" height="30" uuid="4b0be2e8-4651-4531-a7cb-3e550571a145">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c611a65f-4195-4a58-b0cc-65452e4724e7"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[GL_JournalLine>Account_ID[Value]]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="0" y="0" width="60" height="30" uuid="d8b4e081-382a-4ac2-9a02-774489a53f09">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="d7fbc9af-7155-47c8-af32-db514cbe3b05"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[AD_Org_ID[Name]]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="240" y="0" width="60" height="30" uuid="b49ba509-ab70-4e27-b976-60f53c140445">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="0ef2bc1d-b889-44dd-9e1e-fc918024a92d"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[C_DocType_ID[Name]]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="300" y="0" width="60" height="30" uuid="c8fd2d79-5692-4bc0-be14-105d4a881606">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="0ef2bc1d-b889-44dd-9e1e-fc918024a92d"/>
+				</reportElement>
+				<box>
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<text><![CDATA[GL_Category_ID[Name]]]></text>
+			</staticText>
+		</band>
+	</title>
+	<detail>
+		<band height="23" splitType="Stretch">
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="360" y="0" width="60" height="23" uuid="e5f5c3f0-de7a-4fbf-abc8-fec05e5cc396">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="066ce693-44e7-47d3-b566-b5ddb1a40057"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{header_date}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="180" y="0" width="60" height="23" uuid="50edb50e-bf51-40a0-9112-6a9bdcacb9c9">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="76663413-3feb-45fb-88cf-fee1186972c8"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{header_desc}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="420" y="0" width="60" height="23" uuid="5668577c-32c2-4ee7-a263-d7020802a253">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="f110c9d4-47d3-4800-9f5d-e1679bdd845f"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{header_period}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="720" y="0" width="60" height="23" uuid="869ca9dd-c052-467a-ab84-7a2b6e0ffd3d">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c51600af-23ca-415d-894f-25ef56524fa8"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{detail_doitac}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="780" y="0" width="60" height="23" uuid="786d942a-d7ea-4a38-b6de-e95802c4ff42">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="c611a65f-4195-4a58-b0cc-65452e4724e7"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{detail_tk}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="600" y="0" width="60" height="23" uuid="e628ede4-f08a-469c-9564-5f49c8a7992b">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="2a348f0e-57c6-419d-abdf-93b42d14de7a"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{detail_stt}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="480" y="0" width="60" height="23" uuid="15754aac-6bfa-453a-8cbb-0147dfa64c84">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="f110c9d4-47d3-4800-9f5d-e1679bdd845f"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{detail_org}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" pattern="#,##0.###" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="1020" y="0" width="60" height="23" uuid="56fb99ec-49e5-4f06-b807-30a574db5bf2">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="acf19882-8a15-4b90-802d-52cb6d3abc56"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{detail_tco}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="240" y="0" width="60" height="23" uuid="9f2ae293-b96f-4ce9-9d2d-3c92d6a455d3">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="0ef2bc1d-b889-44dd-9e1e-fc918024a92d"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{header_type}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="540" y="0" width="60" height="23" uuid="c504f395-bd01-4789-8ce4-ead56d08d46c">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="f110c9d4-47d3-4800-9f5d-e1679bdd845f"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{detail_sct}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="0" y="0" width="60" height="23" uuid="b51b7584-2793-4b13-af2e-d4544ef22af0">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="d7fbc9af-7155-47c8-af32-db514cbe3b05"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{header_org}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" pattern="#,##0.###" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="960" y="0" width="60" height="23" uuid="77746361-1e17-4bb6-a6c8-a2233d395ff2">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="49e55137-605d-43ca-a050-17b5cdee2b12"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{detail_tno}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="840" y="0" width="60" height="23" uuid="44ad0cee-8cf8-48f8-bd1d-c85ff711ea15">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="8ddd8014-b76e-4b76-b04e-e5174041f58f"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{detail_hoatdong}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="900" y="0" width="60" height="23" uuid="682e0e27-7f6a-4631-bdbb-35515db72398">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="4cc3b33f-9f87-4fa7-be1b-4917d65f8db9"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{detail_curencty}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="120" y="0" width="60" height="23" uuid="f77467eb-c439-4565-a62c-83d721f2950e">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="3120a5d8-5ab0-444a-9b08-d77abb2badec"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{header_sct}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="660" y="0" width="60" height="23" uuid="dafa3f9e-ce2d-4c56-9b77-71461059a5ff">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="1a0d4f47-cb63-42f0-9b7e-c2478b20a465"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="5"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{detail_desc}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="60" y="0" width="60" height="23" uuid="00aad88d-7911-4fcc-adbd-dcfd2949c15d">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="d7fbc9af-7155-47c8-af32-db514cbe3b05"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{header_sche}]]></textFieldExpression>
+			</textField>
+			<textField textAdjust="StretchHeight" isBlankWhenNull="true">
+				<reportElement stretchType="RelativeToBandHeight" x="300" y="0" width="60" height="23" uuid="f2f48ab1-e92b-48a1-9b2b-ded003c41278">
+					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="0ef2bc1d-b889-44dd-9e1e-fc918024a92d"/>
+					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+				</reportElement>
+				<box leftPadding="1" rightPadding="1">
+					<pen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Left" verticalAlignment="Middle">
+					<font fontName="Arial" size="7"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{header_gl}]]></textFieldExpression>
+			</textField>
+		</band>
+	</detail>
+</jasperReport>

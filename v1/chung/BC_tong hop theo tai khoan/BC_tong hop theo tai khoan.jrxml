@@ -52,36 +52,40 @@
     FROM c_elementvalue ev 
     WHERE ev.ad_client_id = $P{AD_CLIENT_ID} 
       AND LENGTH(ev.value) = 1
+ 
 ),
 PhatSinh AS (
     -- Tính toán số liệu chi tiết từ Fact_Acct
     SELECT 
         c.value AS acc_value, 
         c.name AS acc_name,
+        cc.iso_code  as tiente,
         SUM(CASE 
-            WHEN LEFT(c.value,1) IN ('1','2','6','8','9') AND t.dateacct < $P{StartDate} THEN (t.amtacctdr - t.amtacctcr)
-            WHEN LEFT(c.value,1) IN ('3','4','5','7') AND t.dateacct < $P{StartDate} THEN (t.amtacctcr - t.amtacctdr)
+            WHEN LEFT(c.value,1) IN ('1','2','6','8','9') AND t.dateacct < $P{StartDate} THEN (t.amtsourcedr   - t.amtsourcecr)
+            WHEN LEFT(c.value,1) IN ('3','4','5','7') AND t.dateacct < $P{StartDate} THEN (t.amtsourcecr - t.amtsourcedr)
             ELSE 0 END) AS dudau,
         SUM(CASE 
-            WHEN t.dateacct >= $P{StartDate} AND t.dateacct <= $P{EndDate} THEN t.amtacctdr 
+            WHEN t.dateacct >= $P{StartDate} AND t.dateacct <= $P{EndDate} THEN t.amtsourcedr 
             ELSE 0 END) AS psno,
         SUM(CASE 
-            WHEN t.dateacct >= $P{StartDate} AND t.dateacct <= $P{EndDate} THEN t.amtacctcr 
+            WHEN t.dateacct >= $P{StartDate} AND t.dateacct <= $P{EndDate} THEN t.amtsourcecr 
             ELSE 0 END) AS psco,
         SUM(CASE 
-            WHEN LEFT(c.value,1) IN ('1','2','6','8','9') AND t.dateacct <= $P{EndDate} THEN (t.amtacctdr - t.amtacctcr)
-            WHEN LEFT(c.value,1) IN ('3','4','5','7') AND t.dateacct <= $P{EndDate} THEN (t.amtacctcr - t.amtacctdr)
+            WHEN LEFT(c.value,1) IN ('1','2','6','8','9') AND t.dateacct <= $P{EndDate} THEN (t.amtsourcedr - t.amtsourcecr)
+            WHEN LEFT(c.value,1) IN ('3','4','5','7') AND t.dateacct <= $P{EndDate} THEN (t.amtsourcecr - t.amtsourcedr)
             ELSE 0 END) AS ducuoi
     FROM Fact_Acct t
     JOIN c_elementvalue c ON t.account_id = c.c_elementvalue_id 
+    join c_currency cc on cc.c_currency_id = t.c_currency_id 
     WHERE t.AD_Client_ID = $P{AD_CLIENT_ID}
       AND (t.ad_org_id = $P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)
       AND (t.c_activity_id = $P{C_Activity_ID} OR $P{C_Activity_ID} IS NULL)
-    GROUP BY c.name, c.value
+    GROUP BY c.name, c.value,cc.iso_code 
 )
 SELECT 
     d.dm_value, 
     d.dm_name, 
+    p.tiente ,
     COALESCE(p.acc_value, d.dm_value) as account_value, 
     COALESCE(p.acc_name, d.dm_name) as account_name,
     COALESCE(p.dudau, 0) as dudau, 
@@ -91,7 +95,8 @@ SELECT
 FROM DM_Cap1 d
 LEFT JOIN PhatSinh p ON p.acc_value LIKE d.dm_value || '%'
 where p.ducuoi <> 0 
-ORDER BY d.dm_value, account_value;]]>
+ORDER BY d.dm_value, account_value, p.tiente ;
+]]>
 	</queryString>
 	<field name="dm_value" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="dm_value"/>
@@ -102,6 +107,11 @@ ORDER BY d.dm_value, account_value;]]>
 		<property name="com.jaspersoft.studio.field.name" value="dm_name"/>
 		<property name="com.jaspersoft.studio.field.label" value="dm_name"/>
 		<property name="com.jaspersoft.studio.field.tree.path" value="c_elementvalue"/>
+	</field>
+	<field name="tiente" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="tiente"/>
+		<property name="com.jaspersoft.studio.field.label" value="tiente"/>
+		<property name="com.jaspersoft.studio.field.tree.path" value="c_currency"/>
 	</field>
 	<field name="account_value" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="account_value"/>
@@ -196,8 +206,9 @@ ORDER BY d.dm_value, account_value;]]>
 		<groupFooter>
 			<band height="24">
 				<textField textAdjust="StretchHeight" evaluationTime="Report" pattern="#,##0" isBlankWhenNull="true">
-					<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="481" y="0" width="94" height="24" uuid="1d69191b-e34b-4a55-a7d1-7a008f78123a">
+					<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="484" y="0" width="91" height="24" uuid="1d69191b-e34b-4a55-a7d1-7a008f78123a">
 						<property name="com.jaspersoft.studio.unit.y" value="px"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					</reportElement>
 					<box leftPadding="2" rightPadding="2">
 						<pen lineWidth="0.5"/>
@@ -212,8 +223,9 @@ ORDER BY d.dm_value, account_value;]]>
 					<textFieldExpression><![CDATA[$V{dm_ducuoi}]]></textFieldExpression>
 				</textField>
 				<textField textAdjust="StretchHeight" evaluationTime="Report" pattern="#,##0" isBlankWhenNull="true">
-					<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="291" y="0" width="95" height="24" uuid="4e855bc8-f681-4073-9180-9d986b572778">
+					<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="308" y="0" width="88" height="24" uuid="4e855bc8-f681-4073-9180-9d986b572778">
 						<property name="com.jaspersoft.studio.unit.y" value="px"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					</reportElement>
 					<box leftPadding="2" rightPadding="2">
 						<pen lineWidth="0.5"/>
@@ -228,7 +240,7 @@ ORDER BY d.dm_value, account_value;]]>
 					<textFieldExpression><![CDATA[$V{dm_psno}]]></textFieldExpression>
 				</textField>
 				<textField isBlankWhenNull="true">
-					<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="0" y="0" width="196" height="24" uuid="5a82deee-01b8-4129-b89f-14ae024ea25d">
+					<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="0" y="0" width="220" height="24" uuid="5a82deee-01b8-4129-b89f-14ae024ea25d">
 						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					</reportElement>
 					<box leftPadding="2" rightPadding="2">
@@ -244,8 +256,9 @@ ORDER BY d.dm_value, account_value;]]>
 					<textFieldExpression><![CDATA["Cộng nhóm"]]></textFieldExpression>
 				</textField>
 				<textField textAdjust="StretchHeight" evaluationTime="Report" pattern="#,##0" isBlankWhenNull="true">
-					<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="386" y="0" width="95" height="24" uuid="90d71a0a-5ab1-4baa-98a4-053c901a3d77">
+					<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="396" y="0" width="88" height="24" uuid="90d71a0a-5ab1-4baa-98a4-053c901a3d77">
 						<property name="com.jaspersoft.studio.unit.y" value="px"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					</reportElement>
 					<box leftPadding="2" rightPadding="2">
 						<pen lineWidth="0.5"/>
@@ -260,8 +273,9 @@ ORDER BY d.dm_value, account_value;]]>
 					<textFieldExpression><![CDATA[$V{dm_psco}]]></textFieldExpression>
 				</textField>
 				<textField textAdjust="StretchHeight" evaluationTime="Report" pattern="#,##0" isBlankWhenNull="true">
-					<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="196" y="0" width="95" height="24" uuid="c818b0e0-2508-46dd-aa5f-94369cb858a9">
+					<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="220" y="0" width="88" height="24" uuid="c818b0e0-2508-46dd-aa5f-94369cb858a9">
 						<property name="com.jaspersoft.studio.unit.y" value="px"/>
+						<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					</reportElement>
 					<box leftPadding="2" rightPadding="2">
 						<pen lineWidth="0.5"/>
@@ -445,9 +459,8 @@ ORDER BY d.dm_value, account_value;]]>
 			<property name="local_mesure_unitheight" value="pixel"/>
 			<property name="com.jaspersoft.studio.unit.height" value="px"/>
 			<staticText>
-				<reportElement key="staticText-2" positionType="Float" stretchType="RelativeToTallestObject" x="386" y="0" width="95" height="24" uuid="12e5de05-c014-4717-8e4f-630d82e3e567">
+				<reportElement key="staticText-2" positionType="Float" stretchType="RelativeToTallestObject" x="396" y="0" width="88" height="24" uuid="12e5de05-c014-4717-8e4f-630d82e3e567">
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 					<property name="local_mesure_unitwidth" value="pixel"/>
 				</reportElement>
 				<box leftPadding="2" rightPadding="2">
@@ -463,9 +476,8 @@ ORDER BY d.dm_value, account_value;]]>
 				<text><![CDATA[Phát sinh có]]></text>
 			</staticText>
 			<staticText>
-				<reportElement key="staticText-4" positionType="Float" stretchType="RelativeToTallestObject" x="291" y="0" width="95" height="24" uuid="b04aff00-2dd5-42a5-a9fd-3e91ec9d23d4">
+				<reportElement key="staticText-4" positionType="Float" stretchType="RelativeToTallestObject" x="308" y="0" width="88" height="24" uuid="b04aff00-2dd5-42a5-a9fd-3e91ec9d23d4">
 					<property name="local_mesure_unitwidth" value="pixel"/>
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
@@ -498,9 +510,7 @@ ORDER BY d.dm_value, account_value;]]>
 				<text><![CDATA[Mã TK]]></text>
 			</staticText>
 			<staticText>
-				<reportElement key="staticText-6" positionType="Float" stretchType="RelativeToTallestObject" x="481" y="0" width="94" height="24" uuid="c4775b0a-53b7-4cb7-bec3-90855f4795ea">
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-				</reportElement>
+				<reportElement key="staticText-6" positionType="Float" stretchType="RelativeToTallestObject" x="484" y="0" width="91" height="24" uuid="c4775b0a-53b7-4cb7-bec3-90855f4795ea"/>
 				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
 					<topPen lineWidth="0.25"/>
@@ -533,7 +543,23 @@ ORDER BY d.dm_value, account_value;]]>
 				<text><![CDATA[Tên tài khoản]]></text>
 			</staticText>
 			<staticText>
-				<reportElement key="staticText-4" positionType="Float" stretchType="RelativeToTallestObject" x="196" y="0" width="95" height="24" uuid="6966130b-0d36-462a-b229-5fd5cf33fd7c">
+				<reportElement key="staticText-4" positionType="Float" stretchType="RelativeToTallestObject" x="220" y="0" width="88" height="24" uuid="6966130b-0d36-462a-b229-5fd5cf33fd7c">
+					<property name="local_mesure_unitwidth" value="pixel"/>
+				</reportElement>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.25"/>
+					<leftPen lineWidth="0.25"/>
+					<bottomPen lineWidth="0.25"/>
+					<rightPen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Center" verticalAlignment="Middle">
+					<font fontName="Arial" isBold="true" pdfFontName="Helvetica-Bold"/>
+				</textElement>
+				<text><![CDATA[Dư đầu]]></text>
+			</staticText>
+			<staticText>
+				<reportElement key="staticText-4" positionType="Float" stretchType="RelativeToTallestObject" x="196" y="0" width="24" height="24" uuid="86b5ba69-b153-4b60-9079-1194b0dd1dfa">
 					<property name="local_mesure_unitwidth" value="pixel"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
@@ -547,7 +573,7 @@ ORDER BY d.dm_value, account_value;]]>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font fontName="Arial" isBold="true" pdfFontName="Helvetica-Bold"/>
 				</textElement>
-				<text><![CDATA[Dư đầu]]></text>
+				<text><![CDATA[DVT]]></text>
 			</staticText>
 		</band>
 	</columnHeader>
@@ -573,9 +599,7 @@ ORDER BY d.dm_value, account_value;]]>
 				<textFieldExpression><![CDATA[$F{account_value}]]></textFieldExpression>
 			</textField>
 			<textField pattern="#,##0" isBlankWhenNull="true">
-				<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="291" y="0" width="95" height="24" uuid="52f71220-4c04-48dc-bd3f-b32ce25c9036">
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-				</reportElement>
+				<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="308" y="0" width="88" height="24" uuid="52f71220-4c04-48dc-bd3f-b32ce25c9036"/>
 				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
 					<topPen lineWidth="0.25"/>
@@ -589,9 +613,7 @@ ORDER BY d.dm_value, account_value;]]>
 				<textFieldExpression><![CDATA[$F{psno}]]></textFieldExpression>
 			</textField>
 			<textField pattern="#,##0" isBlankWhenNull="true">
-				<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="386" y="0" width="95" height="24" uuid="c75cd27f-58bf-40d7-9ae2-adbd7d3fb04b">
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-				</reportElement>
+				<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="396" y="0" width="88" height="24" uuid="c75cd27f-58bf-40d7-9ae2-adbd7d3fb04b"/>
 				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
 					<topPen lineWidth="0.25"/>
@@ -605,9 +627,8 @@ ORDER BY d.dm_value, account_value;]]>
 				<textFieldExpression><![CDATA[$F{psco}]]></textFieldExpression>
 			</textField>
 			<textField pattern="#,##0.###" isBlankWhenNull="true">
-				<reportElement x="481" y="0" width="94" height="24" uuid="0a24b4a3-7ba5-489b-82d8-b7acc749e933">
+				<reportElement x="484" y="0" width="91" height="24" uuid="0a24b4a3-7ba5-489b-82d8-b7acc749e933">
 					<property name="local_mesure_unitheight" value="pixel"/>
-					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
@@ -638,7 +659,21 @@ ORDER BY d.dm_value, account_value;]]>
 				<textFieldExpression><![CDATA[$F{account_name}]]></textFieldExpression>
 			</textField>
 			<textField pattern="#,##0" isBlankWhenNull="true">
-				<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="196" y="0" width="95" height="24" uuid="ee6d34ae-df26-405d-aec0-ce248a21afb9">
+				<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="220" y="0" width="88" height="24" uuid="ee6d34ae-df26-405d-aec0-ce248a21afb9"/>
+				<box leftPadding="2" rightPadding="2">
+					<pen lineWidth="0.5"/>
+					<topPen lineWidth="0.25"/>
+					<leftPen lineWidth="0.25"/>
+					<bottomPen lineWidth="0.25"/>
+					<rightPen lineWidth="0.25"/>
+				</box>
+				<textElement textAlignment="Right" verticalAlignment="Middle">
+					<font fontName="Arial" size="9"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{dudau}]]></textFieldExpression>
+			</textField>
+			<textField pattern="#,##0" isBlankWhenNull="true">
+				<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="196" y="0" width="24" height="24" uuid="53a87ea9-3d3c-4ae3-bed8-2403e45fe161">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box leftPadding="2" rightPadding="2">
@@ -651,7 +686,7 @@ ORDER BY d.dm_value, account_value;]]>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
 					<font fontName="Arial" size="9"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{dudau}]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{tiente}]]></textFieldExpression>
 			</textField>
 		</band>
 	</detail>
@@ -723,8 +758,9 @@ ORDER BY d.dm_value, account_value;]]>
 				<textFieldExpression><![CDATA["Ngày in: " + new SimpleDateFormat("dd/MM/yyyy hh:mm").format(new Date())]]></textFieldExpression>
 			</textField>
 			<textField textAdjust="StretchHeight" evaluationTime="Report" pattern="#,##0" isBlankWhenNull="true">
-				<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="291" y="0" width="95" height="24" uuid="d805122a-a9cf-45ed-89d3-d8f425afd90c">
+				<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="308" y="0" width="88" height="24" uuid="d805122a-a9cf-45ed-89d3-d8f425afd90c">
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
@@ -739,7 +775,7 @@ ORDER BY d.dm_value, account_value;]]>
 				<textFieldExpression><![CDATA[$V{dm_psno_1}]]></textFieldExpression>
 			</textField>
 			<textField isBlankWhenNull="true">
-				<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="0" y="0" width="196" height="24" uuid="9a64c89e-1fae-4ea5-9b9f-5274f4ee94c6">
+				<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="0" y="0" width="220" height="24" uuid="9a64c89e-1fae-4ea5-9b9f-5274f4ee94c6">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box leftPadding="2" rightPadding="2">
@@ -755,8 +791,9 @@ ORDER BY d.dm_value, account_value;]]>
 				<textFieldExpression><![CDATA["Cộng tổng"]]></textFieldExpression>
 			</textField>
 			<textField textAdjust="StretchHeight" evaluationTime="Report" pattern="#,##0" isBlankWhenNull="true">
-				<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="196" y="0" width="95" height="24" uuid="50945fbf-25b4-4891-b3f8-e5bc46e82810">
+				<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="220" y="0" width="88" height="24" uuid="50945fbf-25b4-4891-b3f8-e5bc46e82810">
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
@@ -771,8 +808,9 @@ ORDER BY d.dm_value, account_value;]]>
 				<textFieldExpression><![CDATA[$V{dm_dudau_1}]]></textFieldExpression>
 			</textField>
 			<textField textAdjust="StretchHeight" evaluationTime="Report" pattern="#,##0" isBlankWhenNull="true">
-				<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="386" y="0" width="95" height="24" uuid="6ef24a13-1b33-46f8-982f-128a1c19bbe0">
+				<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="396" y="0" width="88" height="24" uuid="6ef24a13-1b33-46f8-982f-128a1c19bbe0">
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
@@ -787,8 +825,9 @@ ORDER BY d.dm_value, account_value;]]>
 				<textFieldExpression><![CDATA[$V{dm_psco_1}]]></textFieldExpression>
 			</textField>
 			<textField textAdjust="StretchHeight" evaluationTime="Report" pattern="#,##0" isBlankWhenNull="true">
-				<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="481" y="0" width="94" height="24" uuid="020576f3-c0db-49ae-af7d-7a32e04944e5">
+				<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="484" y="0" width="91" height="24" uuid="020576f3-c0db-49ae-af7d-7a32e04944e5">
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>

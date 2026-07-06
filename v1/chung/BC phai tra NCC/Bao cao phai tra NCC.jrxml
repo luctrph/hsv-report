@@ -36,163 +36,183 @@
 	<parameter name="EndDate" class="java.util.Date">
 		<defaultValueExpression><![CDATA[new Date()]]></defaultValueExpression>
 	</parameter>
-	<parameter name="C_BP_Group_ID" class="java.lang.Integer"/>
+	<parameter name="C_BP_Group_ID" class="java.lang.String"/>
 	<parameter name="C_Currency_ID" class="java.lang.Integer"/>
 	<parameter name="SUBREPORT_DIR" class="java.lang.String">
 		<defaultValueExpression><![CDATA["dev/"]]></defaultValueExpression>
 	</parameter>
 	<queryString>
-		<![CDATA[select  t.nhom  , t.value,t.name,t.ducuoi,t.dudau,t.psno,t.psco    
-from(   select t.C_BP_Group_ID,n.name as nhom, t.value, t.name,sum(t.ducuoi) as ducuoi,sum(t.dudau) as dudau,sum(t.psno) as psno,sum(t.psco) as psco
-		from(        --Hoa don phai tra
-				        select bp.C_BP_Group_ID, bp.value, bp.name,COALESCE(sum(i.GRANDTOTAL),0) as ducuoi
-                                ,COALESCE(sum(case when i.DATEACCT <$P{StartDate}  then i.GRANDTOTAL end),0) as dudau
-                                ,COALESCE(sum(case when i.DATEACCT >=$P{StartDate} and i.DATEACCT <=$P{EndDate}  then i.GRANDTOTAL end),0) as psco,0 as psno
-				        from C_INVOICE i
-				        iNNER JOIN C_DocType c ON c.C_DocType_ID=i.C_DocType_ID AND c.DocBaseType in ('API','ARC')
-				        join C_BPARTNER bp on i.C_BPARTNER_ID = bp.C_BPARTNER_ID and bp.AD_Client_ID=$P{AD_CLIENT_ID} 
-                                and bp.isVendor = 'Y' and  (bp.C_BP_Group_ID=$P{C_BP_Group_ID} or $P{C_BP_Group_ID} is null)    
-				        WHERE  i.DATEACCT <= $P{EndDate}and  (i.C_Currency_ID=$P{C_Currency_ID} or $P{C_Currency_ID} is null)
-                                and i.docstatus in ('CO','CL') and i.AD_Client_ID=$P{AD_CLIENT_ID}
-				        group by bp.C_BP_Group_ID, bp.value, bp.name
-				
-				        --phieu thanh toan (phieu thu)
-				        union all
-				
-				        select bp.C_BP_Group_ID, bp.value, bp.name,COALESCE(sum(p.PAYAMT),0) as ducuoi
-                                ,COALESCE(sum(case when p.DATEACCT <$P{StartDate}  then p.PAYAMT end),0) as dudau
-                                ,COALESCE(sum(case when p.DATEACCT >=$P{StartDate} and p.DATEACCT <=$P{EndDate}  then p.PAYAMT end),0) as psco,0 as psno
-				        from C_PAYMENT p
-				        join C_BPARTNER bp on p.C_BPARTNER_ID = bp.C_BPARTNER_ID and bp.AD_Client_ID=$P{AD_CLIENT_ID} and bp.isVendor = 'Y'   
-                                               and  (bp.C_BP_Group_ID=$P{C_BP_Group_ID} or $P{C_BP_Group_ID} is null)     
-				        where p.DATEACCT <= $P{EndDate}and p.posted='Y' and p.docstatus in ('CO','CL') and p.c_charge_id is null  
-				                and (p.C_Currency_ID=$P{C_Currency_ID} or $P{C_Currency_ID} is null) 
-				                and p.ISRECEIPT = 'Y' and p.AD_Client_ID=$P{AD_CLIENT_ID}
-				        group by bp.C_BP_Group_ID, bp.value, bp.name
-				                
-				        --Phan giam gia phan bo phieu thanh toan
-				        union all
-				
-				        select t.C_BP_Group_ID, t.value, t.name,COALESCE(SUM(t.discountamt),0)  as ducuoi
-				                                       ,COALESCE(sum(case when t.datetrx <$P{StartDate}  then t.discountamt end),0) as dudau
-				                                       ,COALESCE(sum(case when t.datetrx >=$P{StartDate} and t.datetrx <=$P{EndDate}  then t.discountamt end),0) as psco,0 as psno
-				        from 	(select ca.datetrx,cal.discountamt,cal.writeoffamt,cal.c_invoice_id,iv.c_doctype_id ,bp.C_BP_Group_ID, bp.value, bp.name
-				                 from c_allocationline cal 
-				                 inner join c_allocationhdr ca on cal.c_allocationhdr_id=ca.c_allocationhdr_id  and ca.docstatus in ('CO','CL')  and ca.datetrx <= $P{EndDate}
-				                 inner join c_invoice iv on cal.c_invoice_id=iv.c_invoice_id and (iv.C_Currency_ID=$P{C_Currency_ID} or $P{C_Currency_ID} is null)  
-                                        and iv.AD_Client_ID=$P{AD_CLIENT_ID}
-				                 join C_BPARTNER bp on cal.C_BPARTNER_ID = bp.C_BPARTNER_ID and bp.AD_Client_ID=$P{AD_CLIENT_ID} and bp.isVendor = 'Y'
-                                                        and  (bp.C_BP_Group_ID=$P{C_BP_Group_ID} or $P{C_BP_Group_ID} is null)     
-				                where   cal.discountamt>0 and cal.c_invoice_id is not null and cal.AD_Client_ID=$P{AD_CLIENT_ID}
-				               ) as t
-				               inner join c_doctype doc on t.c_doctype_id=doc.c_doctype_id and doc.docbasetype in ('ARI','APC')        
-				        group by t.C_BP_Group_ID, t.value, t.name
-				        --Phan bo di cua phieu phan bo
-				        union all       
-				               
-				        select t.C_BP_Group_ID, t.value, t.name,COALESCE(SUM(t.writeoffamt),0)  as ducuoi
-				                                       ,COALESCE(sum(case when t.datetrx <$P{StartDate}  then t.writeoffamt end),0) as dudau
-				                                       ,COALESCE(sum(case when t.datetrx >=$P{StartDate} and t.datetrx <=$P{EndDate}  then t.writeoffamt end),0) as psco,0 as psno
-				        from 	(select ca.datetrx,cal.discountamt,cal.writeoffamt,cal.c_invoice_id,iv.c_doctype_id ,bp.C_BP_Group_ID, bp.value, bp.name
-				                 from c_allocationline cal 
-				                 inner join c_allocationhdr ca on cal.c_allocationhdr_id=ca.c_allocationhdr_id  and ca.docstatus in ('CO','CL')  and ca.datetrx <= $P{EndDate}
-				                 inner join c_invoice iv on cal.c_invoice_id=iv.c_invoice_id and (iv.C_Currency_ID=$P{C_Currency_ID} or $P{C_Currency_ID} is null)  
-                                        and iv.AD_Client_ID=$P{AD_CLIENT_ID}
-				                 join C_BPARTNER bp on cal.C_BPARTNER_ID = bp.C_BPARTNER_ID and bp.AD_Client_ID=$P{AD_CLIENT_ID} and bp.isVendor = 'Y'
-                                        and  (bp.C_BP_Group_ID=$P{C_BP_Group_ID} or $P{C_BP_Group_ID} is null)     
-				                where  cal.writeoffamt>0  and cal.c_invoice_id is not null and cal.AD_Client_ID=$P{AD_CLIENT_ID}
-				               ) as t
-				               inner join c_doctype doc on t.c_doctype_id=doc.c_doctype_id and doc.docbasetype in ('ARI','APC')        
-				        group by t.C_BP_Group_ID, t.value, t.name
-				               
-				        --Tru di hoa don da tra
-				        UNION all
-				
-				        select bp.C_BP_Group_ID, bp.value, bp.name,-1*COALESCE(sum(i.GRANDTOTAL),0) as ducuoi
-                                    ,-1*COALESCE(sum(case when i.DATEACCT <$P{StartDate}  then i.GRANDTOTAL end),0) as dudau,0 as psco
-                                    ,COALESCE(sum(case when i.DATEACCT >=$P{StartDate} and i.DATEACCT <=$P{EndDate} then i.GRANDTOTAL end),0) as psno
-				        from C_INVOICE i
-				        INNER JOIN C_DocType c ON c.C_DocType_ID=i.C_DocType_ID AND c.DocBaseType in ('APC','ARI')
-				        join C_BPARTNER bp on i.C_BPARTNER_ID = bp.C_BPARTNER_ID and bp.AD_Client_ID=$P{AD_CLIENT_ID} and bp.isVendor = 'Y'  
-                                    and  (bp.C_BP_Group_ID=$P{C_BP_Group_ID} or $P{C_BP_Group_ID} is null)     
-				        WHERE i.DATEACCT <= $P{EndDate}and (i.C_Currency_ID=$P{C_Currency_ID} or $P{C_Currency_ID} is null)  
-                                    and i.docstatus in ('CO','CL') and i.AD_Client_ID=$P{AD_CLIENT_ID}      
-				        group by bp.C_BP_Group_ID, bp.value, bp.name
-				
-				        --Tru di so da chi tu phieu thanh toan
-				        union all
-				
-				        select bp.C_BP_Group_ID, bp.value, bp.name,-1*COALESCE(sum(p.PAYAMT),0)  as ducuoi
-				                                        ,-1*COALESCE(sum(case when p.DATEACCT <$P{StartDate}  then p.PAYAMT end),0) as dudau,0 as psco
-				                                        ,COALESCE(sum(case when p.DATEACCT >=$P{StartDate} and p.DATEACCT <=$P{EndDate}  then p.PAYAMT end),0) as psno
-				        from C_PAYMENT p
-				        join C_BPARTNER bp on p.C_BPARTNER_ID = bp.C_BPARTNER_ID and bp.AD_Client_ID=$P{AD_CLIENT_ID} and bp.isVendor = 'Y'      
-                                    and  (bp.C_BP_Group_ID=$P{C_BP_Group_ID} or $P{C_BP_Group_ID} is null)     
-				        where p.DATEACCT <= $P{EndDate}and p.docstatus in ('CO','CL') and p.posted='Y'and p.ISRECEIPT = 'N' 
-                                   and (p.C_Currency_ID=$P{C_Currency_ID} or $P{C_Currency_ID} is null)  
-				                    and p.c_charge_id is null and p.AD_Client_ID=$P{AD_CLIENT_ID}
-				        group by bp.C_BP_Group_ID, bp.value, bp.name
-				                    
-				        --Tru di phan pha bo 
-				        union all
-				
-				        select t.C_BP_Group_ID, t.value, t.name,COALESCE(SUM(t.amount),0) as ducuoi
-                                                ,COALESCE(sum(case when t.datetrx <$P{StartDate}  then t.amount end),0) as dudau
-                                                ,COALESCE(sum(case when t.datetrx >=$P{StartDate} and t.datetrx <=$P{EndDate}  then t.amount end),0) as psco,0 as psno
-				        from 	(select ca.datetrx,ca.documentno,ca.description,cal.amount,ca.c_doctype_id,bp.C_BP_Group_ID, bp.value, bp.name
-				                 from c_allocationline cal 
-				                 inner join c_allocationhdr ca on cal.c_allocationhdr_id=ca.c_allocationhdr_id 
-				                           and ca.docstatus in ('CO','CL')  and ca.datetrx <=$P{EndDate}and (ca.C_Currency_ID =$P{C_Currency_ID} or $P{C_Currency_ID} is null)
-				                 join C_BPARTNER bp on cal.C_BPARTNER_ID = bp.C_BPARTNER_ID and bp.AD_Client_ID=$P{AD_CLIENT_ID} and bp.isVendor = 'Y'          
-                                           and  (bp.C_BP_Group_ID=$P{C_BP_Group_ID} or $P{C_BP_Group_ID} is null)    
-				                 where  cal.c_charge_id is not null and cal.c_invoice_id is null and cal.AD_Client_ID=$P{AD_CLIENT_ID}
-				                ) as t
-				                inner join c_doctype doc on t.c_doctype_id=doc.c_doctype_id and doc.docbasetype in ('CMA')            
-				        group by t.C_BP_Group_ID, t.value, t.name
-				                
-				        --Tru di phan giam gia cua phan bo
-				        union all
-				
-				        select t.C_BP_Group_ID, t.value, t.name,COALESCE(SUM(t.discountamt),0)  as ducuoi
-				                                    ,COALESCE(sum(case when t.datetrx <$P{StartDate}  then t.discountamt end),0) as dudau
-				                                    ,COALESCE(sum(case when t.datetrx >=$P{StartDate} and t.datetrx <=$P{EndDate}  then t.discountamt end),0) as psco,0 as psno
-				        from 	(select ca.datetrx,cal.discountamt,cal.writeoffamt,cal.c_invoice_id,iv.c_doctype_id,bp.C_BP_Group_ID, bp.value, bp.name
-				                 from c_allocationline cal 
-				                 inner join c_allocationhdr ca on cal.c_allocationhdr_id=ca.c_allocationhdr_id 
-				                              and ca.docstatus in ('CO','CL')  and ca.datetrx <=$P{EndDate}
-				                 inner join c_invoice iv on cal.c_invoice_id=iv.c_invoice_id  and (iv.C_Currency_ID=$P{C_Currency_ID} or $P{C_Currency_ID} is null) 
-                                              and iv.AD_Client_ID=$P{AD_CLIENT_ID}
-				                 join C_BPARTNER bp on cal.C_BPARTNER_ID = bp.C_BPARTNER_ID and bp.AD_Client_ID=$P{AD_CLIENT_ID} and bp.isVendor = 'Y'          
-                                               and  (bp.C_BP_Group_ID=$P{C_BP_Group_ID} or $P{C_BP_Group_ID} is null)     
-				                 where   cal.discountamt<0 and cal.c_invoice_id is not null 
-				                ) as t
-				                inner join c_doctype doc on t.c_doctype_id=doc.c_doctype_id and doc.docbasetype in ('API','ARC')        
-				        group by t.C_BP_Group_ID, t.value, t.name
-				                
-				        --Tru di phan bo di cua phan bo 
-				        union all
-				        
-				        select t.C_BP_Group_ID, t.value, t.name,COALESCE(sum(t.writeoffamt),0)  as ducuoi
-				                                    ,COALESCE(sum(case when t.datetrx <$P{StartDate}  then t.writeoffamt end),0) as dudau
-				                                    ,COALESCE(sum(case when t.datetrx >=$P{StartDate} and t.datetrx <=$P{EndDate}  then t.writeoffamt end),0) as psco,0 as psno
-				        from 	(select ca.datetrx,cal.discountamt,cal.writeoffamt,cal.c_invoice_id,iv.c_doctype_id,bp.C_BP_Group_ID, bp.value, bp.name
-				                 from c_allocationline cal 
-				                 inner join c_allocationhdr ca on cal.c_allocationhdr_id=ca.c_allocationhdr_id 
-				                              and ca.docstatus in ('CO','CL')  and ca.datetrx <=$P{EndDate}
-				                 inner join c_invoice iv on cal.c_invoice_id=iv.c_invoice_id  and (iv.C_Currency_ID=$P{C_Currency_ID} or $P{C_Currency_ID} is null)  
-                                            and iv.AD_Client_ID=$P{AD_CLIENT_ID}
-				                 join C_BPARTNER bp on cal.C_BPARTNER_ID = bp.C_BPARTNER_ID and bp.AD_Client_ID=$P{AD_CLIENT_ID} and bp.isVendor = 'Y'          
-                                              and  (bp.C_BP_Group_ID=$P{C_BP_Group_ID} or $P{C_BP_Group_ID} is null)       
-				                 where  cal.writeoffamt<0  and cal.c_invoice_id is not null 
-				                ) as t
-				                inner join c_doctype doc on t.c_doctype_id=doc.c_doctype_id and doc.docbasetype in ('API','ARC')        			 
-				        group by t.C_BP_Group_ID, t.value, t.name                       
-		    ) as t           
-		    join C_BP_Group n on t.C_BP_Group_ID=n.C_BP_Group_ID and n.AD_Client_ID=$P{AD_CLIENT_ID}
-		    group by t.C_BP_Group_ID, t.value, t.name,n.name                       
-	) as t
-	where t.dudau<>0 or t.ducuoi<>0 or t.psno<>0 or t.psco<>0
-	ORDER by t.nhom,t.ducuoi desc]]>
+		<![CDATA[SELECT t.nhom, t.value, t.name, t.ducuoi, t.dudau, t.psno, t.psco
+FROM (
+    SELECT n.name AS nhom, t.value, t.name,
+           SUM(t.ducuoi) AS ducuoi,
+           SUM(t.dudau)  AS dudau,
+           SUM(t.psno)   AS psno,
+           SUM(t.psco)   AS psco
+    FROM (
+
+        -- [1+5] Hoa don: gop API/ARC (phai tra) va APC/ARI (da tra)
+        SELECT bp.C_BP_Group_ID, bp.value, bp.name,
+               SUM(CASE WHEN c.DocBaseType IN ('API','ARC') THEN  i.GRANDTOTAL
+                        ELSE                                     -i.GRANDTOTAL END)  AS ducuoi,
+               COALESCE(SUM(CASE WHEN i.DATEACCT < $P{StartDate}
+                                 THEN CASE WHEN c.DocBaseType IN ('API','ARC') THEN  i.GRANDTOTAL
+                                           ELSE                                     -i.GRANDTOTAL END
+                            END), 0)                                                 AS dudau,
+               COALESCE(SUM(CASE WHEN i.DATEACCT >= $P{StartDate} AND i.DATEACCT <= $P{EndDate}
+                                  AND c.DocBaseType IN ('API','ARC')
+                                 THEN i.GRANDTOTAL END), 0)                          AS psco,
+               COALESCE(SUM(CASE WHEN i.DATEACCT >= $P{StartDate} AND i.DATEACCT <= $P{EndDate}
+                                  AND c.DocBaseType IN ('APC','ARI')
+                                 THEN i.GRANDTOTAL END), 0)                          AS psno
+        FROM C_INVOICE i
+        INNER JOIN C_DocType c ON c.C_DocType_ID  = i.C_DocType_ID
+                               AND c.DocBaseType  IN ('API','ARC','APC','ARI')
+        JOIN C_BPARTNER bp     ON i.C_BPARTNER_ID = bp.C_BPARTNER_ID
+                               AND bp.AD_Client_ID = $P{AD_CLIENT_ID}
+                               AND bp.isVendor     = 'Y'
+                               AND ($P{C_BP_Group_ID} IS NULL OR bp.C_BP_Group_ID = ANY(string_to_array($P{C_BP_Group_ID}, ',')::integer[]))
+        WHERE i.DATEACCT     <= $P{EndDate}
+          AND i.docstatus    IN ('CO','CL')
+          AND i.AD_Client_ID  = $P{AD_CLIENT_ID}
+          AND (i.C_Currency_ID = $P{C_Currency_ID} OR $P{C_Currency_ID} IS NULL)
+        GROUP BY bp.C_BP_Group_ID, bp.value, bp.name
+
+        -- [2+6] Phieu thanh toan: gop ISRECEIPT=Y (thu) va N (chi)
+        UNION ALL
+
+        SELECT bp.C_BP_Group_ID, bp.value, bp.name,
+               SUM(CASE WHEN p.ISRECEIPT = 'Y' THEN  p.PAYAMT
+                        ELSE                        -p.PAYAMT END)                   AS ducuoi,
+               COALESCE(SUM(CASE WHEN p.DATEACCT < $P{StartDate}
+                                 THEN CASE WHEN p.ISRECEIPT = 'Y' THEN  p.PAYAMT
+                                           ELSE                        -p.PAYAMT END
+                            END), 0)                                                 AS dudau,
+               COALESCE(SUM(CASE WHEN p.DATEACCT >= $P{StartDate} AND p.DATEACCT <= $P{EndDate}
+                                  AND p.ISRECEIPT = 'Y'
+                                 THEN p.PAYAMT END), 0)                              AS psco,
+               COALESCE(SUM(CASE WHEN p.DATEACCT >= $P{StartDate} AND p.DATEACCT <= $P{EndDate}
+                                  AND p.ISRECEIPT = 'N'
+                                 THEN p.PAYAMT END), 0)                              AS psno
+        FROM C_PAYMENT p
+        JOIN C_BPARTNER bp     ON p.C_BPARTNER_ID = bp.C_BPARTNER_ID
+                               AND bp.AD_Client_ID = $P{AD_CLIENT_ID}
+                               AND bp.isVendor     = 'Y'
+                                AND ($P{C_BP_Group_ID} IS NULL OR bp.C_BP_Group_ID = ANY(string_to_array($P{C_BP_Group_ID}, ',')::integer[]))
+        WHERE p.DATEACCT     <= $P{EndDate}
+          AND p.docstatus    IN ('CO','CL')
+          AND p.posted        = 'Y'
+          AND p.c_charge_id  IS NULL
+          AND p.ISRECEIPT    IN ('Y','N')
+          AND p.AD_Client_ID  = $P{AD_CLIENT_ID}
+          AND (p.C_Currency_ID = $P{C_Currency_ID} OR $P{C_Currency_ID} IS NULL)
+        GROUP BY bp.C_BP_Group_ID, bp.value, bp.name
+
+        -- [3+4] Phan bo DUONG (discount + writeoff > 0) tren hoa don ARI/APC
+        UNION ALL
+
+        SELECT t.C_BP_Group_ID, t.value, t.name,
+               COALESCE(SUM(t.amt), 0)                                                        AS ducuoi,
+               COALESCE(SUM(CASE WHEN t.datetrx <  $P{StartDate}               THEN t.amt END), 0) AS dudau,
+               COALESCE(SUM(CASE WHEN t.datetrx >= $P{StartDate}
+                                  AND t.datetrx <= $P{EndDate}                 THEN t.amt END), 0) AS psco,
+               0                                                                               AS psno
+        FROM (
+            SELECT ca.datetrx,
+                   CASE WHEN cal.discountamt > 0 THEN cal.discountamt ELSE 0 END
+                 + CASE WHEN cal.writeoffamt  > 0 THEN cal.writeoffamt  ELSE 0 END  AS amt,
+                   iv.c_doctype_id,
+                   bp.C_BP_Group_ID, bp.value, bp.name
+            FROM c_allocationline cal
+            INNER JOIN c_allocationhdr ca ON cal.c_allocationhdr_id = ca.c_allocationhdr_id
+                                          AND ca.docstatus IN ('CO','CL')
+                                          AND ca.datetrx   <= $P{EndDate}
+            INNER JOIN c_invoice iv        ON cal.c_invoice_id = iv.c_invoice_id
+                                          AND iv.AD_Client_ID  = $P{AD_CLIENT_ID}
+                                          AND (iv.C_Currency_ID = $P{C_Currency_ID} OR $P{C_Currency_ID} IS NULL)
+            JOIN C_BPARTNER bp             ON cal.C_BPARTNER_ID = bp.C_BPARTNER_ID
+                                          AND bp.AD_Client_ID   = $P{AD_CLIENT_ID}
+                                          AND bp.isVendor       = 'Y'
+                                           AND ($P{C_BP_Group_ID} IS NULL OR bp.C_BP_Group_ID = ANY(string_to_array($P{C_BP_Group_ID}, ',')::integer[]))
+            WHERE (cal.discountamt > 0 OR cal.writeoffamt > 0)
+              AND cal.c_invoice_id IS NOT NULL
+              AND cal.AD_Client_ID  = $P{AD_CLIENT_ID}
+        ) AS t
+        INNER JOIN c_doctype doc ON t.c_doctype_id  = doc.c_doctype_id
+                                 AND doc.docbasetype IN ('ARI','APC')
+        GROUP BY t.C_BP_Group_ID, t.value, t.name
+
+        -- [7] Tru di phan bo CMA (charge, khong co invoice)
+        UNION ALL
+
+        SELECT t.C_BP_Group_ID, t.value, t.name,
+               COALESCE(SUM(t.amount), 0)                                                      AS ducuoi,
+               COALESCE(SUM(CASE WHEN t.datetrx <  $P{StartDate}             THEN t.amount END), 0) AS dudau,
+               COALESCE(SUM(CASE WHEN t.datetrx >= $P{StartDate}
+                                  AND t.datetrx <= $P{EndDate}               THEN t.amount END), 0) AS psco,
+               0                                                                               AS psno
+        FROM (
+            SELECT ca.datetrx, cal.amount, ca.c_doctype_id,
+                   bp.C_BP_Group_ID, bp.value, bp.name
+            FROM c_allocationline cal
+            INNER JOIN c_allocationhdr ca ON cal.c_allocationhdr_id = ca.c_allocationhdr_id
+                                          AND ca.docstatus IN ('CO','CL')
+                                          AND ca.datetrx   <= $P{EndDate}
+                                          AND (ca.C_Currency_ID = $P{C_Currency_ID} OR $P{C_Currency_ID} IS NULL)
+            JOIN C_BPARTNER bp             ON cal.C_BPARTNER_ID = bp.C_BPARTNER_ID
+                                          AND bp.AD_Client_ID   = $P{AD_CLIENT_ID}
+                                          AND bp.isVendor       = 'Y'
+                                           AND ($P{C_BP_Group_ID} IS NULL OR bp.C_BP_Group_ID = ANY(string_to_array($P{C_BP_Group_ID}, ',')::integer[]))
+            WHERE cal.c_charge_id  IS NOT NULL
+              AND cal.c_invoice_id IS NULL
+              AND cal.AD_Client_ID  = $P{AD_CLIENT_ID}
+        ) AS t
+        INNER JOIN c_doctype doc ON t.c_doctype_id  = doc.c_doctype_id
+                                 AND doc.docbasetype IN ('CMA')
+        GROUP BY t.C_BP_Group_ID, t.value, t.name
+
+        -- [8+9] Phan bo AM (discount + writeoff < 0) tren hoa don API/ARC
+        UNION ALL
+
+        SELECT t.C_BP_Group_ID, t.value, t.name,
+               COALESCE(SUM(t.amt), 0)                                                        AS ducuoi,
+               COALESCE(SUM(CASE WHEN t.datetrx <  $P{StartDate}               THEN t.amt END), 0) AS dudau,
+               COALESCE(SUM(CASE WHEN t.datetrx >= $P{StartDate}
+                                  AND t.datetrx <= $P{EndDate}                 THEN t.amt END), 0) AS psco,
+               0                                                                               AS psno
+        FROM (
+            SELECT ca.datetrx,
+                   CASE WHEN cal.discountamt < 0 THEN cal.discountamt ELSE 0 END
+                 + CASE WHEN cal.writeoffamt  < 0 THEN cal.writeoffamt  ELSE 0 END  AS amt,
+                   iv.c_doctype_id,
+                   bp.C_BP_Group_ID, bp.value, bp.name
+            FROM c_allocationline cal
+            INNER JOIN c_allocationhdr ca ON cal.c_allocationhdr_id = ca.c_allocationhdr_id
+                                          AND ca.docstatus IN ('CO','CL')
+                                          AND ca.datetrx   <= $P{EndDate}
+            INNER JOIN c_invoice iv        ON cal.c_invoice_id = iv.c_invoice_id
+                                          AND iv.AD_Client_ID  = $P{AD_CLIENT_ID}
+                                          AND (iv.C_Currency_ID = $P{C_Currency_ID} OR $P{C_Currency_ID} IS NULL)
+            JOIN C_BPARTNER bp             ON cal.C_BPARTNER_ID = bp.C_BPARTNER_ID
+                                          AND bp.AD_Client_ID   = $P{AD_CLIENT_ID}
+                                          AND bp.isVendor       = 'Y'
+                                          AND ($P{C_BP_Group_ID} IS NULL OR bp.C_BP_Group_ID = ANY(string_to_array($P{C_BP_Group_ID}, ',')::integer[]))
+            WHERE (cal.discountamt < 0 OR cal.writeoffamt < 0)
+              AND cal.c_invoice_id IS NOT NULL
+              AND cal.AD_Client_ID  = $P{AD_CLIENT_ID}
+        ) AS t
+        INNER JOIN c_doctype doc ON t.c_doctype_id  = doc.c_doctype_id
+                                 AND doc.docbasetype IN ('API','ARC')
+        GROUP BY t.C_BP_Group_ID, t.value, t.name
+
+    ) AS t
+    JOIN C_BP_Group n ON t.C_BP_Group_ID = n.C_BP_Group_ID
+                     AND n.AD_Client_ID  = $P{AD_CLIENT_ID}
+    GROUP BY t.C_BP_Group_ID, t.value, t.name, n.name
+) AS t
+WHERE t.dudau  <> 0 OR t.ducuoi <> 0
+   OR t.psno   <> 0 OR t.psco   <> 0
+ORDER BY t.nhom, t.ducuoi DESC]]>
 	</queryString>
 	<field name="nhom" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="nhom"/>
@@ -254,6 +274,7 @@ from(   select t.C_BP_Group_ID,n.name as nhom, t.value, t.name,sum(t.ducuoi) as 
 				<textField>
 					<reportElement x="0" y="0" width="802" height="22" uuid="4f5aac51-bd25-4bb8-9d9b-b86e558acf2f">
 						<property name="com.jaspersoft.studio.unit.height" value="px"/>
+						<property name="com.jaspersoft.studio.unit.x" value="px"/>
 					</reportElement>
 					<box leftPadding="2">
 						<pen lineWidth="0.5"/>
@@ -288,7 +309,6 @@ from(   select t.C_BP_Group_ID,n.name as nhom, t.value, t.name,sum(t.ducuoi) as 
 				<textField isBlankWhenNull="true">
 					<reportElement key="textField" positionType="Float" stretchType="RelativeToTallestObject" x="0" y="0" width="340" height="22" uuid="5b8dc051-9d98-4613-8ce9-c6da06a7599d">
 						<property name="com.jaspersoft.studio.unit.height" value="px"/>
-						<property name="com.jaspersoft.studio.unit.x" value="px"/>
 					</reportElement>
 					<box leftPadding="2" rightPadding="2">
 						<pen lineWidth="0.5"/>
@@ -361,9 +381,7 @@ from(   select t.C_BP_Group_ID,n.name as nhom, t.value, t.name,sum(t.ducuoi) as 
 	<title>
 		<band height="100" splitType="Stretch">
 			<textField pattern="dd/MM/yyyy" isBlankWhenNull="true">
-				<reportElement key="textField-6" x="0" y="50" width="802" height="30" uuid="08e8b962-7dc4-41c9-9447-152a428a84d1">
-					<property name="com.jaspersoft.studio.unit.x" value="px"/>
-				</reportElement>
+				<reportElement key="textField-6" x="0" y="50" width="802" height="30" uuid="08e8b962-7dc4-41c9-9447-152a428a84d1"/>
 				<box>
 					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
@@ -376,9 +394,7 @@ from(   select t.C_BP_Group_ID,n.name as nhom, t.value, t.name,sum(t.ducuoi) as 
 				<textFieldExpression><![CDATA["BÁO CÁO TỔNG HỢP CÔNG NỢ NHÀ CUNG CẤP"]]></textFieldExpression>
 			</textField>
 			<textField pattern="dd/MM/yyyy" isBlankWhenNull="true">
-				<reportElement key="textField-6" x="0" y="80" width="802" height="20" uuid="f55dd7d1-29a0-4a57-9b62-4f5c2ec632c5">
-					<property name="com.jaspersoft.studio.unit.x" value="px"/>
-				</reportElement>
+				<reportElement key="textField-6" x="0" y="80" width="802" height="20" uuid="f55dd7d1-29a0-4a57-9b62-4f5c2ec632c5"/>
 				<box>
 					<topPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
 					<leftPen lineWidth="0.0" lineStyle="Solid" lineColor="#000000"/>
@@ -391,8 +407,9 @@ from(   select t.C_BP_Group_ID,n.name as nhom, t.value, t.name,sum(t.ducuoi) as 
 				<textFieldExpression><![CDATA["Kỳ báo cáo : " + new SimpleDateFormat("dd/MM/yyyy").format($P{StartDate}) + " To "  + new SimpleDateFormat("dd/MM/yyyy").format($P{EndDate})]]></textFieldExpression>
 			</textField>
 			<subreport overflowType="NoStretch">
-				<reportElement x="0" y="1" width="802" height="49" uuid="25f692b6-9069-4f76-84b4-fd63e9f83042">
+				<reportElement x="0" y="0" width="802" height="49" uuid="25f692b6-9069-4f76-84b4-fd63e9f83042">
 					<property name="com.jaspersoft.studio.unit.x" value="px"/>
+					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
 				<subreportParameter name="StartDate">
 					<subreportParameterExpression><![CDATA[$P{StartDate}]]></subreportParameterExpression>
@@ -487,7 +504,6 @@ from(   select t.C_BP_Group_ID,n.name as nhom, t.value, t.name,sum(t.ducuoi) as 
 				<reportElement key="staticText-5" x="0" y="0" width="100" height="22" uuid="2ec9f0dc-7494-4dc5-9af1-700a8c600441">
 					<property name="local_mesure_unitheight" value="pixel"/>
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
-					<property name="com.jaspersoft.studio.unit.x" value="px"/>
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
 				</reportElement>
 				<box leftPadding="2" rightPadding="2">
@@ -506,6 +522,7 @@ from(   select t.C_BP_Group_ID,n.name as nhom, t.value, t.name,sum(t.ducuoi) as 
 				<reportElement x="0" y="0" width="100" height="22" uuid="2b7b2a76-2a6b-4697-9c68-1dd512db3dd6">
 					<property name="com.jaspersoft.studio.spreadsheet.connectionID" value="fd2fba6d-fdbd-4bc1-9f85-144512c7f030"/>
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
 				</reportElement>
 				<box leftPadding="2">
 					<pen lineWidth="0.5"/>
@@ -587,7 +604,6 @@ from(   select t.C_BP_Group_ID,n.name as nhom, t.value, t.name,sum(t.ducuoi) as 
 			<textField>
 				<reportElement x="0" y="0" width="455" height="30" uuid="ae3e714b-45db-4529-a659-3d677888c0a2">
 					<property name="com.jaspersoft.studio.unit.width" value="px"/>
-					<property name="com.jaspersoft.studio.unit.x" value="px"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
 				</reportElement>
 				<textElement textAlignment="Right" verticalAlignment="Middle"/>
@@ -610,7 +626,6 @@ from(   select t.C_BP_Group_ID,n.name as nhom, t.value, t.name,sum(t.ducuoi) as 
 				<reportElement key="staticText-8" positionType="Float" stretchType="RelativeToTallestObject" x="0" y="0" width="340" height="22" uuid="a6cb4c13-ada6-4db1-96fc-ba0e01fd4ddb">
 					<property name="local_mesure_unitheight" value="pixel"/>
 					<property name="com.jaspersoft.studio.unit.height" value="px"/>
-					<property name="com.jaspersoft.studio.unit.x" value="px"/>
 				</reportElement>
 				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.5"/>
@@ -700,6 +715,7 @@ from(   select t.C_BP_Group_ID,n.name as nhom, t.value, t.name,sum(t.ducuoi) as 
 				<reportElement key="staticText-8" positionType="Float" stretchType="RelativeToTallestObject" x="0" y="43" width="340" height="22" uuid="8836c04c-1796-483c-a975-a25e0ac70ca2">
 					<property name="local_mesure_unity" value="pixel"/>
 					<property name="com.jaspersoft.studio.unit.y" value="px"/>
+					<property name="com.jaspersoft.studio.unit.x" value="px"/>
 				</reportElement>
 				<box leftPadding="2" rightPadding="2">
 					<pen lineWidth="0.25"/>

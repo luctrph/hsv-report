@@ -50,17 +50,21 @@
 		<defaultValueExpression><![CDATA["dev/"]]></defaultValueExpression>
 	</parameter>
 	<queryString language="SQL">
-		<![CDATA[WITH dongia AS (
-    SELECT dgl.hsv_luongsxvh_id,
+		<![CDATA[with dongia AS (
+    SELECT DISTINCT ON (dgl.hsv_luongsxvh_id)
+           dgl.hsv_luongsxvh_id,
            dgl.hsv_dongialuong,
            dg.startdate,
            dg.enddate  
     FROM hsv_dgluong dg 
     JOIN hsv_dgluongLine dgl ON dg.hsv_dgluong_id = dgl.hsv_dgluong_id 
-    WHERE dg.hsv_loaidongia_ID=1000079 
+    WHERE dg.hsv_loaidongia_id = 1000079 
       AND dg.ad_client_id = $P{AD_CLIENT_ID}
+      AND dg.startdate <= $P{EndDate}
+      AND (dg.enddate IS NULL OR dg.enddate >= $P{StartDate})
+    ORDER BY dgl.hsv_luongsxvh_id, dg.startdate DESC
 ),
---select * from hsv_luongsxvh where ad_client_id =1000003
+
 danhmuc AS (
     SELECT lsx.hsv_luongsxvh_id, 
            trim(lsx.value) AS value, 
@@ -70,61 +74,62 @@ danhmuc AS (
     WHERE lsx.ad_client_id = $P{AD_CLIENT_ID} 
       AND lsx.isactive = 'Y'
 ),
+
 nhatky_sx as (
 	select nkl.hsv_sanpham_id, nkl.qtyother  
 	from hsv_nhatkysx nk
-	join hsv_nhatkysxline nkl on nk.hsv_nhatkysx_id =nkl.hsv_nhatkysx_id 
-	where nk.ad_client_id = $P{AD_CLIENT_ID} and nk.dateacct >= $P{StartDate} and nk.dateacct <= $P{EndDate}
-	
+	join hsv_nhatkysxline nkl on nk.hsv_nhatkysx_id = nkl.hsv_nhatkysx_id 
+	where nk.ad_client_id = $P{AD_CLIENT_ID} 
+	  and nk.dateacct >= $P{StartDate} 
+	  and nk.dateacct <= $P{EndDate}
 ),
+
 chuyen_kho as (
 	select civ.m_product_id,
 		civ.m_locator_id,
 		civ.movementqty 		
 	from m_movement ci
 	join m_movementline civ on ci.m_movement_id = civ.m_movement_id 
-	 WHERE ci.ad_client_id = $P{AD_CLIENT_ID}
+	WHERE ci.ad_client_id = $P{AD_CLIENT_ID}
       AND ci.docstatus IN ('CL','CO')
       AND ci.movementdate BETWEEN $P{StartDate} AND $P{EndDate}	     
 ),
+
 xuat_ban as (
-	select hh.m_attributeset_id ,
+	select hh.m_attributeset_id,
 	civ.qtyentered, civ.m_locator_id
-	
 	from m_inout ci 
-	join  m_inoutline civ on ci.m_inout_id = civ.m_inout_id 
+	join m_inoutline civ on ci.m_inout_id = civ.m_inout_id 
 	join m_product hh on hh.m_product_id = civ.m_product_id 
-	 WHERE ci.ad_client_id = $P{AD_CLIENT_ID}
+	WHERE ci.ad_client_id = $P{AD_CLIENT_ID}
       AND ci.docstatus IN ('CL','CO') and ci.issotrx='Y'
       AND ci.movementdate BETWEEN $P{StartDate} AND $P{EndDate}	
-     
 ),
+
 xuat_ban_tt as (
-	select hh.m_attributeset_id ,ma.m_attributevalue_id, 
+	select hh.m_attributeset_id, ma.m_attributevalue_id, 
 	civ.qtyentered, civ.m_locator_id
 	from m_inout ci 
-	join  m_inoutline civ on ci.m_inout_id = civ.m_inout_id 
+	join m_inoutline civ on ci.m_inout_id = civ.m_inout_id 
 	join m_attributeinstance ma on ma.m_attributesetinstance_id = civ.m_attributesetinstance_id  
 	join m_product hh on hh.m_product_id = civ.m_product_id 
-	 WHERE ci.ad_client_id = $P{AD_CLIENT_ID}
+	WHERE ci.ad_client_id = $P{AD_CLIENT_ID}
       AND ci.docstatus IN ('CL','CO') and ci.issotrx='Y'
       AND ci.movementdate BETWEEN $P{StartDate} AND $P{EndDate}	
-     
 ),
+
 nhap_mua as (
-	select
-		civ.qtyentered, 
-		civ.m_product_id 
+	select civ.qtyentered, civ.m_product_id 
 	from m_inout ci 
-	join  m_inoutline civ on ci.m_inout_id = civ.m_inout_id 
-	 WHERE ci.ad_client_id = $P{AD_CLIENT_ID}
+	join m_inoutline civ on ci.m_inout_id = civ.m_inout_id 
+	WHERE ci.ad_client_id = $P{AD_CLIENT_ID}
       AND ci.docstatus IN ('CL','CO') and ci.issotrx='N'
       AND ci.movementdate BETWEEN $P{StartDate} AND $P{EndDate}	
-
 ),
+
 xuat_kho as (
-	select hh.m_attributeset_id , 
-	civ.m_locator_id ,
+	select hh.m_attributeset_id, 
+	civ.m_locator_id,
 	civ.QtyInternalUse
 	from m_inventory ci 
 	join m_inventoryline civ on ci.m_inventory_id = civ.m_inventory_id 
@@ -133,6 +138,7 @@ xuat_kho as (
       AND ci.docstatus IN ('CL','CO')
       AND ci.movementdate BETWEEN $P{StartDate} AND $P{EndDate}	
 ),
+
 nhap_kho as (
 	SELECT ci.c_campaign_id,
            ci.movementdate,
@@ -147,6 +153,7 @@ nhap_kho as (
       AND ci.docstatus IN ('CL','CO')
       AND ci.movementdate BETWEEN $P{StartDate} AND $P{EndDate}
 ),
+
 nhap_kho_tt AS (
     SELECT ci.c_campaign_id,
            ci.movementdate,
@@ -154,7 +161,7 @@ nhap_kho_tt AS (
            hh.m_attributeset_id,
            ma.m_attributevalue_id,
            civ.m_locator_id,
-           civ.m_product_id ,
+           civ.m_product_id,
            ma.m_attribute_id 
     FROM m_production ci
     JOIN m_productionplan civ ON ci.m_production_id = civ.m_production_id
@@ -165,12 +172,13 @@ nhap_kho_tt AS (
       AND ci.docstatus IN ('CL','CO')
       AND ci.movementdate BETWEEN $P{StartDate} AND $P{EndDate}
 ),
+
 nhap_kho_tt_tt AS (
     SELECT ci.c_campaign_id,
            ci.movementdate,
            civ.productionqty,
            hh.m_attributeset_id,
-           ma.m_attributevalue_id as  value1,
+           ma.m_attributevalue_id as value1,
            ma1.m_attributevalue_id as value2, 
            ma.m_attribute_id, 
            civ.m_locator_id,
@@ -186,12 +194,13 @@ nhap_kho_tt_tt AS (
       AND ci.docstatus IN ('CL','CO')
       AND ci.movementdate BETWEEN $P{StartDate} AND $P{EndDate}
 ),
+
 nhap_kho_tt_tt_tt AS (
     SELECT ci.c_campaign_id,
            ci.movementdate,
            civ.productionqty,
            hh.m_attributeset_id,
-           ma.m_attributevalue_id as  value1,
+           ma.m_attributevalue_id as value1,
            ma1.m_attributevalue_id as value2, 
            ma.m_attribute_id as att1, 
            ma1.m_attribute_id as att2, 
@@ -208,8 +217,13 @@ nhap_kho_tt_tt_tt AS (
       AND ci.docstatus IN ('CL','CO')
       AND ci.movementdate BETWEEN $P{StartDate} AND $P{EndDate}
 ),
-giao_dich AS (
-    -- Giao dịch cho sản phẩm 1000017 (Ngao Nâu có thuộc tính)
+
+-- ============================================================
+-- CÁC CTE TỪ QUERY 2 — dùng để tính II.09 = kq7.ngao_nau
+-- ============================================================
+
+-- Giao dịch ngao nâu (có thuộc tính)
+giao_dich_ngao AS (
     SELECT
         ma.m_attribute_id,
         mav.hsv_c_thuoctinh_id,
@@ -218,14 +232,238 @@ giao_dich AS (
         RIGHT(m.movementtype, 1) AS tang_giam
     FROM m_transaction m
     JOIN m_product hh ON hh.m_product_id = m.m_product_id
-    join m_attributeinstance ma on ma.m_attributesetinstance_id = m.m_attributesetinstance_id
-    join m_attributevalue mav on mav.m_attributevalue_id = ma.m_attributevalue_id
+    JOIN m_attributeinstance ma ON ma.m_attributesetinstance_id = m.m_attributesetinstance_id  
+    JOIN m_attributevalue mav ON mav.m_attributevalue_id = ma.m_attributevalue_id 
+    WHERE m.ad_client_id = $P{AD_CLIENT_ID}
+      AND m.movementdate <= $P{EndDate} 
+      AND hh.m_product_id = 1019435
+),
+
+-- Giao dịch tổng (ngao trắng + ngao nâu)
+giao_dich_ngao_tong AS (
+    SELECT
+        m.movementdate,
+        m.movementqty,
+        RIGHT(m.movementtype, 1) AS tang_giam
+    FROM m_transaction m
+    JOIN m_product hh ON hh.m_product_id = m.m_product_id
+    WHERE m.ad_client_id = $P{AD_CLIENT_ID}
+      AND m.movementdate <= $P{EndDate} 
+      AND hh.m_product_id = 1019435
+),
+
+-- Tồn kho ngao nâu (có thuộc tính)
+ton_kho_ngao_nau AS (
+    SELECT
+        t.m_attribute_id,
+        t.hsv_c_thuoctinh_id,
+        SUM(CASE WHEN t.movementdate < $P{StartDate} THEN t.movementqty ELSE 0 END) AS dudau,
+        SUM(CASE WHEN t.movementdate BETWEEN $P{StartDate} AND $P{EndDate} AND t.tang_giam = '+' THEN t.movementqty ELSE 0 END) AS sln,
+        SUM(CASE WHEN t.movementdate BETWEEN $P{StartDate} AND $P{EndDate} AND t.tang_giam = '-' THEN -t.movementqty ELSE 0 END) AS slx,
+        SUM(CASE WHEN t.movementdate <= $P{EndDate} THEN t.movementqty ELSE 0 END) AS ducuoi
+    FROM giao_dich_ngao t
+    GROUP BY t.m_attribute_id, t.hsv_c_thuoctinh_id
+),
+
+-- Tồn kho tổng (ngao trắng + ngao nâu)
+ton_kho_ngao_tong AS (
+    SELECT
+        SUM(CASE WHEN t.movementdate < $P{StartDate} THEN t.movementqty ELSE 0 END) AS dudau,
+        SUM(CASE WHEN t.movementdate BETWEEN $P{StartDate} AND $P{EndDate} AND t.tang_giam = '+' THEN t.movementqty ELSE 0 END) AS sln,
+        SUM(CASE WHEN t.movementdate BETWEEN $P{StartDate} AND $P{EndDate} AND t.tang_giam = '-' THEN -t.movementqty ELSE 0 END) AS slx,
+        SUM(CASE WHEN t.movementdate <= $P{EndDate} THEN t.movementqty ELSE 0 END) AS ducuoi
+    FROM giao_dich_ngao_tong t
+),
+
+-- Nhập mua ngao nâu (có thuộc tính)
+nhap_mua_ngao_nau AS (
+    SELECT SUM(miv.movementqty) AS qty
+    FROM m_inout mi 
+    JOIN m_inoutline miv ON mi.m_inout_id = miv.m_inout_id 
+    JOIN m_attributeinstance ma ON ma.m_attributesetinstance_id = miv.m_attributesetinstance_id
+    JOIN m_attributevalue mav ON mav.m_attributevalue_id = ma.m_attributevalue_id
+    WHERE mi.ad_client_id = $P{AD_CLIENT_ID}
+      AND miv.m_product_id = 1019435
+      AND ma.m_attribute_id = 1000156
+      AND mav.hsv_c_thuoctinh_id = 1000147
+      AND mi.movementdate BETWEEN $P{StartDate} AND $P{EndDate}
+      AND mi.docstatus IN ('CL','CO')
+),
+
+-- Nhập mua ngao tổng
+nhap_mua_ngao_tong AS (
+    SELECT SUM(miv.movementqty) AS qty
+    FROM m_inout mi 
+    JOIN m_inoutline miv ON mi.m_inout_id = miv.m_inout_id 
+    WHERE mi.ad_client_id = $P{AD_CLIENT_ID}
+      AND miv.m_product_id = 1019435
+      AND mi.movementdate BETWEEN $P{StartDate} AND $P{EndDate}
+      AND mi.docstatus IN ('CL','CO')
+),
+
+-- Xuất bán ngao (kq41 trong query 2)
+xuat_ban_ngao AS (
+    SELECT
+        SUM(CASE WHEN mav.hsv_c_thuoctinh_id = 1000147 THEN miv.movementqty ELSE 0 END) AS ngao_nau,
+        SUM(CASE WHEN mav.hsv_c_thuoctinh_id = 1000148 THEN miv.movementqty ELSE 0 END) AS ngao_trang
+    FROM m_inout mi
+    JOIN m_inoutline miv ON mi.m_inout_id = miv.m_inout_id
+    JOIN m_product p ON p.m_product_id = miv.m_product_id
+    JOIN m_attributeinstance ma ON ma.m_attributesetinstance_id = miv.m_attributesetinstance_id
+    JOIN m_attributevalue mav ON mav.m_attributevalue_id = ma.m_attributevalue_id
+    WHERE mi.ad_client_id = $P{AD_CLIENT_ID}
+      AND mi.docstatus IN ('CL','CO')
+      AND mi.issotrx = 'Y'
+      AND mi.movementdate BETWEEN $P{StartDate} AND $P{EndDate}
+      AND miv.m_product_id IN (1019435, 1019436)
+      AND p.m_attributeset_id = 1000205
+      AND mav.hsv_c_thuoctinh_id IN (1000147, 1000148)
+),
+
+-- Nhập kho từ sản xuất cho ngao (dùng cho kq6 query 2)
+nhap_kho_ngao AS (
+    SELECT
+        SUM(civ.productionqty) AS qty,
+        hh.hsv_loaimat_id,
+        ci.c_campaign_id
+    FROM m_production ci
+    JOIN m_productionplan civ ON ci.m_production_id = civ.m_production_id
+    JOIN m_product hh ON hh.m_product_id = civ.m_product_id
+    WHERE ci.ad_client_id = $P{AD_CLIENT_ID}
+      AND ci.movementdate BETWEEN $P{StartDate} AND $P{EndDate}
+      AND ci.docstatus IN ('CL','CO')
+    GROUP BY hh.hsv_loaimat_id, ci.c_campaign_id
+),
+
+-- kq (chỉ tiêu 1–3) theo logic query 2
+kq_ngao AS (
+    -- 1: Tồn đầu kỳ
+    SELECT 1 AS id,
+           SUM(ngao_nau) AS ngao_nau,
+           SUM(ngao_nl)  AS ngao_nl
+    FROM (
+        SELECT
+            SUM(t.dudau) FILTER (
+                WHERE t.m_attribute_id = 1000156
+                  AND t.hsv_c_thuoctinh_id = 1000147
+            ) AS ngao_nau,
+            0 AS ngao_nl
+        FROM ton_kho_ngao_nau t
+        UNION ALL
+        SELECT 0 AS ngao_nau, SUM(dudau) AS ngao_nl
+        FROM ton_kho_ngao_tong
+    ) k
+
+    UNION ALL
+
+    -- 2: Nhập mua trong kỳ
+    SELECT 2 AS id,
+           SUM(ngao_nau) AS ngao_nau,
+           SUM(ngao_nl)  AS ngao_nl
+    FROM (
+        SELECT SUM(qty) AS ngao_nau, 0 AS ngao_nl FROM nhap_mua_ngao_nau
+        UNION ALL
+        SELECT 0 AS ngao_nau, SUM(qty) AS ngao_nl FROM nhap_mua_ngao_tong
+    ) k
+
+    UNION ALL
+
+    -- 3: Tồn cuối kỳ
+    SELECT 3 AS id,
+           SUM(ngao_nau) AS ngao_nau,
+           SUM(ngao_nl)  AS ngao_nl
+    FROM (
+        SELECT
+            SUM(t.ducuoi) FILTER (
+                WHERE t.m_attribute_id = 1000156
+                  AND t.hsv_c_thuoctinh_id = 1000147
+            ) AS ngao_nau,
+            0 AS ngao_nl
+        FROM ton_kho_ngao_nau t
+        UNION ALL
+        SELECT 0 AS ngao_nau, SUM(ducuoi) AS ngao_nl
+        FROM ton_kho_ngao_tong
+    ) k
+),
+
+-- kq5 theo logic query 2 (trừ xuất bán kq41)
+kq5_ngao AS (
+    SELECT
+        5 AS id,
+        -- Ngao nâu: tồn đầu + nhập mua - tồn cuối - xuất bán nâu
+        (
+            SUM(CASE
+                WHEN k.id = 1 THEN k.ngao_nau
+                WHEN k.id = 2 THEN k.ngao_nau
+                WHEN k.id = 3 THEN -k.ngao_nau
+            END)
+            - COALESCE(MAX(x.ngao_nau), 0)
+        ) AS ngao_nau,
+        -- Ngao trắng: tồn đầu + nhập mua - tồn cuối - xuất bán trắng
+        (
+            SUM(CASE
+                WHEN k.id = 1 THEN (k.ngao_nl - k.ngao_nau)
+                WHEN k.id = 2 THEN (k.ngao_nl - k.ngao_nau)
+                WHEN k.id = 3 THEN -(k.ngao_nl - k.ngao_nau)
+            END)
+            - COALESCE(MAX(x.ngao_trang), 0)
+        ) AS ngao_trang
+    FROM kq_ngao k
+    LEFT JOIN xuat_ban_ngao x ON 1 = 1
+    WHERE k.id BETWEEN 1 AND 3
+),
+
+-- kq6 theo logic query 2
+kq6_ngao AS (
+    SELECT
+        6 AS id,
+        COALESCE(SUM(qty) FILTER (
+            WHERE hsv_loaimat_id = 1000128
+              AND c_campaign_id IN (1000100, 1000104)
+        ), 0) AS ngao_nau,
+        COALESCE(SUM(qty) FILTER (
+            WHERE hsv_loaimat_id = 1000129
+              AND c_campaign_id IN (1000100, 1000104)
+        ), 0) AS ngao_trang
+    FROM nhap_kho_ngao
+),
+
+-- kq7 = II.09 theo đúng logic query 2
+kq7_ngao AS (
+    SELECT
+        (
+            MAX(CASE WHEN id = 6 THEN ngao_nau END)
+            - MAX(CASE WHEN id = 5 THEN ngao_nau END) / 1.15
+            - 0.08 * MAX(CASE WHEN id = 5 THEN ngao_trang END) / 1.15
+        ) AS ngao_nau
+    FROM (
+        SELECT id, ngao_nau, ngao_trang FROM kq5_ngao
+        UNION ALL
+        SELECT id, ngao_nau, ngao_trang FROM kq6_ngao
+    ) all_kq
+),
+
+-- ============================================================
+-- CÁC CTE GỐC CỦA QUERY 1 (giữ nguyên)
+-- ============================================================
+
+giao_dich AS (
+    SELECT
+        ma.m_attribute_id,
+        mav.hsv_c_thuoctinh_id,
+        m.movementdate,
+        m.movementqty,
+        RIGHT(m.movementtype, 1) AS tang_giam
+    FROM m_transaction m
+    JOIN m_product hh ON hh.m_product_id = m.m_product_id
+    JOIN m_attributeinstance ma ON ma.m_attributesetinstance_id = m.m_attributesetinstance_id
+    JOIN m_attributevalue mav ON mav.m_attributevalue_id = ma.m_attributevalue_id
     WHERE m.ad_client_id = $P{AD_CLIENT_ID}
       AND m.movementdate <= $P{EndDate}
-      AND hh.M_Product_ID=1019435
+      AND hh.M_Product_ID = 1019435
 ),
+
 giao_dich_2 AS (
-    -- Giao dịch cho sản phẩm 1000017 (Ngao Trắng - không thuộc tính/tổng cộng)
     SELECT
         m.movementdate,
         m.movementqty,
@@ -234,42 +472,44 @@ giao_dich_2 AS (
     JOIN m_product hh ON hh.m_product_id = m.m_product_id
     WHERE m.ad_client_id = $P{AD_CLIENT_ID}
       AND m.movementdate <= $P{EndDate}
-      AND hh.M_Product_ID=1019435
+      AND hh.M_Product_ID = 1019435
 ),
+
 chuyen_kho_2_9 AS (
-    -- Dữ liệu chuyển kho (chỉ tiêu 4)
     SELECT COALESCE(SUM(mmv.movementqty), 0) AS qty
     FROM m_movement mm
     JOIN m_movementline mmv ON mm.m_movement_id = mmv.m_movement_id
     WHERE mmv.ad_client_id = $P{AD_CLIENT_ID}
       AND mm.movementdate BETWEEN $P{StartDate} AND $P{EndDate}
       AND mm.docstatus IN ('CL', 'CO')
-      AND mmv.M_Product_ID=1019436 -- SP Ngao Lọt
-      AND mmv.M_Locator_ID=1000303 AND mmv.M_Locator_ID=1000301 -- Kho cụ thể
+      AND mmv.M_Product_ID = 1019436
+      AND mmv.M_Locator_ID = 1000303 AND mmv.M_Locator_ID = 1000301
 ),
+
 nhap_mua_tt AS (
-    -- Nhập mua Ngao Nâu có thuộc tính (chỉ tiêu 2)
     SELECT SUM(miv.movementqty) AS qty
     FROM m_inout mi
     JOIN m_inoutline miv ON mi.m_inout_id = miv.m_inout_id
     JOIN m_attributeinstance ma ON ma.m_attributesetinstance_id = miv.m_attributesetinstance_id
     JOIN m_attributevalue mav ON mav.m_attributevalue_id = ma.m_attributevalue_id
     WHERE mi.ad_client_id = $P{AD_CLIENT_ID}
-      AND miv.M_Product_ID=1019435
-      AND ma.M_Attribute_ID=1000156 AND mav.hsv_C_thuoctinh_ID=1000147
-      AND mi.movementdate BETWEEN $P{StartDate} AND $P{EndDate} AND mi.docstatus IN ('CL', 'CO')
+      AND miv.M_Product_ID = 1019435
+      AND ma.M_Attribute_ID = 1000156 AND mav.hsv_C_thuoctinh_ID = 1000147
+      AND mi.movementdate BETWEEN $P{StartDate} AND $P{EndDate}
+      AND mi.docstatus IN ('CL', 'CO')
 ),
+
 nhap_mua_all AS (
-    -- Nhập mua Ngao Trắng (tổng nhập mua SP 1000017) (chỉ tiêu 2)
     SELECT SUM(miv.movementqty) AS qty
     FROM m_inout mi
     JOIN m_inoutline miv ON mi.m_inout_id = miv.m_inout_id
     WHERE mi.ad_client_id = $P{AD_CLIENT_ID}
-      AND miv.M_Product_ID=1019435
-      AND mi.movementdate BETWEEN $P{StartDate} AND $P{EndDate} AND mi.docstatus IN ('CL', 'CO')
+      AND miv.M_Product_ID = 1019435
+      AND mi.movementdate BETWEEN $P{StartDate} AND $P{EndDate}
+      AND mi.docstatus IN ('CL', 'CO')
 ),
+
 nhap_kho_2_9 AS (
-    -- Dữ liệu thành phẩm nhập kho từ sản xuất (chỉ tiêu 4 & 6)
     SELECT civ.productionqty AS qty, hh.hsv_loaimat_id, ci.c_campaign_id
     FROM m_production ci
     JOIN m_productionplan civ ON ci.m_production_id = civ.m_production_id
@@ -278,57 +518,47 @@ nhap_kho_2_9 AS (
       AND ci.movementdate BETWEEN $P{StartDate} AND $P{EndDate}
       AND ci.docstatus IN ('CL', 'CO')
 ),
+
 ton_kho_summary AS (
-    -- Tổng hợp Tồn Đầu & Tồn Cuối (Chỉ tiêu 1 & 3)
     SELECT
-        -- Ngao Nâu (có thuộc tính)
-        SUM(CASE WHEN t.M_Attribute_ID=1000156 AND t.hsv_C_thuoctinh_ID=1000147 THEN t.movementqty END) FILTER (WHERE t.movementdate < $P{StartDate}) AS tdk_nau,
-        SUM(CASE WHEN t.M_Attribute_ID=1000156 AND t.hsv_C_thuoctinh_ID=1000147 THEN t.movementqty END) FILTER (WHERE t.movementdate <= $P{EndDate}) AS tck_nau,
-        -- Ngao Trắng (tổng SP 1000017)
-        SUM(t2.movementqty) FILTER (WHERE t2.movementdate < $P{StartDate}) AS tdk_trang_tong,
+        SUM(CASE WHEN t.M_Attribute_ID = 1000156 AND t.hsv_C_thuoctinh_ID = 1000147 THEN t.movementqty END) FILTER (WHERE t.movementdate < $P{StartDate})  AS tdk_nau,
+        SUM(CASE WHEN t.M_Attribute_ID = 1000156 AND t.hsv_C_thuoctinh_ID = 1000147 THEN t.movementqty END) FILTER (WHERE t.movementdate <= $P{EndDate}) AS tck_nau,
+        SUM(t2.movementqty) FILTER (WHERE t2.movementdate < $P{StartDate})  AS tdk_trang_tong,
         SUM(t2.movementqty) FILTER (WHERE t2.movementdate <= $P{EndDate}) AS tck_trang_tong
     FROM giao_dich t
-    FULL JOIN giao_dich_2 t2 ON FALSE -- Dùng FULL JOIN FALSE để kết hợp 2 nguồn dữ liệu tổng hợp
+    FULL JOIN giao_dich_2 t2 ON FALSE
 ),
--- Tính toán các chỉ số phụ thuộc (1-4)
+
 kq_1_4 AS (
     SELECT
-        -- Tồn đầu kỳ (ID 1)
         (SELECT tdk_nau FROM ton_kho_summary) AS t1_nau,
-        (SELECT tdk_trang_tong - tdk_nau FROM ton_kho_summary) AS t1_trang, -- Ngao Trắng = Tổng - Ngao Nâu
-        -- Nhập mua trong kỳ (ID 2)
+        (SELECT tdk_trang_tong - tdk_nau FROM ton_kho_summary) AS t1_trang,
         (SELECT qty FROM nhap_mua_tt) AS t2_nau,
         ((SELECT qty FROM nhap_mua_all) - (SELECT qty FROM nhap_mua_tt)) AS t2_trang,
-        -- Tồn cuối kỳ (ID 3)
         (SELECT tck_nau FROM ton_kho_summary) AS t3_nau,
         ((SELECT tck_trang_tong FROM ton_kho_summary) - (SELECT tck_nau FROM ton_kho_summary)) AS t3_trang,
-        -- Ngao sử dụng tại Long Hải (ID 4)
-        COALESCE(SUM(t.qty) FILTER (
-            WHERE t.hsv_loaimat_ID=1000128 
-        ), 0) * 1.15 AS t4_nau, -- Ngao Nâu (1.15 * sản xuất)
-        (SELECT qty FROM chuyen_kho_2_9) AS t4_trang -- Ngao Trắng (chuyển kho)
+        COALESCE(SUM(t.qty) FILTER (WHERE t.hsv_loaimat_ID = 1000128), 0) * 1.15 AS t4_nau,
+        (SELECT qty FROM chuyen_kho_2_9) AS t4_trang
     FROM nhap_kho_2_9 t
-    CROSS JOIN chuyen_kho_2_9 ck -- Đảm bảo CTE nhỏ có thể được truy cập
+    CROSS JOIN chuyen_kho_2_9 ck
 ),
--- Tính toán Chỉ số 5 (Đưa vào sử dụng trong kỳ)
+
 kq5 AS (
     SELECT
-        -- Ngao Nâu: Tồn Đầu + Nhập Mua - Tồn Cuối - Sử dụng LH
         (t1_nau + t2_nau - t3_nau - t4_nau) AS nau,
-        -- Ngao Trắng: Tồn Đầu + Nhập Mua - Tồn Cuối - Sử dụng LH
         (t1_trang + t2_trang - t3_trang - t4_trang + t4_nau) AS trang
     FROM kq_1_4
 ),
--- Tính toán Chỉ số 6 (Thành phẩm nhập kho từ nguyên liệu)
+
 kq6 AS (
     SELECT
         COALESCE(SUM(qty) FILTER (
-            WHERE hsv_loaimat_ID=1000128 -- Ngao Nâu
-              AND c_campaign_id IN (1000100,1000101,1000104)
+            WHERE hsv_loaimat_ID = 1000128
+              AND c_campaign_id IN (1000100, 1000101, 1000104)
         ), 0) AS nau,
         COALESCE(SUM(qty) FILTER (
-            WHERE hsv_loaimat_ID=1000129 -- Ngao Trắng
-              AND c_campaign_id IN (1000100,1000101,1000104)
+            WHERE hsv_loaimat_ID = 1000129
+              AND c_campaign_id IN (1000100, 1000101, 1000104)
         ), 0) AS trang
     FROM nhap_kho_2_9
 ),
@@ -338,16 +568,15 @@ filter_data as (
 	FROM (
 		select 'I' as id, null as qty 
 		union all
-	    -- I.01
-	    select  'I.01' AS id, SUM(miv.movementqty) AS qty
+	    select 'I.01' AS id, SUM(miv.movementqty) AS qty
 	    FROM m_inout mi
 	    JOIN m_inoutline miv ON mi.m_inout_id = miv.m_inout_id
 	    JOIN hsv_lovansay hl ON hl.hsv_lovansay_id = miv.hsv_lovansay_id
-	    WHERE hl.hsv_loailo_ID=1000008
+	    WHERE hl.hsv_loailo_ID = 1000008
 	      AND mi.issotrx = 'N' and mi.docstatus in ('CL','CO')
 	      AND mi.ad_client_id = $P{AD_CLIENT_ID}
 	      AND mi.dateacct BETWEEN $P{StartDate} AND $P{EndDate}
-	
+
 	    UNION ALL
 	    
 	    SELECT 'I.02', SUM(miv.movementqty)
@@ -367,220 +596,144 @@ filter_data as (
 	    WHERE hl.hsv_loailo_id <> 1000008
 	      AND mi.issotrx = 'N' and mi.docstatus in ('CL','CO')
 	      AND mi.ad_client_id = $P{AD_CLIENT_ID}
-	      AND mi.dateacct BETWEEN $P{StartDate} AND $P{EndDate} and  hl.dateto >= $P{StartDate} and hl.dateto <= $P{EndDate}
-		 union all 
-		
-		select 'I.04' as id,SUM(qtyother) FILTER (
-		    WHERE hsv_sanpham_ID=1000631
-	     )
-	    FROM nhatky_sx 
-	
-		
+	      AND mi.dateacct BETWEEN $P{StartDate} AND $P{EndDate}
+	      AND hl.dateto >= $P{StartDate} and hl.dateto <= $P{EndDate}
+
 		union all 
-		
-		 
-		select 'I.05' as id,SUM(qtyother) FILTER (
-		    WHERE hsv_sanpham_ID=1000632
-	     )
+		select 'I.04' as id, SUM(qtyother) FILTER (WHERE hsv_sanpham_ID = 1000631)
+	    FROM nhatky_sx 
+
+		union all 
+		select 'I.05' as id, SUM(qtyother) FILTER (WHERE hsv_sanpham_ID = 1000632)
 	    FROM nhatky_sx 
 		
 		union all 
-		
-		select 'I.06' as id,SUM(qtyother) FILTER (
-		    WHERE hsv_sanpham_ID=1000633
-	     )
+		select 'I.06' as id, SUM(qtyother) FILTER (WHERE hsv_sanpham_ID = 1000633)
 	    FROM nhatky_sx 
 	    
 		union all 
 		select 'I.07', sum(movementqty) FILTER (
-	    	where m_product_id in (1019437,1019436) and M_Locator_ID=1000303
+	    	where m_product_id in (1019437,1019436) and M_Locator_ID = 1000303
 	    )
 	    from chuyen_kho 
-	    union all 
-		
+
+		union all 
 		select 'I.08' as id, null as qty 
+
 		union all 
-		
 		select 'II' as id, null as qty
+
 		union all 
-		 
-		select 'II.01' as id,SUM(qtyother) FILTER (
-		    WHERE hsv_sanpham_ID=1000613
-	     )
+		select 'II.01' as id, SUM(qtyother) FILTER (WHERE hsv_sanpham_ID = 1000613)
 	    FROM nhatky_sx 
 	    
 		union all 
-		
-		select 'II.02' as id,SUM(qtyother) FILTER (
-		    WHERE hsv_sanpham_ID=1000614
-	     )
+		select 'II.02' as id, SUM(qtyother) FILTER (WHERE hsv_sanpham_ID = 1000614)
 	    FROM nhatky_sx 
+	    
 	    UNION ALL
-	   
-
 	    select 'II.03', sum(qty)
 	    from (
-	    	 select 0 as qty 
-	    	
-	    	 union all 
-		     
-	    	 SELECT 
-		           SUM(productionqty) FILTER (
-		               WHERE c_campaign_id in (1000100,1000101)
-		                 AND M_AttributeSet_ID=1000199
-		                 AND m_attributevalue_id in (1000866,1000867,1000868,1000873,1000874)
-		           )
+	    	select 0 as qty 
+	    	union all 
+		    SELECT SUM(productionqty) FILTER (
+		        WHERE c_campaign_id in (1000100,1000101)
+		          AND M_AttributeSet_ID = 1000199
+		          AND m_attributevalue_id in (1000866,1000867,1000868,1000873,1000874)
+		    )
 		    FROM nhap_kho_tt
-		    
 		    union all 
-		    
-		    SELECT 
-		           SUM(productionqty) FILTER (
-		               WHERE c_campaign_id in (1000100,1000101)
-		                 AND M_AttributeSet_ID=1000199
-		                 AND m_attributevalue_id in (1000869,1000870,1000871,1000872)
-		           )
+		    SELECT SUM(productionqty) FILTER (
+		        WHERE c_campaign_id in (1000100,1000101)
+		          AND M_AttributeSet_ID = 1000199
+		          AND m_attributevalue_id in (1000869,1000870,1000871,1000872)
+		    )
 		    FROM nhap_kho_tt
 	    ) as k
 	    
 	    UNION all
-	    
-	    select 'II.04',sum(qty) 
-		from(
+	    select 'II.04', sum(qty) 
+		from (
 		   	select 0 as qty 
-		    
 		    union all 
-		    
-		   	select -1*SUM(qtyother/1.15) FILTER (
-		    	WHERE hsv_sanpham_ID=1000613
-	     	)
+		   	select -1*SUM(qtyother/1.15) FILTER (WHERE hsv_sanpham_ID = 1000613)
 	    	FROM nhatky_sx 
-	    
-			union all 
-		
-			select -1*SUM(qtyother/1.15) FILTER (
-		    	WHERE hsv_sanpham_ID=1000614
-	     	)
+	    	union all 
+			select -1*SUM(qtyother/1.15) FILTER (WHERE hsv_sanpham_ID = 1000614)
 	    	FROM nhatky_sx 
 			union all 
-			select -1*SUM(qtyother/1.15) FILTER (
-		    	WHERE hsv_sanpham_ID=1000630 
-	     	)
+			select -1*SUM(qtyother/1.15) FILTER (WHERE hsv_sanpham_ID = 1000630)
 	    	FROM nhatky_sx 
 			union all 
-		    
-			select SUM(productionqty)FILTER (
-		      	WHERE c_campaign_id IN (1000104)
-		        	AND m_attributeset_id IN (1000199,1000206,1000198)
+		    select SUM(productionqty) FILTER (
+		        WHERE c_campaign_id IN (1000104)
+		          AND m_attributeset_id IN (1000199,1000206,1000198)
 		    )
 		    FROM nhap_kho		  
 		) as k
 		
 		union all 
-		
-			 
 		select 'II.05', sum(qty)
-		FROM(
+		FROM (
 			select 0 as qty
-			
 			union all 
-			
-			select 
-		           SUM(productionqty) FILTER (
-		               WHERE c_campaign_id IN (1000104)
-		                 AND m_attributeset_id IN (1000199,1000206,1000198)
-		           )
+			select SUM(productionqty) FILTER (
+		        WHERE c_campaign_id IN (1000104)
+		          AND m_attributeset_id IN (1000199,1000206,1000198)
+		    )
 		    FROM nhap_kho
-		    
 		    union all
-		   	select SUM(qtyother/1.15) FILTER (
-		    		WHERE hsv_sanpham_ID=1000630 
-	     		)
+		   	select SUM(qtyother/1.15) FILTER (WHERE hsv_sanpham_ID = 1000630)
 	    	FROM nhatky_sx 
-	    	
 	    	union all 
-	    	
 		    select -1*sum(qty) 
-			from(
+			from (
 			   	select 0 as qty 
-			    
 			    union all 
-			    
-			   	select -1*SUM(qtyother/1.15) FILTER (
-			    	WHERE hsv_sanpham_ID=1000613
-		     	)
+			   	select -1*SUM(qtyother/1.15) FILTER (WHERE hsv_sanpham_ID = 1000613)
 		    	FROM nhatky_sx 
-		    
 		    	union all
-			
-				select -1*SUM(qtyother/1.15) FILTER (
-			    	WHERE hsv_sanpham_ID=1000614
-		     	)
+				select -1*SUM(qtyother/1.15) FILTER (WHERE hsv_sanpham_ID = 1000614)
 		    	FROM nhatky_sx 
-		
 				union all 
-			    
-				select SUM(productionqty)FILTER (
-			      	WHERE c_campaign_id IN (1000104)
-			        	AND m_attributeset_id IN (1000199,1000206,1000198)
+			    select SUM(productionqty) FILTER (
+			        WHERE c_campaign_id IN (1000104)
+			          AND m_attributeset_id IN (1000199,1000206,1000198)
 			    )
 			    FROM nhap_kho		  
 			) as k
-		    
 		) as j
 		
 		union all 
-		
-		select 'II.06' as id,SUM(qtyother) FILTER (
-		    WHERE hsv_sanpham_ID=1000609
-	     )
+		select 'II.06' as id, SUM(qtyother) FILTER (WHERE hsv_sanpham_ID = 1000609)
 	    FROM nhatky_sx 
 		
 		union all 
-		
-		select 'II.07' as id,SUM(qtyother) FILTER (
-		    WHERE hsv_sanpham_ID=1000610
-	     )
+		select 'II.07' as id, SUM(qtyother) FILTER (WHERE hsv_sanpham_ID = 1000610)
 	    FROM nhatky_sx 
 		
 		union all 
-		
-		select 'II.08' as id,SUM(qtyother) FILTER (
-		    WHERE hsv_sanpham_ID=1000611
-	     )
+		select 'II.08' as id, SUM(qtyother) FILTER (WHERE hsv_sanpham_ID = 1000611)
 	    FROM nhatky_sx 
 		
-		union all 
-		
-		select 'II.09' as id,
-	      (
-	        kq6.nau -- Thành phẩm NN nhập kho
-	        - kq5.nau/1.15 -- Đưa vào sử dụng NN
-	        - 0.1 * kq5.trang/1.15 -- 10% Đưa vào sử dụng NT
-    	) AS ngao_nau
-		FROM kq5, kq6
+		union all
+
+        -- II.09: lấy đúng từ kq7_ngao.ngao_nau (= logic kq7 query 2)
+		select 'II.09' as id, (SELECT ngao_nau FROM kq7_ngao) AS qty
 	    
 	    union all 
-	   	select 'II.10' as id,SUM(qtyother) FILTER (
-		    WHERE hsv_sanpham_ID=1000612
-	     )
+	   	select 'II.10' as id, SUM(qtyother) FILTER (WHERE hsv_sanpham_ID = 1000612)
 	    FROM nhatky_sx 
 		
 	    union all 
-		
-		select 'II.11' as id,SUM(qtyother) FILTER (
-		    WHERE hsv_sanpham_ID=1000620
-	     )
+		select 'II.11' as id, SUM(qtyother) FILTER (WHERE hsv_sanpham_ID = 1000620)
 	    FROM nhatky_sx 
 	 
 	    union all 
-		
-		select 'II.12' as id,SUM(qtyother) FILTER (
-		    WHERE hsv_sanpham_ID=1000626
-	     )
+		select 'II.12' as id, SUM(qtyother) FILTER (WHERE hsv_sanpham_ID = 1000626)
 	    FROM nhatky_sx 
+
 		union all 
-		
 		select 'III' as id, null as qty
 	    UNION ALL
 	    SELECT 'III.01',
@@ -591,15 +744,10 @@ filter_data as (
 	    FROM nhap_kho
 	    
 		union all 
-		
-
-		select 'III.02' as id,SUM(qtyother) FILTER (
-		    WHERE hsv_sanpham_ID=1000618
-	     )
+		select 'III.02' as id, SUM(qtyother) FILTER (WHERE hsv_sanpham_ID = 1000618)
 	    FROM nhatky_sx 
 	    
 		union all 
-		
 		select 'IV' as id, null as qty
 	    union all
 		SELECT 'IV.01',
@@ -609,9 +757,7 @@ filter_data as (
 	           )
 	    FROM nhap_kho
 	    union all 
-		select 'IV.02' as id,SUM(qtyother) FILTER (
-		    WHERE hsv_sanpham_ID=1000619
-	     )
+		select 'IV.02' as id, SUM(qtyother) FILTER (WHERE hsv_sanpham_ID = 1000619)
 	    FROM nhatky_sx 
 	    
 	    UNION all
@@ -620,7 +766,7 @@ filter_data as (
 	    SELECT 'V.01',
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id = 1000104
-	                 AND M_AttributeSet_ID=1000199
+	                 AND M_AttributeSet_ID = 1000199
 	                 AND m_attributevalue_id IN (1000866,1000867,1000868,1000873,1000874)
 	           )
 	    FROM nhap_kho_tt
@@ -628,7 +774,7 @@ filter_data as (
 	    SELECT 'V.02',
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id = 1000104
-	                 AND M_AttributeSet_ID=1000199
+	                 AND M_AttributeSet_ID = 1000199
 	                 AND m_attributevalue_id IN (1000869,1000870,1000871,1000872)
 	           )
 	    FROM nhap_kho_tt
@@ -636,417 +782,361 @@ filter_data as (
 	    SELECT 'V.03',
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id = 1000104
-	                   AND m_attributeset_id IN (1000206,1000198)
-	               
+	                 AND m_attributeset_id IN (1000206,1000198)
 	           )
 	    FROM nhap_kho
 	    union all 
 	    SELECT 'V.04',
 	           SUM(productionqty) FILTER (
-	               WHERE C_Campaign_ID=1000105
-	                 AND M_AttributeSet_ID=1000199
+	               WHERE C_Campaign_ID = 1000105
+	                 AND M_AttributeSet_ID = 1000199
 	                 AND m_attributevalue_id IN (1000866,1000867,1000868,1000873,1000874)
 	           )
 	    FROM nhap_kho_tt
 	    union all 
-	      SELECT 'V.05',
+	    SELECT 'V.05',
 	           SUM(productionqty) FILTER (
-	               WHERE C_Campaign_ID=1000105
-	                 AND M_AttributeSet_ID=1000199
+	               WHERE C_Campaign_ID = 1000105
+	                 AND M_AttributeSet_ID = 1000199
 	                 AND m_attributevalue_id IN (1000869,1000870,1000871,1000872)
 	           )
 	    FROM nhap_kho_tt
 	   	union all 
 	    SELECT 'V.06',
 	           SUM(productionqty) FILTER (
-	               WHERE C_Campaign_ID=1000105
-	                   AND m_attributeset_id in (1000206,1000198)
-	               
+	               WHERE C_Campaign_ID = 1000105
+	                 AND m_attributeset_id in (1000206,1000198)
 	           )
 	    FROM nhap_kho
 	    union all 
 	    SELECT 'V.07',
 	           SUM(productionqty) FILTER (
-	               WHERE C_Campaign_ID=1000107
-	                 AND M_AttributeSet_ID=1000199
+	               WHERE C_Campaign_ID = 1000107
+	                 AND M_AttributeSet_ID = 1000199
 	                 AND m_attributevalue_id IN (1000866,1000867,1000868,1000873,1000874)
 	           )
 	    FROM nhap_kho_tt
-	    
 	    union all 
-	    
 	    SELECT 'V.08',
 	           SUM(productionqty) FILTER (
-	               WHERE C_Campaign_ID=1000107
-	                 AND M_AttributeSet_ID=1000199
+	               WHERE C_Campaign_ID = 1000107
+	                 AND M_AttributeSet_ID = 1000199
 	                 AND m_attributevalue_id IN (1000869,1000870,1000871,1000872)
 	           )
 	    FROM nhap_kho_tt
-	    
 	    union all 
-	    
-	    select 'V.09' as id,SUM(qtyother) FILTER (
-		    WHERE hsv_sanpham_ID=1000615
-	     )
+	    select 'V.09' as id, SUM(qtyother) FILTER (WHERE hsv_sanpham_ID = 1000615)
 	    FROM nhatky_sx 
 		
 	    union all
-	    
-	    select 'V.10' as id,SUM(qtyother) FILTER (
-		    WHERE hsv_sanpham_ID=1000616
-	     )
+	    select 'V.10' as id, SUM(qtyother) FILTER (WHERE hsv_sanpham_ID = 1000616)
 	    FROM nhatky_sx 
 	    union all
 	   	SELECT 'V.11',
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000105,1000104)
-	               	 and  M_AttributeSet_ID=1000199
-	                 AND value1 =1000905
-	                 and value2 in (1000009,1000010,1000170,1000849,1000853,1000166,1000007)
-	                 and M_Attribute_ID=1000150
+	             	 AND M_AttributeSet_ID = 1000199
+	                 AND value1 = 1000905
+	                 AND value2 in (1000009,1000010,1000170,1000849,1000853,1000166,1000007)
+	                 AND M_Attribute_ID = 1000150
 	           )
 	    FROM nhap_kho_tt_tt
 	   union all 
 	   SELECT 'V.12',
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000105,1000104)
-	              	 and  M_AttributeSet_ID=1000199
-	                 AND value1 =1000905
-	                 and value2 in (1000848,1000164,1000008,1000847,1000233,1000161,1000005,1000176,1000160,1000200)
-	                 and M_Attribute_ID=1000150
+	              	 AND M_AttributeSet_ID = 1000199
+	                 AND value1 = 1000905
+	                 AND value2 in (1000848,1000164,1000008,1000847,1000233,1000161,1000005,1000176,1000160,1000200)
+	                 AND M_Attribute_ID = 1000150
 	           )
 	    FROM nhap_kho_tt_tt
-
 	    union all 
-	     SELECT 'V.13',
+	    SELECT 'V.13',
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000105,1000104)
-	              	 and  M_AttributeSet_ID=1000199
-	                 AND value1 =1000904
-	                 and value2 in (1000009,1000010,1000170,1000849,1000853,1000166,1000007)
-	                 and M_Attribute_ID=1000150
+	              	 AND M_AttributeSet_ID = 1000199
+	                 AND value1 = 1000904
+	                 AND value2 in (1000009,1000010,1000170,1000849,1000853,1000166,1000007)
+	                 AND M_Attribute_ID = 1000150
 	           )
 	    FROM nhap_kho_tt_tt
 	    union all 
-	    
 	    SELECT 'V.14',
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000105,1000104)
-	              	 and  M_AttributeSet_ID=1000199
-	                 AND value1 =1000904
-	                 and value2 in (1000848,1000164,1000008,1000847,1000233,1000161,1000005,1000176,1000160,1000200)
-	                 and M_Attribute_ID=1000150
+	              	 AND M_AttributeSet_ID = 1000199
+	                 AND value1 = 1000904
+	                 AND value2 in (1000848,1000164,1000008,1000847,1000233,1000161,1000005,1000176,1000160,1000200)
+	                 AND M_Attribute_ID = 1000150
 	           )
 	    FROM nhap_kho_tt_tt
 	    union all 
 		SELECT 'V.15',
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000105,1000104)
-	              	 and  M_AttributeSet_ID=1000199
-	                 AND value1 =1000904
-	                 and value2 in (1000009,1000010,1000170,1000849,1000853,1000166,1000007)
-	                 and M_Attribute_ID=1000150
+	              	 AND M_AttributeSet_ID = 1000199
+	                 AND value1 = 1000904
+	                 AND value2 in (1000009,1000010,1000170,1000849,1000853,1000166,1000007)
+	                 AND M_Attribute_ID = 1000150
 	           )
 	    FROM nhap_kho_tt_tt
 	    union all 
 	    SELECT 'V.16',
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000105,1000104)
-	              	 and  M_AttributeSet_ID=1000199
-	                 AND value1 =1000904
-	   				and value2 in (1000848,1000164,1000008,1000847,1000233,1000161,1000005,1000176,1000160,1000200)
-	     			and M_Attribute_ID=1000150
+	              	 AND M_AttributeSet_ID = 1000199
+	                 AND value1 = 1000904
+	   				AND value2 in (1000848,1000164,1000008,1000847,1000233,1000161,1000005,1000176,1000160,1000200)
+	     			AND M_Attribute_ID = 1000150
 	           )
 	    FROM nhap_kho_tt_tt
-	   
-	    
 	    union all 
-	    
-	    select 'V.17' as id,SUM(qtyother) FILTER (
-		    WHERE hsv_sanpham_ID=1000625
-	    )
+	    select 'V.17' as id, SUM(qtyother) FILTER (WHERE hsv_sanpham_ID = 1000625)
 	    FROM nhatky_sx 
 	    union all
-	   
 	    SELECT 'V.081',
 	           SUM(productionqty) FILTER (
-	               WHERE C_Campaign_ID=1000107
-	              	 and M_AttributeSet_ID=1000198	                
+	               WHERE C_Campaign_ID = 1000107
+	              	 AND M_AttributeSet_ID = 1000198	                
 	           )
 	    FROM nhap_kho_tt
-	    
 	    union all 
-	    
-	    select 'V.18' as id,SUM(qtyother) FILTER (
-		    WHERE hsv_sanpham_ID=1000627
-	     )
+	    select 'V.18' as id, SUM(qtyother) FILTER (WHERE hsv_sanpham_ID = 1000627)
 	    FROM nhatky_sx 
-	    
 	    union all 
-	    
-	    select 'V.19' as id,SUM(qtyother) FILTER (
-		    WHERE hsv_sanpham_ID=1000628
-	    )
+	    select 'V.19' as id, SUM(qtyother) FILTER (WHERE hsv_sanpham_ID = 1000628)
 	    FROM nhatky_sx 
-	   	
-	    union all 
-	    
-	    select 'V.20' as id,SUM(qtyother) FILTER (
-		    WHERE hsv_sanpham_ID=1000617
-	    )
+	   	union all 
+	    select 'V.20' as id, SUM(qtyother) FILTER (WHERE hsv_sanpham_ID = 1000617)
 	    FROM nhatky_sx 
-	   	    
-	    union all
-	    select 'V.21' as id,SUM(productionqty) FILTER (
+	   	union all
+	    select 'V.21' as id, SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000104)
 	                 AND m_attributeset_id = 1000199
-	                 and value1 in (1000880,1000891) and  att1 =1000146 
-	                 and value2=1000917 and att2=1000153 
+	                 AND value1 in (1000880,1000891) AND att1 = 1000146 
+	                 AND value2 = 1000917 AND att2 = 1000153 
 	           )
 	    FROM nhap_kho_tt_tt_tt 
 		union all
-		select 'V.22' as id,SUM(productionqty) FILTER (
+		select 'V.22' as id, SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000105)
 	                 AND m_attributeset_id = 1000199
-	                 AND value1 in (1000880,1000891) and  att1=1000146 
-	                  and value2 <> 1000916 and att2 = 1000153 
+	                 AND value1 in (1000880,1000891) AND att1 = 1000146 
+	                 AND value2 <> 1000916 AND att2 = 1000153 
 	           )  
 	    FROM nhap_kho_tt_tt_tt 
 	    union all 
-	    select  'VI' as id, null as qty
-	    
+	    select 'VI' as id, null as qty
 	    union all 
-	   
 	    SELECT 'VI.01',
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000105,1000104)
-	                 AND M_AttributeSet_ID=1000199
+	                 AND M_AttributeSet_ID = 1000199
 	                 AND m_attributevalue_id IN (1000882,1000886,1000889)
 	           )
-	   FROM nhap_kho_tt
-	   
-	   union all 
-	   
-	   SELECT 'VI.02',
+	    FROM nhap_kho_tt
+	    union all 
+	    SELECT 'VI.02',
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000105,1000104)
-	                 AND M_AttributeSet_ID=1000199
+	                 AND M_AttributeSet_ID = 1000199
 	                 AND m_attributevalue_id IN (1000892,1000893)
 	           )
-	   FROM nhap_kho_tt
-	   union all 
-	   SELECT 'VI.03',
+	    FROM nhap_kho_tt
+	    union all 
+	    SELECT 'VI.03',
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000105,1000104)
-	                 AND M_AttributeSet_ID=1000199
+	                 AND M_AttributeSet_ID = 1000199
 	                 AND m_attributevalue_id IN (1000877,1000890)
 	           )
 	    FROM nhap_kho_tt
 	    union all 
-	   SELECT 'VI.04',
+	    SELECT 'VI.04',
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000105,1000104)
-	                 AND M_AttributeSet_ID=1000199
-	                 AND M_AttributeValue_ID=1000876
+	                 AND M_AttributeSet_ID = 1000199
+	                 AND M_AttributeValue_ID = 1000876
 	           )
 	    FROM nhap_kho_tt
 	    union all 
-	   SELECT 'VI.05',
+	    SELECT 'VI.05',
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000105,1000104)
-	                 AND M_AttributeSet_ID=1000199
-	                 AND M_AttributeValue_ID=1000888
+	                 AND M_AttributeSet_ID = 1000199
+	                 AND M_AttributeValue_ID = 1000888
 	           )
 	    FROM nhap_kho_tt
-	    
-	      union all 
-	   SELECT 'VI.06',
+	    union all 
+	    SELECT 'VI.06',
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000105,1000104)
-	                 AND M_AttributeSet_ID=1000199
-	                 AND m_attributevalue_id in  (1000884,1000885)
+	                 AND M_AttributeSet_ID = 1000199
+	                 AND m_attributevalue_id in (1000884,1000885)
 	           )
 	    FROM nhap_kho_tt
-	      union all 
-	   SELECT 'VI.07',
+	    union all 
+	    SELECT 'VI.07',
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000105,1000104)
-	                 AND M_AttributeSet_ID=1000199
-	                 AND m_attributevalue_id in   (1000883,1000875)
+	                 AND M_AttributeSet_ID = 1000199
+	                 AND m_attributevalue_id in (1000883,1000875)
 	           )
 	    FROM nhap_kho_tt
-	   
-	   union all 
-	   SELECT 'VI.08',
+	    union all 
+	    SELECT 'VI.08',
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000105,1000104)
-	                 AND M_AttributeSet_ID=1000199
-	                 AND m_attributevalue_id in   (1000878,1000887)
+	                 AND M_AttributeSet_ID = 1000199
+	                 AND m_attributevalue_id in (1000878,1000887)
 	           )
 	    FROM nhap_kho_tt
-	     
-	         union all 
-	   SELECT 'VI.09',
+	    union all 
+	    SELECT 'VI.09',
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000105,1000104)
-	                 AND M_AttributeSet_ID=1000199
+	                 AND M_AttributeSet_ID = 1000199
 	                 AND m_attributevalue_id in (1000879,1000881)
 	           )
 	    FROM nhap_kho_tt
 	    union ALL
-	    SELECT 'VII',null as qty
+	    SELECT 'VII', null as qty
 	    UNION all 
 	    SELECT 'VII.01',
 	           SUM(productionqty) FILTER (
-	               WHERE M_Locator_ID=1000299
-	                   AND m_attributeset_id IN (1000199,1000206,1000198,1000200,1000201,1000202,1000203,1000208)
-	               
+	               WHERE M_Locator_ID = 1000299
+	                 AND m_attributeset_id IN (1000199,1000206,1000198,1000200,1000201,1000202,1000203,1000208)
 	           )
 	    FROM nhap_kho
 	    union all 
 	    select 'VII.02', 
 	    	SUM(QtyInternalUse) FILTER (
-	    		where m_attributeset_id  in (1000199,1000206,1000198,1000200,1000201,1000202,1000203,1000208)
-	    		and M_Locator_ID=1000299
+	    		WHERE m_attributeset_id IN (1000199,1000206,1000198,1000200,1000201,1000202,1000203,1000208)
+	    		AND M_Locator_ID = 1000299
 	    	)
-		from xuat_kho
+		FROM xuat_kho
 		union all 
 		select 'VII.03',
 		 SUM(qtyentered) FILTER (
-		 	where m_attributeset_id  in (1000199,1000200,1000202,1000208)
-	    		and M_Locator_ID=1000299
+		 	WHERE m_attributeset_id IN (1000199,1000200,1000202,1000208)
+	    		AND M_Locator_ID = 1000299
 		 )
-		 from xuat_ban 
-		
-	     union ALL
-	     select 'VII.04' as id,SUM(qtyentered) FILTER (
-		    WHERE M_Product_ID=1019844
-	     )
-	     FROM nhap_mua  
-	    
-	     union ALL
-	    
-	    select 'VII.05' as id,SUM(qtyentered) FILTER (
-		    WHERE m_attributeset_id  in (1000199,1000200,1000202,1000208) 
-		    and M_Locator_ID=1000299
-	     )
-	      FROM xuat_ban  
-	     
-	     union ALL
-	   
-	    select 'VII.06' as id,SUM(qtyother) FILTER (
-		    WHERE hsv_sanpham_ID=1000624
-	    )
-	    FROM nhatky_sx 
-	       union ALL
-	   
-	    select 'VII.07' as id,SUM(qtyother) FILTER (
-		    WHERE hsv_sanpham_ID=1000629
-	    )
-	    FROM nhatky_sx 
-	    
-	    
+		FROM xuat_ban 
+		union ALL
+	    select 'VII.04' as id, SUM(qtyentered) FILTER (WHERE M_Product_ID = 1019844)
+	    FROM nhap_mua  
 	    union ALL
-	    SELECT 'VIII',null as qty
+	    select 'VII.05' as id, SUM(qtyentered) FILTER (
+		    WHERE m_attributeset_id IN (1000199,1000200,1000202,1000208) 
+		    AND M_Locator_ID = 1000299
+	    )
+	    FROM xuat_ban  
+	    union ALL
+	    select 'VII.06' as id, SUM(qtyother) FILTER (WHERE hsv_sanpham_ID = 1000624)
+	    FROM nhatky_sx 
+	    union ALL
+	    select 'VII.07' as id, SUM(qtyother) FILTER (WHERE hsv_sanpham_ID = 1000629)
+	    FROM nhatky_sx 
+	    union ALL
+	    SELECT 'VIII', null as qty
 	    union all 
-	   SELECT 'VIII.01',
+	    SELECT 'VIII.01',
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000100,1000101)
-	                 AND M_AttributeSet_ID=1000199
-	                 AND m_attributevalue_id in  (1000882,1000886,1000889)
+	                 AND M_AttributeSet_ID = 1000199
+	                 AND m_attributevalue_id in (1000882,1000886,1000889)
 	           )
 	    FROM nhap_kho_tt
-	   
-	       union all 
-	   SELECT 'VIII.02',
+	    union all 
+	    SELECT 'VIII.02',
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000100,1000101)
-	                 AND M_AttributeSet_ID=1000199
+	                 AND M_AttributeSet_ID = 1000199
 	                 AND m_attributevalue_id in (1000892,1000893)
 	           )
 	    FROM nhap_kho_tt
-	        union all 
-	   SELECT 'VIII.03',
+	    union all 
+	    SELECT 'VIII.03',
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000100,1000101)
-	                 AND M_AttributeSet_ID=1000199
+	                 AND M_AttributeSet_ID = 1000199
 	                 AND m_attributevalue_id in (1000877,1000890)
 	           )
 	    FROM nhap_kho_tt
-	
-	     union all 
-	   SELECT 'VIII.04',
+	    union all 
+	    SELECT 'VIII.04',
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000100,1000101)
-	                 AND M_AttributeSet_ID=1000199
-	                 AND M_AttributeValue_ID=1000876
-	           )
-	    FROM nhap_kho_tt
-	   union all 
-	   SELECT 'VIII.05',
-	           SUM(productionqty) FILTER (
-	               WHERE c_campaign_id in (1000100,1000101)
-	                 AND M_AttributeSet_ID=1000199
-	                 AND M_AttributeValue_ID=1000888
+	                 AND M_AttributeSet_ID = 1000199
+	                 AND M_AttributeValue_ID = 1000876
 	           )
 	    FROM nhap_kho_tt
 	    union all 
-	   SELECT 'VIII.06',
+	    SELECT 'VIII.05',
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000100,1000101)
-	                 AND M_AttributeSet_ID=1000199
-	                 AND m_attributevalue_id in  (1000884,1000885)
+	                 AND M_AttributeSet_ID = 1000199
+	                 AND M_AttributeValue_ID = 1000888
 	           )
 	    FROM nhap_kho_tt
-	      union all 
-	   SELECT 'VIII.07',
+	    union all 
+	    SELECT 'VIII.06',
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000100,1000101)
-	                 AND M_AttributeSet_ID=1000199
-	                 AND m_attributevalue_id in   (1000883,1000875)
+	                 AND M_AttributeSet_ID = 1000199
+	                 AND m_attributevalue_id in (1000884,1000885)
 	           )
 	    FROM nhap_kho_tt
-	     union all 
-	   SELECT 'VIII.08',
+	    union all 
+	    SELECT 'VIII.07',
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000100,1000101)
-	                 AND M_AttributeSet_ID=1000199
-	                 AND m_attributevalue_id in   (1000878,1000887)
+	                 AND M_AttributeSet_ID = 1000199
+	                 AND m_attributevalue_id in (1000883,1000875)
 	           )
 	    FROM nhap_kho_tt
-	       union all 
-	   SELECT 'VIII.09',
+	    union all 
+	    SELECT 'VIII.08',
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000100,1000101)
-	                 AND M_AttributeSet_ID=1000199
+	                 AND M_AttributeSet_ID = 1000199
+	                 AND m_attributevalue_id in (1000878,1000887)
+	           )
+	    FROM nhap_kho_tt
+	    union all 
+	    SELECT 'VIII.09',
+	           SUM(productionqty) FILTER (
+	               WHERE c_campaign_id in (1000100,1000101)
+	                 AND M_AttributeSet_ID = 1000199
 	                 AND m_attributevalue_id in (1000879,1000881)
 	           )
 	    FROM nhap_kho_tt
-	       union all 
-	   SELECT 'VIII.10',
+	    union all 
+	    SELECT 'VIII.10',
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000100,1000101)
-	                 AND M_AttributeSet_ID=1000199
+	                 AND M_AttributeSet_ID = 1000199
 	                 AND m_attributevalue_id in (1000866,1000867,1000868,1000873,1000874)
 	           )
 	    FROM nhap_kho_tt
-	         union all 
-	   SELECT 'VIII.11',
+	    union all 
+	    SELECT 'VIII.11',
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000100,1000101)
-	                 AND M_AttributeSet_ID=1000199
+	                 AND M_AttributeSet_ID = 1000199
 	                 AND m_attributevalue_id in (1000869,1000870,1000871,1000872)
 	           )
 	    FROM nhap_kho_tt
-	          union all 
-	   SELECT 'VIII.12',
+	    union all 
+	    SELECT 'VIII.12',
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000100,1000101)
 	                 AND m_attributeset_id in (1000206,1000198)  
 	           )
 	    FROM nhap_kho
 	    union all 
-	   SELECT 'X' AS code, NULL AS qty
+	    SELECT 'X' AS code, NULL AS qty
 		UNION ALL 
 		SELECT 'X.01',
 		       SUM(qtyentered) FILTER (
@@ -1071,7 +1161,7 @@ filter_data as (
 		UNION ALL    
 		SELECT 'X.04',
 		       SUM(qtyentered) FILTER (
-		           WHERE M_AttributeValue_ID=1000888
+		           WHERE M_AttributeValue_ID = 1000888
 		             AND m_attributeset_id IN (1000199,1000200)   
 		       )
 		FROM xuat_ban_tt
@@ -1085,48 +1175,45 @@ filter_data as (
 		UNION ALL 
 		SELECT 'X.06',
 		       SUM(qtyentered) FILTER (
-		           WHERE m_attributevalue_id in   (1000883,1000875)
+		           WHERE m_attributevalue_id in (1000883,1000875)
 		             AND m_attributeset_id IN (1000199,1000200)   
 		       )
 		FROM xuat_ban_tt
 		UNION ALL 
 		SELECT 'X.07',
 		       SUM(qtyentered) FILTER (
-		           WHERE m_attributevalue_id in   (1000878,1000887)
+		           WHERE m_attributevalue_id in (1000878,1000887)
 		             AND m_attributeset_id IN (1000199,1000200)  
 		       )
 		FROM xuat_ban_tt
 		UNION ALL 
 		SELECT 'X.08',
 		       SUM(qtyentered) FILTER (
-		           WHERE M_AttributeSet_ID=1000199 
-		           and M_AttributeValue_ID=1000910
-		           
+		           WHERE M_AttributeSet_ID = 1000199 
+		           AND M_AttributeValue_ID = 1000910
 		       )
 		FROM xuat_ban_tt
 		UNION ALL 
 		SELECT 'X.09',
 		       SUM(qtyentered) FILTER (
-		           WHERE m_attributeset_id  in (1000199,1000200,1000202,1000208) 
+		           WHERE m_attributeset_id IN (1000199,1000200,1000202,1000208) 
 		       )
 		FROM xuat_ban
 		union all 
-		 select 'X.10' as id,SUM(qtyother) FILTER (
-		    WHERE hsv_sanpham_ID=1000623
-	     )
+		select 'X.10' as id, SUM(qtyother) FILTER (WHERE hsv_sanpham_ID = 1000623)
 	    FROM nhatky_sx 
-		union  all 
-		select  'XI', null 
 		union all 
-		select  'XI.01', 
+		select 'XI', null 
+		union all 
+		select 'XI.01', 
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000105,1000104)
 	                 AND m_attributeset_id in (1000200,1000201)
-	                 AND M_AttributeValue_ID=1000926
+	                 AND M_AttributeValue_ID = 1000926
 	           )
 	    FROM nhap_kho_tt
 	    union all 
-		select  'XI.02', 
+		select 'XI.02', 
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000105,1000104)
 	                 AND m_attributeset_id in (1000200,1000201)
@@ -1134,23 +1221,23 @@ filter_data as (
 	           )
 	    FROM nhap_kho_tt
   		union all 
-		select  'XI.03', 
+		select 'XI.03', 
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000105,1000104)
 	                 AND m_attributeset_id in (1000200,1000201)
-	                 AND M_AttributeValue_ID=1000924
+	                 AND M_AttributeValue_ID = 1000924
 	           )
 	    FROM nhap_kho_tt
 	  	union all 
-		select  'XI.04', 
+		select 'XI.04', 
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000105,1000104)
 	                 AND m_attributeset_id in (1000200,1000201)
-	                 AND M_AttributeValue_ID=1000925
+	                 AND M_AttributeValue_ID = 1000925
 	           )
 	    FROM nhap_kho_tt
 	    union all 
-	    select  'XI.05', 
+	    select 'XI.05', 
 		           SUM(productionqty) FILTER (
 		               WHERE c_campaign_id in (1000105,1000104)
 		                 AND m_attributeset_id in (1000200,1000201)
@@ -1158,232 +1245,225 @@ filter_data as (
 		           )
 		FROM nhap_kho_tt
 		union all 
-		select  'XI.06', 
+		select 'XI.06', 
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000105,1000104,1000107)
-	                 AND m_attributeset_id =1000200
+	                 AND m_attributeset_id = 1000200
 	                 AND m_attributevalue_id in (1000894,1000897)
 	           )
 	    FROM nhap_kho_tt
 	    union all 
-		select  'XI.07', 
+		select 'XI.07', 
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000105,1000104,1000107)
 	                 AND m_attributeset_id = 1000200
-	                 AND M_AttributeValue_ID =1000896
+	                 AND M_AttributeValue_ID = 1000896
 	           )
 	    FROM nhap_kho_tt
-	    
 	    union all 
-	    
-		select  'XI.08', 
+		select 'XI.08', 
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000105,1000104,1000107)
 	                 AND m_attributeset_id = 1000200
-	                 AND m_attributevalue_id =1000898
+	                 AND m_attributevalue_id = 1000898
 	           )
 	    FROM nhap_kho_tt
-	    
 	    union all 
-	    select  'XI.09', null
+	    select 'XI.09', null
 		union all 
-		select  'XI.10', 
+		select 'XI.10', 
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000105,1000104,1000107)
 	                 AND m_attributeset_id = 1000200
-	                 AND M_AttributeValue_ID=1000895
+	                 AND M_AttributeValue_ID = 1000895
 	           )
 	    FROM nhap_kho_tt
 		union all 
-		select  'XII', null
+		select 'XII', null
 		union all
-		select  'XII.01',
+		select 'XII.01',
 			sum(productionqty) FILTER (
-			 where m_product_id in (1019527,1019528,1019529,1019530,1019524,1019525)
-			 and c_campaign_id in (1000105,1000104)
+			 WHERE m_product_id in (1019527,1019528,1019529,1019530,1019524,1019525)
+			 AND c_campaign_id in (1000105,1000104)
 			)
-		from nhap_kho
+		FROM nhap_kho
 		union all
-		select  'XII.02',
+		select 'XII.02',
 			sum(productionqty) FILTER (
-			 where m_product_id in (1019527,1019528,1019529,1019530,1019524,1019525)
-			 and c_campaign_id in (1000105,1000104,1000107)
+			 WHERE m_product_id in (1019527,1019528,1019529,1019530,1019524,1019525)
+			 AND c_campaign_id in (1000105,1000104,1000107)
 			)
-		from nhap_kho
+		FROM nhap_kho
 		union all
-		select  'XII.03',
+		select 'XII.03',
 			sum(productionqty) FILTER (
-			 where m_product_id in (1019878,1019533,1019532)
-			 and c_campaign_id in (1000105,1000104)
+			 WHERE m_product_id in (1019878,1019533,1019532)
+			 AND c_campaign_id in (1000105,1000104)
 			)
-		from nhap_kho
+		FROM nhap_kho
 		union all
-		select  'XII.04',
+		select 'XII.04',
 			sum(productionqty) FILTER (
-			 where m_product_id in (1019526)
-			 and c_campaign_id in (1000105,1000104)
+			 WHERE m_product_id in (1019526)
+			 AND c_campaign_id in (1000105,1000104)
 			)
-		from nhap_kho
-		
+		FROM nhap_kho
 		union all
-		
-		select  'XII.05',
+		select 'XII.05',
 			sum(productionqty) FILTER (
-			 where m_product_id in (1019526)
-			 and c_campaign_id in (1000105,1000104)
+			 WHERE m_product_id in (1019526)
+			 AND c_campaign_id in (1000105,1000104)
 			)
-		from nhap_kho
+		FROM nhap_kho
 		union all
-		
-		select  'XII.06',sum(qty) as qty
-		from(
+		select 'XII.06', sum(qty) as qty
+		FROM (
 			select 0 as qty 
 			union all
-			
 			select -1*0.2*sum(productionqty) FILTER (
-				 where m_product_id in (1019528,1019529) 
-				 	and c_campaign_id in (1000105,1000104)
+				 WHERE m_product_id in (1019528,1019529) 
+				 	AND c_campaign_id in (1000105,1000104)
 			)			
-			from nhap_kho
-			
+			FROM nhap_kho
 			union all 
-			
 			select -1*0.1*sum(productionqty) FILTER (
-				 where M_Product_ID=1019530
-				 	and c_campaign_id in (1000105,1000104)
-				)
-			from nhap_kho
-				union all 
-			
+				 WHERE M_Product_ID = 1019530
+				 	AND c_campaign_id in (1000105,1000104)
+			)
+			FROM nhap_kho
+			union all 
 			select -1*0.1*sum(productionqty) FILTER (
-				 where m_product_id in  (1019524,1019525) and M_AttributeValue_ID=1000913
-				 	and c_campaign_id in (1000105,1000104)
-				)
-			from nhap_kho_tt
+				 WHERE m_product_id in (1019524,1019525) AND M_AttributeValue_ID = 1000913
+				 	AND c_campaign_id in (1000105,1000104)
+			)
+			FROM nhap_kho_tt
 			union all 
 			select -1*0.2*sum(productionqty) FILTER (
-				 where m_product_id in  (1019524,1019525) and M_AttributeValue_ID=1000914
-				 	and c_campaign_id in (1000105,1000104)
-				)
-			from nhap_kho_tt
+				 WHERE m_product_id in (1019524,1019525) AND M_AttributeValue_ID = 1000914
+				 	AND c_campaign_id in (1000105,1000104)
+			)
+			FROM nhap_kho_tt
 			union all 
 			select -1*0.25*sum(productionqty) FILTER (
-				 where m_product_id in  (1019524,1019525) and M_AttributeValue_ID=1000915
-				 	and c_campaign_id in (1000105,1000104)
-				)
-			from nhap_kho_tt
+				 WHERE m_product_id in (1019524,1019525) AND M_AttributeValue_ID = 1000915
+				 	AND c_campaign_id in (1000105,1000104)
+			)
+			FROM nhap_kho_tt
 		) as k 
 		union all
-		select  'XII.07',sum(qty) as qty
-		from(
+		select 'XII.07', sum(qty) as qty
+		FROM (
 			select 0 as qty 
 			union all
-			
 			select -1*0.2*sum(productionqty) FILTER (
-				 where m_product_id in (1019528,1019529) 
-				 	and c_campaign_id in (1000105,1000104,1000107)
+				 WHERE m_product_id in (1019528,1019529) 
+				 	AND c_campaign_id in (1000105,1000104,1000107)
 			)			
-			from nhap_kho
-			
+			FROM nhap_kho
 			union all 
-			
 			select -1*0.1*sum(productionqty) FILTER (
-				 where M_Product_ID=1019530
-				 	and c_campaign_id in (1000105,1000104,1000107)
-				)
-			from nhap_kho
-				union all 
-			
+				 WHERE M_Product_ID = 1019530
+				 	AND c_campaign_id in (1000105,1000104,1000107)
+			)
+			FROM nhap_kho
+			union all 
 			select -1*0.1*sum(productionqty) FILTER (
-				 where m_product_id in  (1019524,1019525) and M_AttributeValue_ID=1000913
-				 	and c_campaign_id in (1000105,1000104,1000107)
-				)
-			from nhap_kho_tt
+				 WHERE m_product_id in (1019524,1019525) AND M_AttributeValue_ID = 1000913
+				 	AND c_campaign_id in (1000105,1000104,1000107)
+			)
+			FROM nhap_kho_tt
 			union all 
 			select -1*0.2*sum(productionqty) FILTER (
-				 where m_product_id in  (1019524,1019525) and M_AttributeValue_ID=1000914
-				 	and c_campaign_id in (1000105,1000104,1000107)
-				)
-			from nhap_kho_tt
+				 WHERE m_product_id in (1019524,1019525) AND M_AttributeValue_ID = 1000914
+				 	AND c_campaign_id in (1000105,1000104,1000107)
+			)
+			FROM nhap_kho_tt
 			union all 
 			select -1*0.25*sum(productionqty) FILTER (
-				 where m_product_id in  (1019524,1019525) and M_AttributeValue_ID=1000915
-				 	and c_campaign_id in (1000105,1000104,1000107)
-				)
-			from nhap_kho_tt
+				 WHERE m_product_id in (1019524,1019525) AND M_AttributeValue_ID = 1000915
+				 	AND c_campaign_id in (1000105,1000104,1000107)
+			)
+			FROM nhap_kho_tt
 		) as k 
 		union all 
-		select  'XII.08', 
+		select 'XII.08', 
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000105,1000104,1000107)
-	                 AND M_AttributeSet_ID=1000202
+	                 AND M_AttributeSet_ID = 1000202
 	                 AND m_attributevalue_id in (1000894,1000897)
 	           )
 	    FROM nhap_kho_tt
 	    union all 
-		select  'XII.09', 
+		select 'XII.09', 
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000105,1000104,1000107)
-	                 AND M_AttributeSet_ID=1000202
-	                 AND M_AttributeValue_ID=1000896
+	                 AND M_AttributeSet_ID = 1000202
+	                 AND M_AttributeValue_ID = 1000896
 	           )
 	    FROM nhap_kho_tt
-	        union all 
-		select  'XII.10', 
+	    union all 
+		select 'XII.10', 
 	           SUM(productionqty) FILTER (
 	               WHERE c_campaign_id in (1000105,1000104,1000107)
-	                 AND M_AttributeSet_ID=1000202
-	                 AND M_AttributeValue_ID=1000895
+	                 AND M_AttributeSet_ID = 1000202
+	                 AND M_AttributeValue_ID = 1000895
 	           )
 	    FROM nhap_kho_tt
 		union all
-		select  'XIII', null
+		select 'XIII', null
 		union all 
-		select  'XIII.01',
+		select 'XIII.01',
 			sum(productionqty) FILTER (
-			 where m_product_id in (1019532,1019878)
-			 and c_campaign_id in (1000105,1000104)
+			 WHERE m_product_id in (1019532,1019878)
+			 AND c_campaign_id in (1000105,1000104)
 			)
-		from nhap_kho
-		
+		FROM nhap_kho
 		union all 
-			select  'XIII.02',
+		select 'XIII.02',
 			sum(productionqty) FILTER (
-			 where m_product_id in (1019879,1019534)
-			 and c_campaign_id in (1000105,1000104)
+			 WHERE m_product_id in (1019879,1019534)
+			 AND c_campaign_id in (1000105,1000104)
 			)
-		from nhap_kho
+		FROM nhap_kho
 		union all 
-			select  'XIII.03',
+		select 'XIII.03',
 			sum(productionqty) FILTER (
-			 where m_product_id in (1019532,1019533,1019534)
-			 and c_campaign_id in (1000105,1000104,1000107) and M_AttributeValue_ID=1000899
+			 WHERE m_product_id in (1019532,1019533,1019534)
+			 AND c_campaign_id in (1000105,1000104,1000107) AND M_AttributeValue_ID = 1000899
 			)
-		from nhap_kho_tt 
+		FROM nhap_kho_tt 
 		union all 
-			select  'XIII.04',
+		select 'XIII.04',
 			sum(productionqty) FILTER (
-			 where m_product_id in (1019532,1019533,1019534) 
-			 and c_campaign_id in (1000105,1000104,1000107) and M_AttributeValue_ID=1000900
+			 WHERE m_product_id in (1019532,1019533,1019534) 
+			 AND c_campaign_id in (1000105,1000104,1000107) AND M_AttributeValue_ID = 1000900
 			)
-		from nhap_kho_tt 
+		FROM nhap_kho_tt 
 		union all 
-		select  'XIV', null
+		select 'XIV', null
 		union all 
-		select 'XIV.01' as id,SUM(qtyother) FILTER (
-		    WHERE hsv_sanpham_ID=1000621
-	     )
+		select 'XIV.01' as id, SUM(qtyother) FILTER (WHERE hsv_sanpham_ID = 1000621)
 	    FROM nhatky_sx 
 	) t
 	GROUP BY id
 ) 
 
-select dm.hsv_stt,split_part(dm.value, '.', 1) as group_value,dm.value,dm.name,fil.qty,dg.hsv_dongialuong,case when dm.value in ('II.01','II.02','II.06','II.07','II.08','II.11','II.12') then fil.qty*dg.hsv_dongialuong/1.15 													   	
-													else fil.qty*dg.hsv_dongialuong end as tt
-from filter_data fil 
-join danhmuc dm on fil.id = dm.value
-left join dongia dg on dg.hsv_luongsxvh_id = dm.hsv_luongsxvh_id
-order by dm.value,dm.hsv_stt::numeric::int asc]]>
+SELECT
+    dm.hsv_stt,
+    split_part(dm.value, '.', 1) AS group_value,
+    dm.value,
+    dm.name,
+    fil.qty,
+    dg.hsv_dongialuong,
+    CASE
+        WHEN dm.value IN ('II.01','II.02','II.06','II.07','II.08','II.11','II.12')
+            THEN fil.qty * dg.hsv_dongialuong / 1.15
+        ELSE fil.qty * dg.hsv_dongialuong
+    END AS tt
+FROM filter_data fil 
+JOIN danhmuc dm ON fil.id = dm.value
+LEFT JOIN dongia dg ON dg.hsv_luongsxvh_id = dm.hsv_luongsxvh_id
+ORDER BY dm.value, dm.hsv_stt::numeric::int ASC]]>
 	</queryString>
 	<field name="hsv_stt" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="hsv_stt"/>

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Created with Jaspersoft Studio version 6.17.0.final using JasperReports Library version 6.17.0-6d93193241dd8cc42629e188b94f9e0bc5722efd  -->
+<!-- Created with Jaspersoft Studio version 6.20.0.final using JasperReports Library version 6.20.0-2bc7ab61c56f459e8176eb05c7705e145cd400ad  -->
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Import_hach_toan_lai" pageWidth="1002" pageHeight="709" orientation="Landscape" columnWidth="1002" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="7d61c04b-daa6-45b5-b1d5-48251dd8d679">
 	<property name="net.sf.jasperreports.export.xls.detect.cell.type" value="true"/>
-	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="adempiere_7.1"/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="psql"/>
 	<property name="net.sf.jasperreports.export.xls.exclude.origin.keep.first.band.1" value="pageHeader"/>
 	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.2" value="pageFooter"/>
 	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.3" value="lastPageFooter"/>
@@ -29,361 +29,127 @@
 	<parameter name="C_DocType_ID" class="java.lang.Integer"/>
 	<parameter name="GL_Category_ID" class="java.lang.Integer"/>
 	<queryString>
-		<![CDATA[select	 case when stt=10 then   z.org else null end as header_org
-,case when stt=10 then concat('LX.', to_char(t.ngay,'DDMMYY')) else null end  as header_sct
-,case when stt=10 then q.name else null end as header_gl
-,case when stt=10 then concat('Tính lãi vay ngoài T',to_char(t.ngay,'MM/YYYY')) else null end as header_desc
-, case when stt=10 then t.c_type else null end as header_type
-,case when stt=10 then to_char(t.ngay,'YYYY-MM-DD') else null end  as header_date
-,case when stt=10 then to_char(t.ngay,'MM-YYYY') else null end as header_period
-, stt  as detail_stt, concat('Lãi vay ngoài T',to_char(t.ngay,'MM/YYYY'))  as detail_desc ,doitac as detail_doitac,tk as detail_tk,hoatdong as detail_hoatdong,currency as detail_curencty,  round(tno,0) as detail_tno,  round(tco,0) as detail_tco
-from ( 
-	select 1 as id,cp.enddate as ngay, tye.name as c_type from c_period cp,C_DocType tye
-	where cp.ad_client_id = $P{AD_CLIENT_ID} and cp.c_period_id = $P{C_Period_ID} and  tye.c_doctype_id = $P{C_DocType_ID}
-) as t 
-join (select 1 as id, name from GL_Category where GL_Category_ID = $P{GL_Category_ID} and ad_client_id = $P{AD_CLIENT_ID}) as q on q.id = t.id
-join (
-	select 1 as id,org,row_number() over() * 10 as stt,name as cotluong,doitac,tk,hoatdong,currency ,  round(tno,0) as tno,  round(tco,0) as tco  
-	from(
-		select t.org,k.name,k.doitac,t.tk,t.hoatdong,t.currency , case when hsv_cotluong  ='lai_no' then   k.laithang  else 0 end as tno ,case when hsv_cotluong  ='lai_co' then   k.laithang  else 0 end as tco  
-		from( 
-			select 2 as id,  org.name as org,lb.name as cotluong, ce.value as tk,ac.value as hoatdong, cc.c_currency_id as currency, lb.hsv_cotluong 
-			from hsv_luongbep lb 
-			join ad_client cl on cl.ad_client_id = lb.ad_client_id
-			join ad_org org on lb.ad_org_id = org.ad_org_id
-			join c_elementvalue ce on ce.c_elementvalue_id = lb.account_id 
-			join c_activity ac on ac.c_activity_id = lb.c_activity_id 
-			join c_currency cc on cc.c_currency_id = lb.c_currency_id 
-			where lb.ad_client_id = $P{AD_CLIENT_ID} and (lb.ad_org_id =$P{AD_Org_ID} or $P{AD_Org_ID} is null) and hsv_cotluong in('lai_no','lai_co')
-		) as t
-		join (
-		SELECT 2 as id,cb.value as doitac,cb.name,k.sodu*rate.hsv_laisuat/100/30  as laithang
-		FROM(
-			select c_bpartner_id, sum(dudau) as dudau,sum(ducuoi) as ducuoi,sum(psco - psno) as sodu
-			FROM(
-				SELECT t.c_bpartner_id, 
-					sum(CASE WHEN t.dateacct < (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) THEN (t.amtacctcr - t.amtacctdr)  ELSE 0 END) AS dudau,
-					sum(CASE WHEN t.dateacct <= (select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) THEN (t.amtacctcr - t.amtacctdr)  ELSE 0 END) AS ducuoi,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) THEN (t.amtacctcr) ELSE 0 END) AS psco,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) THEN (t.amtacctdr) ELSE 0 END) AS psno
-				FROM fact_acct t 
-				where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
-				GROUP by c_bpartner_id
-				
-				UNION ALL
-				
-				SELECT t.c_bpartner_id, 
-					0 AS dudau,
-					0 AS ducuoi,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+1 THEN (t.amtacctcr) ELSE 0 END) AS psco,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+1 THEN (t.amtacctdr) ELSE 0 END) AS psno
-				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+1<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
-				GROUP by c_bpartner_id
-				
-				UNION ALL
-				
-				SELECT t.c_bpartner_id, 
-					0 AS dudau,
-					0 AS ducuoi,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+2 THEN (t.amtacctcr) ELSE 0 END) AS psco,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+2 THEN (t.amtacctdr) ELSE 0 END) AS psno
-				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+2<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
-				GROUP by c_bpartner_id
-				
-				UNION ALL
-				
-				SELECT t.c_bpartner_id, 
-					0 AS dudau,
-					0 AS ducuoi,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+3 THEN (t.amtacctcr) ELSE 0 END) AS psco,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+3 THEN (t.amtacctdr) ELSE 0 END) AS psno
-				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+3<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
-				GROUP by c_bpartner_id
-				
-				UNION ALL
-				
-				SELECT t.c_bpartner_id, 
-					0 AS dudau,
-					0 AS ducuoi,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+4 THEN (t.amtacctcr) ELSE 0 END) AS psco,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+4 THEN (t.amtacctdr) ELSE 0 END) AS psno
-				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+4<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
-				GROUP by c_bpartner_id
-				
-				UNION ALL
-				
-				SELECT t.c_bpartner_id, 
-					0 AS dudau,
-					0 AS ducuoi,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+5 THEN (t.amtacctcr) ELSE 0 END) AS psco,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+5 THEN (t.amtacctdr) ELSE 0 END) AS psno
-				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+5<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
-				GROUP by c_bpartner_id
-				
-				UNION ALL
-				
-				SELECT t.c_bpartner_id, 
-					0 AS dudau,
-					0 AS ducuoi,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+6 THEN (t.amtacctcr) ELSE 0 END) AS psco,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+6 THEN (t.amtacctdr) ELSE 0 END) AS psno
-				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+6<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
-				GROUP by c_bpartner_id
-				
-				UNION ALL
-				
-				SELECT t.c_bpartner_id, 
-					0 AS dudau,
-					0 AS ducuoi,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+7 THEN (t.amtacctcr) ELSE 0 END) AS psco,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+7 THEN (t.amtacctdr) ELSE 0 END) AS psno
-				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+7<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
-				GROUP by c_bpartner_id
-				
-				UNION ALL
-				
-				SELECT t.c_bpartner_id, 
-					0 AS dudau,
-					0 AS ducuoi,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+8 THEN (t.amtacctcr) ELSE 0 END) AS psco,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+8 THEN (t.amtacctdr) ELSE 0 END) AS psno
-				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+8<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
-				GROUP by c_bpartner_id
-				
-				UNION ALL
-				
-				SELECT t.c_bpartner_id, 
-					0 AS dudau,
-					0 AS ducuoi,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+9 THEN (t.amtacctcr) ELSE 0 END) AS psco,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+9 THEN (t.amtacctdr) ELSE 0 END) AS psno
-				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+9<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
-				GROUP by c_bpartner_id
-				
-				UNION ALL
-				
-				SELECT t.c_bpartner_id, 
-					0 AS dudau,
-					0 AS ducuoi,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+10 THEN (t.amtacctcr) ELSE 0 END) AS psco,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+10 THEN (t.amtacctdr) ELSE 0 END) AS psno
-				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+10<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
-				GROUP by c_bpartner_id
-				
-				UNION ALL
-				
-				SELECT t.c_bpartner_id, 
-					0 AS dudau,
-					0 AS ducuoi,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+11 THEN (t.amtacctcr) ELSE 0 END) AS psco,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+11 THEN (t.amtacctdr) ELSE 0 END) AS psno
-				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+11<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
-				GROUP by c_bpartner_id
-				
-				UNION ALL
-				
-				SELECT t.c_bpartner_id, 
-					0 AS dudau,
-					0 AS ducuoi,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+12 THEN (t.amtacctcr) ELSE 0 END) AS psco,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+12 THEN (t.amtacctdr) ELSE 0 END) AS psno
-				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+12<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
-				GROUP by c_bpartner_id
-				
-				UNION ALL
-				
-				SELECT t.c_bpartner_id, 
-					0 AS dudau,
-					0 AS ducuoi,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+13 THEN (t.amtacctcr) ELSE 0 END) AS psco,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+13 THEN (t.amtacctdr) ELSE 0 END) AS psno
-				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+13<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
-				GROUP by c_bpartner_id
-				
-				UNION ALL
-				
-				SELECT t.c_bpartner_id, 
-					0 AS dudau,
-					0 AS ducuoi,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+14 THEN (t.amtacctcr) ELSE 0 END) AS psco,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+14 THEN (t.amtacctdr) ELSE 0 END) AS psno
-				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+14<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
-				GROUP by c_bpartner_id
-				
-				UNION ALL
-				
-				SELECT t.c_bpartner_id, 
-					0 AS dudau,
-					0 AS ducuoi,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+15 THEN (t.amtacctcr) ELSE 0 END) AS psco,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+15 THEN (t.amtacctdr) ELSE 0 END) AS psno
-				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+15<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
-				GROUP by c_bpartner_id
-				
-				UNION ALL
-				
-				SELECT t.c_bpartner_id, 
-					0 AS dudau,
-					0 AS ducuoi,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+16 THEN (t.amtacctcr) ELSE 0 END) AS psco,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+16 THEN (t.amtacctdr) ELSE 0 END) AS psno
-				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+16<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
-				GROUP by c_bpartner_id
-				
-				UNION ALL
-				
-				SELECT t.c_bpartner_id, 
-					0 AS dudau,
-					0 AS ducuoi,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+17 THEN (t.amtacctcr) ELSE 0 END) AS psco,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+17 THEN (t.amtacctdr) ELSE 0 END) AS psno
-				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+17<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
-				GROUP by c_bpartner_id
-				
-				UNION ALL
-				
-				SELECT t.c_bpartner_id, 
-					0 AS dudau,
-					0 AS ducuoi,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+18 THEN (t.amtacctcr) ELSE 0 END) AS psco,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+18 THEN (t.amtacctdr) ELSE 0 END) AS psno
-				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+18<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
-				GROUP by c_bpartner_id
-				
-				UNION ALL
-				
-				SELECT t.c_bpartner_id, 
-					0 AS dudau,
-					0 AS ducuoi,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+19 THEN (t.amtacctcr) ELSE 0 END) AS psco,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+19 THEN (t.amtacctdr) ELSE 0 END) AS psno
-				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+19<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
-				GROUP by c_bpartner_id
-				
-				UNION ALL
-				
-				SELECT t.c_bpartner_id, 
-					0 AS dudau,
-					0 AS ducuoi,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+20 THEN (t.amtacctcr) ELSE 0 END) AS psco,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+20 THEN (t.amtacctdr) ELSE 0 END) AS psno
-				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+20<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
-				GROUP by c_bpartner_id
-				
-				UNION ALL
-				
-				SELECT t.c_bpartner_id, 
-					0 AS dudau,
-					0 AS ducuoi,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+21 THEN (t.amtacctcr) ELSE 0 END) AS psco,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+21 THEN (t.amtacctdr) ELSE 0 END) AS psno
-				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+21<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
-				GROUP by c_bpartner_id
-				
-				UNION ALL
-				
-				SELECT t.c_bpartner_id, 
-					0 AS dudau,
-					0 AS ducuoi,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+22 THEN (t.amtacctcr) ELSE 0 END) AS psco,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+22 THEN (t.amtacctdr) ELSE 0 END) AS psno
-				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+22<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
-				GROUP by c_bpartner_id
-				
-				UNION ALL
-				
-				SELECT t.c_bpartner_id, 
-					0 AS dudau,
-					0 AS ducuoi,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+23 THEN (t.amtacctcr) ELSE 0 END) AS psco,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+23 THEN (t.amtacctdr) ELSE 0 END) AS psno
-				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+23<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
-				GROUP by c_bpartner_id
-				
-				UNION ALL
-				
-				SELECT t.c_bpartner_id, 
-					0 AS dudau,
-					0 AS ducuoi,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+24 THEN (t.amtacctcr) ELSE 0 END) AS psco,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+24 THEN (t.amtacctdr) ELSE 0 END) AS psno
-				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+24<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
-				GROUP by c_bpartner_id
-				
-				UNION ALL
-				
-				SELECT t.c_bpartner_id, 
-					0 AS dudau,
-					0 AS ducuoi,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+25 THEN (t.amtacctcr) ELSE 0 END) AS psco,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+25 THEN (t.amtacctdr) ELSE 0 END) AS psno
-				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+25<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
-				GROUP by c_bpartner_id
-				
-				UNION ALL
-				
-				SELECT t.c_bpartner_id, 
-					0 AS dudau,
-					0 AS ducuoi,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+26 THEN (t.amtacctcr) ELSE 0 END) AS psco,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+26 THEN (t.amtacctdr) ELSE 0 END) AS psno
-				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+26<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
-				GROUP by c_bpartner_id
-				
-				UNION ALL
-				
-				SELECT t.c_bpartner_id, 
-					0 AS dudau,
-					0 AS ducuoi,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+27 THEN (t.amtacctcr) ELSE 0 END) AS psco,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+27 THEN (t.amtacctdr) ELSE 0 END) AS psno
-				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+27<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
-				GROUP by c_bpartner_id
-				
-				UNION ALL
-				
-				SELECT t.c_bpartner_id, 
-					0 AS dudau,
-					0 AS ducuoi,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+28 THEN (t.amtacctcr) ELSE 0 END) AS psco,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+28 THEN (t.amtacctdr) ELSE 0 END) AS psno
-				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+28<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
-				GROUP by c_bpartner_id
-				
-				UNION ALL
-				
-				SELECT t.c_bpartner_id, 
-					0 AS dudau,
-					0 AS ducuoi,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+29 THEN (t.amtacctcr) ELSE 0 END) AS psco,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+29 THEN (t.amtacctdr) ELSE 0 END) AS psno
-				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+29<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
-				GROUP by c_bpartner_id
-				
-				UNION ALL
-				
-				SELECT t.c_bpartner_id, 
-					0 AS dudau,
-					0 AS ducuoi,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+30 THEN (t.amtacctcr) ELSE 0 END) AS psco,
-					sum(CASE WHEN t.dateacct <= (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+30 THEN (t.amtacctdr) ELSE 0 END) AS psno
-				FROM fact_acct t  where (select startdate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})+30<=(select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) and t.account_id=$P{Account_ID} 
-				GROUP by c_bpartner_id
-			) as k 
-			group by c_bpartner_id 
-		) as k  
-		join c_bpartner cb on  cb.c_bpartner_id = k.c_bpartner_id
-		join c_bpartner_rate rate on cb.c_bpartner_id = rate.c_bpartner_id 
-		where sodu<>0 and (cb.c_bpartner_id=$P{C_BPartner_ID} or $P{C_BPartner_ID} is null ) 
-		and  (select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID}) <= rate.dateto 
-		and  (select enddate from c_period where c_period_id =  $P{C_Period_ID} and ad_client_id = $P{AD_CLIENT_ID})>=rate.datefrom
-		) as k on t.id = k.id
-		order by doitac, tk desc 
-	) as k
-	
-) as z on t.id = z.id
-where (tno<>0 or tco<>0)
-]]>
+		<![CDATA[WITH period AS (
+    SELECT startdate, enddate
+    FROM c_period
+    WHERE c_period_id  = $P{C_Period_ID}
+      AND ad_client_id = $P{AD_CLIENT_ID}
+),
+
+-- Thay thế toàn bộ 31 UNION ALL bằng 1 lần scan fact_acct
+partner_balance AS (
+    SELECT
+        f.c_bpartner_id,
+        SUM(
+            CASE WHEN f.dateacct < p.startdate
+                 THEN (f.amtacctcr - f.amtacctdr)
+                 ELSE 0 END
+        ) AS dudau,
+        SUM(
+            CASE WHEN f.dateacct <= p.enddate
+                 THEN (f.amtacctcr - f.amtacctdr)
+                 ELSE 0 END
+        ) AS ducuoi,
+        /*
+         * sodu = tổng số dư theo ngày trong kỳ (thay 31 UNION ALL)
+         * Logic gốc: sum(psco-psno) tại ngày startdate+i, với i từ 0→30
+         * Mỗi giao dịch D đóng góp cho các ngày từ max(D,startdate) đến enddate
+         * → trọng số = enddate - GREATEST(dateacct, startdate) + 1
+         */
+        SUM(
+            (f.amtacctcr - f.amtacctdr)
+            * GREATEST(0, p.enddate - GREATEST(f.dateacct, p.startdate) + 1)
+        ) AS sodu
+    FROM fact_acct f
+    CROSS JOIN period p
+    WHERE f.account_id  = $P{Account_ID}
+      AND f.dateacct   <= p.enddate   -- bỏ sớm các giao dịch sau kỳ
+    GROUP BY f.c_bpartner_id
+),
+
+partner_interest AS (
+    SELECT
+        cb.value                                       AS doitac,
+        cb.name,
+        pb.sodu * rate.hsv_laisuat / 100.0 / 30       AS laithang
+    FROM partner_balance pb
+    JOIN c_bpartner      cb   ON cb.c_bpartner_id  = pb.c_bpartner_id
+    JOIN c_bpartner_rate rate ON cb.c_bpartner_id  = rate.c_bpartner_id
+    CROSS JOIN period p
+    WHERE pb.sodu <> 0
+      AND (cb.c_bpartner_id = $P{C_BPartner_ID} OR $P{C_BPartner_ID} IS NULL)
+      AND p.enddate BETWEEN rate.datefrom AND rate.dateto
+),
+
+luong_config AS (
+    SELECT
+        org.name             AS org,
+        lb.name              AS cotluong,
+        ce.value             AS tk,
+        ac.value             AS hoatdong,
+        cc.c_currency_id     AS currency,
+        lb.hsv_cotluong
+    FROM hsv_luongbep    lb
+    JOIN ad_org          org ON lb.ad_org_id          = org.ad_org_id
+    JOIN c_elementvalue  ce  ON ce.c_elementvalue_id  = lb.account_id
+    JOIN c_activity      ac  ON ac.c_activity_id      = lb.c_activity_id
+    JOIN c_currency      cc  ON cc.c_currency_id      = lb.c_currency_id
+    WHERE lb.ad_client_id = $P{AD_CLIENT_ID}
+      AND (lb.ad_org_id   = $P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)
+      AND lb.hsv_cotluong IN ('lai_no', 'lai_co')
+),
+
+detail AS (
+    SELECT
+        lc.org,
+        ROW_NUMBER() OVER (ORDER BY pi2.doitac, lc.tk DESC) * 10   AS stt,
+        lc.cotluong                                                  AS name,
+        pi2.doitac,
+        lc.tk,
+        lc.hoatdong,
+        lc.currency,
+        CASE WHEN lc.hsv_cotluong = 'lai_no' THEN pi2.laithang ELSE 0 END AS tno,
+        CASE WHEN lc.hsv_cotluong = 'lai_co' THEN pi2.laithang ELSE 0 END AS tco
+    FROM luong_config lc
+    CROSS JOIN partner_interest pi2
+),
+
+header_t AS (
+    SELECT cp.enddate AS ngay, tye.name AS c_type
+    FROM c_period  cp
+    CROSS JOIN C_DocType tye
+    WHERE cp.ad_client_id  = $P{AD_CLIENT_ID}
+      AND cp.c_period_id   = $P{C_Period_ID}
+      AND tye.c_doctype_id = $P{C_DocType_ID}
+),
+
+header_q AS (
+    SELECT name
+    FROM GL_Category
+    WHERE GL_Category_ID = $P{GL_Category_ID}
+      AND ad_client_id   = $P{AD_CLIENT_ID}
+)
+
+SELECT
+    CASE WHEN d.stt = 10 THEN d.org                                                        END AS header_org,
+    CASE WHEN d.stt = 10 THEN CONCAT('LX.', TO_CHAR(t.ngay, 'DDMMYY'))                   END AS header_sct,
+    CASE WHEN d.stt = 10 THEN q.name                                                       END AS header_gl,
+    CASE WHEN d.stt = 10 THEN CONCAT('Tính lãi vay ngoài T', TO_CHAR(t.ngay, 'MM/YYYY')) END AS header_desc,
+    CASE WHEN d.stt = 10 THEN t.c_type                                                     END AS header_type,
+    CASE WHEN d.stt = 10 THEN TO_CHAR(t.ngay, 'YYYY-MM-DD')                               END AS header_date,
+    CASE WHEN d.stt = 10 THEN TO_CHAR(t.ngay, 'MM-YYYY')                                  END AS header_period,
+    d.stt                                                            AS detail_stt,
+    CONCAT('Lãi vay ngoài T', TO_CHAR(t.ngay, 'MM/YYYY'))          AS detail_desc,
+    d.doitac                                                         AS detail_doitac,
+    d.tk                                                             AS detail_tk,
+    d.hoatdong                                                       AS detail_hoatdong,
+    d.currency                                                       AS detail_curencty,
+    ROUND(d.tno, 0)                                                  AS detail_tno,
+    ROUND(d.tco, 0)                                                  AS detail_tco
+FROM detail d
+CROSS JOIN header_t t
+CROSS JOIN header_q q
+WHERE (d.tno <> 0 OR d.tco <> 0)]]>
 	</queryString>
 	<field name="header_org" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="header_org"/>

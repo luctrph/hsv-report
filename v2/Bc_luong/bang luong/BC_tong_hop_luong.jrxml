@@ -34,279 +34,424 @@
 	</parameter>
 	<parameter name="AD_Org_ID" class="java.lang.Integer"/>
 	<parameter name="AD_USER_ID" class="java.lang.Integer"/>
+	<parameter name="hsv_qtluong" class="java.lang.String"/>
 	<queryString>
 		<![CDATA[WITH p AS (
-  SELECT startdate as period_startdate,
-  			enddate as period_enddate
-  FROM c_period
-  WHERE c_period_id = $P{C_Period_ID}
-    AND ad_client_id = $P{AD_CLIENT_ID}
-),
-tong_luong as (
-		select nkl.hsv_toluong_id,sum(nklsp.amount) as tongluong 
-		from hsv_nkluongsp nklsp
-		left join hsv_nkluong nkl on nkl.hsv_nkluong_id = nklsp.hsv_nkluong_id 			
-		where nkl.c_period_id = $P{C_Period_ID} and nklsp.isactive = 'Y' and nkl.isactive = 'Y'
-		group by nkl.hsv_toluong_id
-),
-tong_cong as (
-		select nkl.hsv_toluong_id, sum(nklnv.hsv_ngaycong* nklnv.hsv_hesoluong) as tongcong 
-		from hsv_nkluongnv nklnv
-		left join hsv_nkluong nkl on nkl.hsv_nkluong_id = nklnv.hsv_nkluong_id 
-		where nkl.c_period_id = $P{C_Period_ID} and nklnv.isactive = 'Y' and nkl.isactive = 'Y'		
-		group by nkl.hsv_toluong_id 
-),
-che_do as (
-	select tl.hsv_toluong_id ,
-		coalesce(hsv_maxHTBHXH,0) as hsv_maxHTBHXH,
-		coalesce(cdl.hsv_ht_anca,0) hsv_ht_anca,
-		coalesce(cdl.hsv_muc_tc2,0) hsv_muc_tc2,
-		coalesce(cdl.hsv_muc_tc3,0) hsv_muc_tc3,
-		coalesce(cdl.hsv_bddem,0) hsv_bddem,
-		coalesce(cdl.hsv_tlbhxh,0) hsv_tlbhxh, coalesce(cdl.hsv_tlkpcd,0) hsv_tlkpcd,
-		coalesce(cdl.hsv_Max_KPCD,0) hsv_max_kpcd ,
-		coalesce(cdl.hsv_muc_anca,0) hsv_muc_anca,
-		coalesce(cdl.hsv_andem,0) hsv_andem,
-		coalesce(cdl.hsv_antangca2,0) hsv_antangca2, 
-		coalesce(cdl.hsv_antangca3,0) hsv_antangca3, 	
-		coalesce(cdl.hsv_tlhtbhxh,0) hsv_tlhtbhxh
-		from hsv_chedo cd 		
-		left join hsv_cd_luong cdl on cd.hsv_chedo_id = cdl.hsv_chedo_id and cdl.isactive = 'Y'
-		left join hsv_toluong tl on tl.hsv_chedo_id = cd.hsv_chedo_id and tl.isactive = 'Y'
-		cross join p pd 
-		where  pd.period_enddate <= cdl.dateto AND pd.period_enddate >= cdl.datefrom
-                AND pd.period_startdate >= cdl.datefrom AND pd.period_startdate <= cdl.dateto			
-				and cd.isactive = 'Y'
-),
-chuyen_khoan as (
-	select vck.hsv_nhanvien_id,vck.hsv_toluong_id, coalesce(vck.hsv_ckluong,0)  as luongck
-	from hsv_chuyenkhoan vck 
-	cross join p pd 
-	where pd.period_enddate <= vck.dateto AND pd.period_enddate >= vck.datefrom
-                AND pd.period_startdate >= vck.datefrom AND pd.period_startdate <= vck.dateto		
-	and vck.ad_client_id =$P{AD_CLIENT_ID} and vck.isactive = 'Y'
-
-),
-luong_cung as (
-	select lc.hsv_toluong_id, lc.hsv_nhanvien_id as a1,
-		coalesce(hsv_phucap,0) as hsv_phucap,
-		coalesce(hsv_luongcd,0) as hsv_luongcd,
-		coalesce(hsv_maxcong,0) as hsv_maxcong,
-		coalesce(congmax,0) as congmax   
-	from hsv_luongcung lc
-	cross join p pd 
-	where pd.period_enddate <= lc.dateto AND pd.period_enddate >= lc.datefrom
-                AND pd.period_startdate >= lc.datefrom AND pd.period_startdate <= lc.dateto			
-	and lc.ad_client_id =$P{AD_CLIENT_ID}  and lc.isactive = 'Y'	
-),
-chi_tiet_luong_bhxh as (
-	select b.ad_org_id,
-		case when  a.hsv_luongbhxh > b.hsv_luongbhxh then a.hsv_luongbhxh else 0 end as hsv_luongbhxh,
-		case when  a.hsv_luongbhxh > b.hsv_luongbhxh then a.hsv_htbhxh end as hsv_htbhxh,
-	    b.hsv_toluong_id ,
-	    b.hsv_nhanvien_id ,
-	    b.hsv_ngaycong as hsv_ngaycong,
-	    b.hsv_hesoluong as hsv_hesoluong,
-	    b.hsv_ngayanca as hsv_ngayanca,
-	    b.hsv_ngaytangca2 as hsv_ngaytangca2,
-	    b.hsv_congdem as hsv_congdem,
-	    b.hsv_ckluong as hsv_ckluong,
-	    b.hsv_ngaytangca3 as hsv_ngaytangca3,
-	    b.hsv_luongspnv as hsv_luongspnv,
-	    b.hsv_phucapnv
-	    
-	from (							
-		select  nv.hsv_nhanvien_id, MAX(nv.hsv_ngaycong) as ngaycongk,
-		coalesce(bhxh.hsv_luongbhxh,0) hsv_luongbhxh,
-		bhxh.hsv_htbhxh  hsv_htbhxh						
-		from hsv_nkluong nk
-		join hsv_nkluongnv nv on nk.hsv_nkluong_id = nv.hsv_nkluong_id 
-		join hsv_luongbhxhline bhxh on bhxh.hsv_nhanvien_id = nv.hsv_nhanvien_id and bhxh.hsv_luongbhxh >0 
-		cross join p pd 
-		where  nk.ad_client_id = $P{AD_CLIENT_ID} and nk.c_period_id =  $P{C_Period_ID} 
-			 and pd.period_enddate <= bhxh.dateto AND pd.period_enddate >= bhxh.datefrom
-             AND pd.period_startdate >= bhxh.datefrom AND pd.period_startdate <= bhxh.dateto									
-        group by nv.hsv_nhanvien_id,bhxh.hsv_luongbhxh,bhxh.hsv_htbhxh											
-	) as a right join (
-		select  hsv_nkluongnv_id,0 as hsv_luongbhxh, nkl.ad_org_id,nkl.hsv_toluong_id,nklnv.hsv_nhanvien_id, 
-				coalesce(hsv_ngaycong,0) as hsv_ngaycong,
-				coalesce(nklnv.hsv_hesoluong,0) as hsv_hesoluong,
-				coalesce(nklnv.hsv_ngayanca,0) as hsv_ngayanca,
-				coalesce(nklnv.hsv_ngaytangca2,0) as hsv_ngaytangca2,
-				coalesce(nklnv.hsv_congdem,0) as hsv_congdem,
-				coalesce(nklnv.hsv_ckluong,0) as hsv_ckluong,
-				coalesce(nklnv.hsv_ngaytangca3,0) as hsv_ngaytangca3,
-				coalesce(nklnv.hsv_luongspnv,0) as hsv_luongspnv,
-				coalesce(nklnv.hsv_phucap,0) as hsv_phucapnv
-		from hsv_NkluongNV nklnv
-		join hsv_nkluong nkl on nkl.hsv_nkluong_id = nklnv.hsv_nkluong_id 		  
-		where  nkl.ad_client_id = $P{AD_CLIENT_ID} and nkl.c_period_id =  $P{C_Period_ID} and nklnv.isactive = 'Y' 					
-	) as b on a.hsv_nhanvien_id =b.hsv_nhanvien_id and a.ngaycongk =  b.hsv_ngaycong 																	
+    SELECT startdate AS period_startdate,
+           enddate   AS period_enddate
+    FROM c_period
+    WHERE c_period_id = $P{C_Period_ID}
+      AND ad_client_id = $P{AD_CLIENT_ID}
 ),
 
-nguoi_pt as (
-	select  hsv_nhanvien_id,count(hsv_nknguoipt_id) as songuoi_pt 
-	from  hsv_nknguoipt npt
-	cross join p pd
-	where ad_client_id = $P{AD_CLIENT_ID}  
-    and (pd.period_enddate <= npt.dateto or npt.dateto is null) AND pd.period_enddate >= npt.datefrom
-   	AND pd.period_startdate >= npt.datefrom AND (pd.period_startdate <= npt.dateto or npt.dateto is null)		
-   	and npt.isactive = 'Y'
-	group by hsv_nhanvien_id 
-),
-chedo_tncn as (					
-		select  coalesce(hsv_gtgcbt,0) as hsv_gtgcbt, coalesce(hsv_GTGCNPT,0) as hsv_GTGCNPT 
-		from hsv_CDTTNCN cdtn 
-		cross join p pd
-		where ad_client_id = $P{AD_CLIENT_ID}
- 		and pd.period_enddate <= cdtn.dateto AND pd.period_enddate >= cdtn.datefrom
-        AND pd.period_startdate >= cdtn.datefrom AND pd.period_startdate <= cdtn.dateto		
+tong_luong AS (
+    SELECT nkl.hsv_toluong_id,
+           sum(nklsp.amount) AS tongluong
+    FROM hsv_nkluongsp nklsp
+    LEFT JOIN hsv_nkluong nkl ON nkl.hsv_nkluong_id = nklsp.hsv_nkluong_id
+    WHERE nkl.c_period_id = $P{C_Period_ID}
+      AND nklsp.isactive = 'Y'
+      AND nkl.isactive   = 'Y'
+    GROUP BY nkl.hsv_toluong_id
 ),
 
-tong_the_lv1 as (
-select k.ad_org_id,k.hsv_toluong_id,k.hsv_nhanvien_id as a1,
-	hsv_ngaycong  as ngay_cong,
-	hsv_luongbhxh as luong_cb,
-	case when tongcong <>0 then(hsv_ngaycong* hsv_hesoluong)* (tongluong/tongcong) else 0 end as a4,
-	case when k.hsv_htbhxh = 'Y' then  w.hsv_maxHTBHXH else 0 end as a5,
-	hsv_ngayanca*hsv_ht_anca as anca,
-	(hsv_ngaytangca2*hsv_muc_tc2+ hsv_ngaytangca3*hsv_muc_tc3+hsv_congdem* hsv_bddem) as a7,
-	hsv_luongspnv as luongspnv ,
-	hsv_luongbhxh*hsv_tlbhxh/100 as a10,
-	w.hsv_tlkpcd as hsv_tlkpcd ,
-	w.hsv_max_kpcd as hsv_max_kpcd,
-	w.hsv_muc_anca * k.hsv_ngayanca +k.hsv_congdem * w.hsv_andem + k.hsv_ngaytangca2 * w.hsv_antangca2 + k.hsv_ngaytangca3*w.hsv_antangca3 as a11,
-	k.hsv_ckluong as a13,hsv_hesoluong as a15,hsv_tlhtbhxh/100 as a16,
-	coalesce(case when hsv_ngaycong <> 0 then t.hsv_phucap else 0 end,0) as hsv_phucap,
-	hsv_phucapnv,
-	t.hsv_luongcd as hsv_luongcd,
-	t.hsv_maxcong as hsv_maxcong,
-	t.congmax as congmax,
-	hsv_hesoluong as hesoluong 
-from chi_tiet_luong_bhxh k
-left join chuyen_khoan as g on k.hsv_toluong_id =g.hsv_toluong_id and k.hsv_nhanvien_id =g.hsv_nhanvien_id	
-left join che_do as w on  w.hsv_toluong_id = k.hsv_toluong_id  
-left join tong_cong as  z on k.hsv_toluong_id = z.hsv_toluong_id	
-left join tong_luong as h on k.hsv_toluong_id = h.hsv_toluong_id 
-left join luong_cung as t on k.hsv_toluong_id= t.hsv_toluong_id and k.hsv_nhanvien_id =t.a1
+tong_cong AS (
+    SELECT nkl.hsv_toluong_id,
+           sum(nklnv.hsv_ngaycong * nklnv.hsv_hesoluong) AS tongcong
+    FROM hsv_nkluongnv nklnv
+    LEFT JOIN hsv_nkluong nkl ON nkl.hsv_nkluong_id = nklnv.hsv_nkluong_id
+    WHERE nkl.c_period_id = $P{C_Period_ID}
+      AND nklnv.isactive = 'Y'
+      AND nkl.isactive   = 'Y'
+    GROUP BY nkl.hsv_toluong_id
 ),
 
-tong_the_lv2 as ( 
-select t.ad_org_id,
-	t.hsv_toluong_id,
-	a1 ,
-	ngay_cong,
-	hesoluong,
-	luong_cb,
-	coalesce(a4,0) as a4,
-	case when  ngay_cong=0 then 0 else case when   (luong_cb*a16)<a5 then (luong_cb* a16) else a5 end end as a5,
-	anca,
-	a7,
-	luongspnv+ t.hsv_phucap + case when t.hsv_maxcong<>0 and ngay_cong>= congmax then  t.hsv_luongcd/t.hsv_maxcong*a15*congmax  else case when hsv_maxcong <> 0 then  t.hsv_luongcd/t.hsv_maxcong*a15*ngay_cong else 0 end end  as  luong_pc_khac ,
-	hsv_phucapnv,
-	a10 , 
-	coalesce(t.hsv_tlkpcd,0) hsv_tlkpcd,
-	coalesce(t.hsv_Max_KPCD,0) as hsv_max_kpcd,
-	coalesce(a11,0) as a11,
-	coalesce(a13,0) as a13,
-	coalesce(a15,0) as a15
-	from tong_the_lv1 as t
+che_do AS (
+    SELECT DISTINCT ON (tl.hsv_toluong_id)
+        tl.hsv_toluong_id,
+        coalesce(hsv_maxHTBHXH,   0) AS hsv_maxHTBHXH,
+        coalesce(cdl.hsv_ht_anca, 0) AS hsv_ht_anca,
+        coalesce(cdl.hsv_muc_tc2, 0) AS hsv_muc_tc2,
+        coalesce(cdl.hsv_muc_tc3, 0) AS hsv_muc_tc3,
+        coalesce(cdl.hsv_bddem,   0) AS hsv_bddem,
+        coalesce(cdl.hsv_tlbhxh,  0) AS hsv_tlbhxh,
+        coalesce(cdl.hsv_tlkpcd,  0) AS hsv_tlkpcd,
+        coalesce(cdl.hsv_Max_KPCD,0) AS hsv_max_kpcd,
+        coalesce(cdl.hsv_muc_anca,0) AS hsv_muc_anca,
+        coalesce(cdl.hsv_andem,   0) AS hsv_andem,
+        coalesce(cdl.hsv_antangca2,0) AS hsv_antangca2,
+        coalesce(cdl.hsv_antangca3,0) AS hsv_antangca3,
+        coalesce(cdl.hsv_tlhtbhxh, 0) AS hsv_tlhtbhxh,
+        coalesce(cdl.hsv_cdkbhxh,  0) AS hsv_cdkbhxh,
+        coalesce(cdl.hsv_TLKPCDM,  0) AS hsv_TLKPCDM
+    FROM hsv_chedo cd
+    LEFT JOIN hsv_cd_luong cdl ON cd.hsv_chedo_id = cdl.hsv_chedo_id AND cdl.isactive = 'Y'
+    LEFT JOIN hsv_toluong  tl  ON tl.hsv_chedo_id = cd.hsv_chedo_id  AND tl.isactive  = 'Y'
+    CROSS JOIN p pd
+    WHERE pd.period_enddate   <= cdl.dateto
+      AND pd.period_enddate   >= cdl.datefrom
+      AND pd.period_startdate >= cdl.datefrom
+      AND pd.period_startdate <= cdl.dateto
+      AND cd.isactive = 'Y'
+    ORDER BY tl.hsv_toluong_id, cdl.dateto DESC
+),
+
+chuyen_khoan AS (
+    SELECT vck.hsv_nhanvien_id,
+           vck.hsv_toluong_id,
+           coalesce(vck.hsv_ckluong, 0) AS luongck
+    FROM hsv_chuyenkhoan vck
+    CROSS JOIN p pd
+    WHERE pd.period_enddate   <= vck.dateto
+      AND pd.period_enddate   >= vck.datefrom
+      AND pd.period_startdate >= vck.datefrom
+      AND pd.period_startdate <= vck.dateto
+      AND vck.ad_client_id = $P{AD_CLIENT_ID}
+      AND vck.isactive = 'Y'
+),
+
+luong_cung AS (
+    SELECT lc.hsv_toluong_id,
+           lc.hsv_nhanvien_id          AS a1,
+           coalesce(hsv_phucap,  0)    AS hsv_phucap,
+           coalesce(hsv_luongcd, 0)    AS hsv_luongcd,
+           coalesce(hsv_maxcong, 0)    AS hsv_maxcong,
+           coalesce(congmax,     0)    AS congmax,
+           coalesce(lc.hsv_vl,  'N')  AS hsv_vl   -- ✏️ THÊM: cờ thu nhập vãng lai
+    FROM hsv_luongcung lc
+    CROSS JOIN p pd
+    WHERE pd.period_enddate   <= lc.dateto
+      AND pd.period_enddate   >= lc.datefrom
+      AND pd.period_startdate >= lc.datefrom
+      AND pd.period_startdate <= lc.dateto
+      AND lc.ad_client_id = $P{AD_CLIENT_ID}
+      AND lc.isactive = 'Y'
+),
+
+chi_tiet_luong_bhxh AS (
+    SELECT b.ad_org_id,
+        CASE WHEN a.hsv_luongbhxh > b.hsv_luongbhxh THEN a.hsv_luongbhxh ELSE 0   END AS hsv_luongbhxh,
+        CASE WHEN a.hsv_luongbhxh > b.hsv_luongbhxh THEN a.hsv_htbhxh             END AS hsv_htbhxh,
+        b.hsv_toluong_id,
+        b.hsv_nhanvien_id,
+        b.hsv_ngaycong,
+        b.hsv_hesoluong,
+        b.hsv_ngayanca,
+        b.hsv_ngaytangca2,
+        b.hsv_congdem,
+        b.hsv_ckluong,
+        b.hsv_ngaytangca3,
+        b.hsv_luongspnv,
+        b.hsv_phucapnv
+    FROM (
+        SELECT nv.hsv_nhanvien_id,
+               MAX(nv.hsv_ngaycong)         AS ngaycongk,
+               coalesce(bhxh.hsv_luongbhxh, 0) AS hsv_luongbhxh,
+               bhxh.hsv_htbhxh                 AS hsv_htbhxh
+        FROM hsv_nkluong nk
+        JOIN hsv_nkluongnv    nv   ON nk.hsv_nkluong_id  = nv.hsv_nkluong_id
+        JOIN hsv_luongbhxhline bhxh ON bhxh.hsv_nhanvien_id = nv.hsv_nhanvien_id AND bhxh.hsv_luongbhxh > 0
+        CROSS JOIN p pd
+        WHERE nk.ad_client_id = $P{AD_CLIENT_ID}
+          AND nk.c_period_id  = $P{C_Period_ID}
+          AND pd.period_enddate   <= bhxh.dateto
+          AND pd.period_enddate   >= bhxh.datefrom
+          AND pd.period_startdate >= bhxh.datefrom
+          AND pd.period_startdate <= bhxh.dateto
+        GROUP BY nv.hsv_nhanvien_id, bhxh.hsv_luongbhxh, bhxh.hsv_htbhxh
+    ) AS a
+    RIGHT JOIN (
+        SELECT hsv_nkluongnv_id,
+               0                                  AS hsv_luongbhxh,
+               nkl.ad_org_id,
+               nkl.hsv_toluong_id,
+               nklnv.hsv_nhanvien_id,
+               coalesce(hsv_ngaycong,         0) AS hsv_ngaycong,
+               coalesce(nklnv.hsv_hesoluong,  0) AS hsv_hesoluong,
+               coalesce(nklnv.hsv_ngayanca,   0) AS hsv_ngayanca,
+               coalesce(nklnv.hsv_ngaytangca2,0) AS hsv_ngaytangca2,
+               coalesce(nklnv.hsv_congdem,    0) AS hsv_congdem,
+               coalesce(nklnv.hsv_ckluong,    0) AS hsv_ckluong,
+               coalesce(nklnv.hsv_ngaytangca3,0) AS hsv_ngaytangca3,
+               coalesce(nklnv.hsv_luongspnv,  0) AS hsv_luongspnv,
+               coalesce(nklnv.hsv_phucap,     0) AS hsv_phucapnv
+        FROM hsv_NkluongNV nklnv
+        JOIN hsv_nkluong nkl ON nkl.hsv_nkluong_id = nklnv.hsv_nkluong_id
+        WHERE nkl.ad_client_id = $P{AD_CLIENT_ID}
+          AND nkl.c_period_id  = $P{C_Period_ID}
+          AND nklnv.isactive   = 'Y'
+    ) AS b ON a.hsv_nhanvien_id = b.hsv_nhanvien_id AND a.ngaycongk = b.hsv_ngaycong
+),
+
+nguoi_pt AS (
+    SELECT hsv_nhanvien_id,
+           count(hsv_nknguoipt_id) AS songuoi_pt
+    FROM hsv_nknguoipt npt
+    CROSS JOIN p pd
+    WHERE ad_client_id = $P{AD_CLIENT_ID}
+      AND (pd.period_enddate <= npt.dateto OR npt.dateto IS NULL)
+      AND pd.period_enddate   >= npt.datefrom
+      AND pd.period_startdate >= npt.datefrom
+      AND (pd.period_startdate <= npt.dateto OR npt.dateto IS NULL)
+      AND npt.isactive = 'Y'
+    GROUP BY hsv_nhanvien_id
+),
+
+chedo_tncn AS (
+    SELECT coalesce(hsv_gtgcbt,   0) AS hsv_gtgcbt,
+           coalesce(hsv_GTGCNPT,  0) AS hsv_GTGCNPT
+    FROM hsv_CDTTNCN cdtn
+    CROSS JOIN p pd
+    WHERE ad_client_id = $P{AD_CLIENT_ID}
+      AND pd.period_enddate   <= cdtn.dateto
+      AND pd.period_enddate   >= cdtn.datefrom
+      AND pd.period_startdate >= cdtn.datefrom
+      AND pd.period_startdate <= cdtn.dateto
+),
+
+tong_the_lv1 AS (
+    SELECT k.ad_org_id,
+           k.hsv_toluong_id,
+           k.hsv_nhanvien_id                                                    AS a1,
+           hsv_ngaycong                                                          AS ngay_cong,
+           hsv_luongbhxh                                                         AS luong_cb,
+           CASE WHEN tongcong <> 0
+                THEN (hsv_ngaycong * hsv_hesoluong) * (tongluong / tongcong)
+                ELSE 0 END                                                       AS a4,
+           CASE WHEN k.hsv_htbhxh = 'Y' THEN w.hsv_maxHTBHXH ELSE 0 END       AS maxHTBHXH,
+           hsv_ngayanca * hsv_ht_anca                                            AS anca,
+           (hsv_ngaytangca2 * hsv_muc_tc2
+            + hsv_ngaytangca3 * hsv_muc_tc3
+            + hsv_congdem * hsv_bddem)                                           AS t_tang_ca,
+           hsv_luongspnv                                                         AS luongspnv,
+           hsv_luongbhxh * hsv_tlbhxh / 100                                     AS t_total_bhxh,
+           				   
+           w.hsv_tlkpcd                                                          AS hsv_tlkpcd,
+           w.hsv_max_kpcd                                                        AS hsv_max_kpcd,
+           w.hsv_muc_anca  * k.hsv_ngayanca
+            + k.hsv_congdem    * w.hsv_andem
+            + k.hsv_ngaytangca2 * w.hsv_antangca2
+            + k.hsv_ngaytangca3 * w.hsv_antangca3                               AS a11,
+           k.hsv_ckluong                                                         AS a13,
+           hsv_hesoluong                                                         AS a15,
+           hsv_tlhtbhxh / 100                                                   AS a16,
+           coalesce(CASE WHEN hsv_ngaycong <> 0 THEN t.hsv_phucap ELSE 0 END, 0) AS hsv_phucap,
+           hsv_phucapnv,
+           t.hsv_luongcd                                                         AS hsv_luongcd,
+           t.hsv_maxcong                                                         AS hsv_maxcong,
+           t.congmax                                                             AS congmax,
+           hsv_hesoluong                                                         AS hesoluong,
+           w.hsv_cdkbhxh                                                        AS hsv_cdkbhxh,
+           w.hsv_TLKPCDM                                                        AS hsv_TLKPCDM,
+           t.hsv_vl                                                             AS hsv_vl,      -- ✏️ THÊM
+           k.hsv_congdem * w.hsv_andem                                          AS anca_dem     -- ✏️ THÊM: ăn ca đêm
+    FROM chi_tiet_luong_bhxh k
+    LEFT JOIN chuyen_khoan AS g ON k.hsv_toluong_id = g.hsv_toluong_id AND k.hsv_nhanvien_id = g.hsv_nhanvien_id
+    LEFT JOIN che_do       AS w ON w.hsv_toluong_id = k.hsv_toluong_id
+    LEFT JOIN tong_cong    AS z ON k.hsv_toluong_id = z.hsv_toluong_id
+    LEFT JOIN tong_luong   AS h ON k.hsv_toluong_id = h.hsv_toluong_id
+    LEFT JOIN luong_cung   AS t ON k.hsv_toluong_id = t.hsv_toluong_id AND k.hsv_nhanvien_id = t.a1
+),
+
+tong_the_lv2 AS (
+    SELECT t.ad_org_id,
+           t.hsv_toluong_id,
+           a1,
+           ngay_cong,
+           hesoluong,
+           luong_cb,
+           coalesce(a4, 0)   AS a4,
+           CASE WHEN ngay_cong = 0 THEN 0
+                WHEN (luong_cb * a16) < maxHTBHXH THEN (luong_cb * a16)
+                ELSE maxHTBHXH END  AS maxHTBHXH,
+           anca,
+           t_tang_ca ,
+           luongspnv
+            + t.hsv_phucap
+            + CASE WHEN t.hsv_maxcong <> 0 AND ngay_cong >= congmax
+                   THEN t.hsv_luongcd / t.hsv_maxcong * a15 * congmax
+                   WHEN hsv_maxcong <> 0
+                   THEN t.hsv_luongcd / t.hsv_maxcong * a15 * ngay_cong
+                   ELSE 0 END                                               AS luong_pc_khac,
+           hsv_phucapnv,
+           t_total_bhxh,
+           t.hsv_tlkpcd                                                     AS hsv_tlkpcd,
+           t.hsv_Max_KPCD                                                   AS hsv_max_kpcd,
+           coalesce(a11, 0)  AS a11,
+           coalesce(a13, 0)  AS a13,
+           coalesce(a15, 0)  AS a15,
+           t.hsv_cdkbhxh     AS hsv_cdkbhxh,
+           t.hsv_TLKPCDM     AS hsv_tlkpcdm,
+           t.hsv_vl          AS hsv_vl,     -- ✏️ THÊM
+           coalesce(t.anca_dem, 0) AS anca_dem  -- ✏️ THÊM
+    FROM tong_the_lv1 AS t
+),
+
+tong_the_lv3 AS (
+    SELECT t.hsv_toluong_id,
+           tl.name  AS a0,
+           nv.hsv_nhanvien_id as a1,
+           nv.name  AS hoten,
+           nv.cmtnd,
+           nv.iban,
+           cb.name  AS nh,
+           ngay_cong,
+           hesoluong,
+           luong_cb,
+           a4,
+           coalesce(maxHTBHXH, 0)             AS maxHTBHXH,
+           coalesce(anca, 0)           AS anca,
+           t_tang_ca ,
+           coalesce(luong_pc_khac, 0)  AS luong_pc_khac,
+           coalesce(a4, 0) + coalesce(t_tang_ca , 0) + coalesce(luong_pc_khac, 0) AS a9,
+           coalesce(hsv_phucapnv, 0)   AS hsv_phucapnv,
+           coalesce(t_total_bhxh, 0)            AS t_total_bhxh,
+           coalesce(a11, 0)            AS a11,
+           case           	  
+               WHEN ngay_cong = 0 THEN 0
+               WHEN coalesce(t.hsv_max_kpcd, 0) <> 0 THEN
+                   LEAST(
+                       (   (coalesce(a4,0) + coalesce(luong_pc_khac,0) + coalesce(hsv_phucapnv,0) + coalesce(t_tang_ca,0))
+                         - (coalesce(t_total_bhxh,0) - coalesce(maxHTBHXH,0))
+                         - (coalesce(a11,0) - coalesce(anca,0))
+                       ) * coalesce(t.hsv_tlkpcd, 0) / 100,
+                       t.hsv_max_kpcd
+                   )
+               ELSE
+                   CASE
+                       WHEN luong_cb > 0 THEN luong_cb * coalesce(t.hsv_tlkpcdm, 0) / 100
+                       ELSE coalesce(t.hsv_cdkbhxh, 0)
+                   END
+           END AS tru_cd,
+           a13,
+           a15,
+           CASE WHEN nv.hsv_ctv = 'Y' THEN 0 ELSE npt.songuoi_pt END                              AS songuoi_pt,
+           CASE WHEN nv.hsv_ctv = 'Y' THEN 0 ELSE tncn.hsv_gtgcbt END                             AS gtbt,
+           CASE WHEN nv.hsv_ctv = 'Y' THEN 0 ELSE tncn.hsv_GTGCNPT * coalesce(npt.songuoi_pt, 0) END AS gtgcnpt,
+           nv.hsv_ctv,
+           t.hsv_vl                                                                                 AS hsv_vl,   -- ✏️ THÊM
+           coalesce(t.anca_dem, 0)                                                                  AS anca_dem  -- ✏️ THÊM
+           
+    FROM tong_the_lv2 t
+    JOIN hsv_toluong   tl  ON t.hsv_toluong_id    = tl.hsv_toluong_id
+    JOIN hsv_nhanvien  nv  ON t.a1                = nv.hsv_nhanvien_id
+    LEFT JOIN c_bank   cb  ON cb.c_bank_id        = nv.c_bank_id
+    LEFT JOIN nguoi_pt npt ON npt.hsv_nhanvien_id = nv.hsv_nhanvien_id
+    LEFT JOIN chedo_tncn tncn ON TRUE
+    WHERE  ($P{hsv_toluong_ID} IS NULL OR t.hsv_toluong_id = ANY(string_to_array($P{hsv_toluong_ID}, ',')::integer[]))
+      AND (t.ad_org_id = $P{AD_Org_ID} OR $P{AD_Org_ID} IS NULL)
+),
+
+tong_the_lv4 AS (
+    SELECT a0,a1, hoten, cmtnd, iban AS stk, nh,
+           coalesce(ngay_cong, 0)                                   AS ngay_cong,
+           hesoluong,
+           ngay_cong * hesoluong                                    AS hsqd,
+            coalesce(luong_cb, 0)   AS luong_cb,
+           coalesce(a4, 0) + coalesce(luong_pc_khac, 0)            AS luongsp,
+           hsv_phucapnv                                             AS pc_khac,
+           coalesce(t_tang_ca , 0)                                          AS pc_andem,
+           coalesce(a4,0) + coalesce(luong_pc_khac,0) + hsv_phucapnv + coalesce(t_tang_ca ,0) AS tong_luong,
+           maxHTBHXH                                                        AS htbhxh,
+           t_total_bhxh - maxHTBHXH       AS tru_bhxh,
+           a11 - anca                                               AS tru_tien_an,
+           tru_cd  as tru_cd,
+
+           -- ✏️ THÊM: khoản trừ 10% thu nhập vãng lai = (tổng lương - anca_dem) × 10%
+           CASE
+               WHEN hsv_vl = 'Y'
+            
+               THEN ROUND(
+                       (  coalesce(a4,0)
+                        + coalesce(luong_pc_khac,0)
+                        + coalesce(hsv_phucapnv,0)
+                        + coalesce(t_tang_ca ,0)
+                        - coalesce(anca_dem,0)  -  coalesce(t_tang_ca ,0)       -- trừ tiền ăn ca đêm
+                       ) * 0.10, 0)
+               ELSE 0
+           END AS tru_vl,
+
+           -- ✏️ SỬA: thuclinh trừ thêm tru_vl khi là vãng lai
+               coalesce(a4,0) + coalesce(luong_pc_khac,0) + hsv_phucapnv + coalesce(t_tang_ca ,0)
+           - (coalesce(a11,0) - coalesce(anca,0)) --tien an
+           -  (coalesce(t_total_bhxh,0) - coalesce(maxHTBHXH,0))   --bhxh
+           - coalesce(tru_cd,0)
+                
+              AS thuclinh,
+
+           coalesce(songuoi_pt, 0)                                  AS songuoi_pt,
+           gtbt,
+           gtgcnpt,
+
+           -- ✏️ SỬA: tnct = 0 nếu là thu nhập vãng lai (đã trừ 10% ở tru_vl, không tính biểu lũy tiến)
+           case           	  
+               WHEN hsv_vl = 'Y' THEN  (  coalesce(a4,0)
+                        + coalesce(luong_pc_khac,0)
+                        + coalesce(hsv_phucapnv,0)
+                        + coalesce(t_tang_ca ,0)
+                        - coalesce(anca_dem,0)-  coalesce(t_tang_ca , 0)         
+                       )
+               WHEN   (coalesce(a4,0) + coalesce(luong_pc_khac,0) + hsv_phucapnv + coalesce(t_tang_ca ,0))
+                    - t_tang_ca 
+                    - (t_total_bhxh - maxHTBHXH) -- bhxh
+                    - (coalesce(gtbt,0) --tnbt 
+                    	+ coalesce(gtgcnpt,0) --gtgcnpt
+                    	) < 0 THEN 0
+               ELSE   (coalesce(a4,0) + coalesce(luong_pc_khac,0) + hsv_phucapnv + coalesce(t_tang_ca ,0))
+                     - t_tang_ca 
+                    - (t_total_bhxh - maxHTBHXH) -- bhxh
+                    - (coalesce(gtbt,0) + coalesce(gtgcnpt,0))
+           END AS tnct,
+           
+  
+               
+           hsv_ctv,
+           hsv_vl,   -- ✏️ THÊM: giữ để dùng trong tax_cte
+           a9
+         
+    FROM tong_the_lv3
+    WHERE coalesce(a9, 0) <> 0
+),
+
+tax_cte AS (
+    SELECT *,
+           -- ✏️ SỬA: thue_tncn = 0 nếu là thu nhập vãng lai
+           case           	  
+               WHEN hsv_vl = 'Y'        THEN tru_vl               
+               WHEN tnct <= 10000000    THEN tnct * 0.05
+               WHEN tnct <= 30000000    THEN tnct * 0.10  - 500000
+               WHEN tnct <= 60000000    THEN tnct * 0.20  - 3500000
+               WHEN tnct <= 100000000   THEN tnct * 0.30  - 9500000
+               ELSE                          tnct * 0.35  - 14500000
+           END AS thue_tncn
+    FROM tong_the_lv4
 )
-,
-tong_the_lv3 as (
-	select t.hsv_toluong_id,
-	tl.name as a0, a1,
-	nv.name as hoten,
-	nv.cmtnd,
-	nv.iban,
-	cb.name as nh,
-	ngay_cong,
-	hesoluong,
-	luong_cb, a4,a5,anca,a7,luong_pc_khac, a4+a7+luong_pc_khac as a9,
-	hsv_phucapnv,a10,a11
-	,case 
- when ngay_cong = 0 then 0
- else
-   case
-     when (
-           (coalesce(a4,0)+coalesce(luong_pc_khac,0)+hsv_phucapnv+coalesce(a7,0))
-           -(a10-a5)
-           -(a11-anca)
-          ) * t.hsv_tlkpcd/100 > t.hsv_Max_KPCD
-     then t.hsv_Max_KPCD
-     else
-          (
-           (coalesce(a4,0)+coalesce(luong_pc_khac,0)+hsv_phucapnv+coalesce(a7,0))
-           -(a10-a5)
-           -(a11-anca)
-          ) * t.hsv_tlkpcd/100
-   end end as tru_cd, 
 
+select 
+    row_number() over() as stt,
+    a0,
+    count(a1)            as sl_nv,
+    sum(ngay_cong)       as ngay_cong,
+    sum(hesoluong)       as hesoluong,
+    sum(luong_cb)        as luong_cb,
+    sum(luongsp)         as luongsp,
+    sum(pc_khac)         as pc_khac,
+    sum(pc_andem)        as pc_andem,
+    sum(tong_luong)      as tong_luong,
+    sum(htbhxh)          as htbhxh,
+    sum(tru_bhxh)        as tru_bhxh,
+    sum(tru_tien_an)     as tru_tien_an,
+    sum(tru_cd)          as tru_cd,
+    sum(thuclinh)        as thuclinh,
+    sum(songuoi_pt)      as songuoi_pt,
+    sum(CASE WHEN hsv_ctv = 'Y' THEN 0 ELSE gtbt    END) as gtbt,
+    sum(CASE WHEN hsv_ctv = 'Y' THEN 0 ELSE gtgcnpt END) as gtgcnpt,
+    sum(CASE WHEN hsv_ctv = 'Y' THEN 0 ELSE tnct    END) as tnct,
+    sum(thue_tncn)                                        as thue_tncn,
+    sum(ROUND(thuclinh - thue_tncn, 0))                   as luong_con_lai
+from tax_cte
 
-	a13,a15 ,
-	case when nv.hsv_ctv = 'Y' then 0 else npt.songuoi_pt end as songuoi_pt,  
-	case when (nv.hsv_ctv = 'Y') then 0 else tncn.hsv_gtgcbt end  as gtbt,
-	case when (nv.hsv_ctv = 'Y' ) then 0 else tncn.hsv_GTGCNPT*coalesce(npt.songuoi_pt ,0) end as gtgcnpt,
-	nv.hsv_ctv 
-	from tong_the_lv2 t
-	join hsv_toluong tl on t.hsv_toluong_id = tl.hsv_toluong_id
-	join hsv_nhanvien nv on t.a1 = nv.hsv_nhanvien_id 
-	left join c_bank cb on cb.c_bank_id = nv.c_bank_id 
-	left join nguoi_pt npt on npt.hsv_nhanvien_id = nv.hsv_nhanvien_id 
-	LEFT JOIN  chedo_tncn tncn ON TRUE
-	where ($P{hsv_toluong_ID} IS NULL OR t.hsv_toluong_id = ANY(string_to_array($P{hsv_toluong_ID}, ',')::integer[]))
-	and (t.ad_org_id =$P{AD_Org_ID} or $P{AD_Org_ID} is null)
-)
-, 
-tong_the_lv4 as (
-	select a0,a1, hoten,cmtnd,iban as stk,nh,coalesce(ngay_cong,0) as ngay_cong,
-	hesoluong,ngay_cong*hesoluong as hsqd, coalesce(luong_cb,0) as luong_cb,
-	coalesce(a4,0)+coalesce(luong_pc_khac,0) as luongsp,
-	hsv_phucapnv as pc_khac, coalesce(a7,0) as pc_andem,
-	coalesce(a4,0)+coalesce(luong_pc_khac,0)+ hsv_phucapnv +coalesce(a7,0) as tong_luong,
-	a5 as htbhxh,
-	a10 - a5 as tru_bhxh ,
-	a11  - anca as tru_tien_an,
-	tru_cd,
-	coalesce(a4,0)+coalesce(luong_pc_khac,0)+ hsv_phucapnv+coalesce(a7,0)  -(a11 - anca) -(a10 - a5) -tru_cd   as thuclinh,
-	coalesce(songuoi_pt,0) as songuoi_pt,
-	gtbt,GTGCNPT,
-	case when coalesce(a4,0)+coalesce(luong_pc_khac,0)+ hsv_phucapnv+coalesce(a7,0)  -(a11 - anca) -(a10 - a5) -(coalesce(gtbt,0) +coalesce(gtgcnpt,0)) <0 then 0 else coalesce(a4,0)+coalesce(luong_pc_khac,0)+ hsv_phucapnv+coalesce(a7,0)  -(a11 - anca) -(a10 - a5) -(coalesce(gtbt,0) +coalesce(gtgcnpt,0)) end as tnct
-	,hsv_ctv 
-	from tong_the_lv3 
-	where coalesce(a9,0)<>0
-)
-
-
-select row_number() over() as stt,a0,count(a1) as sl_nv,sum(ngay_cong)ngay_cong ,sum(hesoluong)hesoluong ,sum(luong_cb)luong_cb ,sum(luongsp)luongsp, sum(pc_khac)pc_khac,
-sum(pc_andem)pc_andem,sum(tong_luong)tong_luong,sum(htbhxh)htbhxh,sum(tru_bhxh)tru_bhxh ,sum(tru_tien_an)tru_tien_an ,sum(tru_cd)tru_cd ,sum(thuclinh)thuclinh, sum(songuoi_pt)songuoi_pt ,
-sum(case WHEN hsv_ctv = 'Y' THEN  0 else gtbt end) as gtbt , 
-sum(case WHEN hsv_ctv = 'Y' THEN  0 else gtgcnpt end) as gtgcnpt ,
-sum(case when hsv_ctv = 'Y' then 0 else tnct end) as tnct,
-sum(CASE WHEN hsv_ctv = 'Y' THEN 
-        CASE
-            WHEN tnct <= 10000000 THEN tnct * 0.05
-            WHEN tnct <= 30000000 THEN tnct * 0.1  - 500000
-            WHEN tnct <= 60000000 THEN tnct * 0.2  - 3500000
-            WHEN tnct <= 100000000 THEN tnct * 0.3 - 9500000
-            ELSE tnct * 0.35 - 14500000
-        END
-
-    -- Nhóm Nhân viên chính thức
-    WHEN hsv_ctv = 'N' THEN
-        CASE 
-            WHEN tnct <= 10000000 THEN tnct * 0.05
-            WHEN tnct <= 30000000 THEN tnct * 0.1  - 500000
-            WHEN tnct <= 60000000 THEN tnct * 0.2  - 3500000
-            WHEN tnct <= 100000000 THEN tnct * 0.3 - 9500000
-            ELSE tnct * 0.35 - 14500000
-        END    
-
-    ELSE 0 
-END 
-) AS thue_tncn
-from tong_the_lv4
-group by a0]]>
+group by a0;]]>
 	</queryString>
 	<field name="stt" class="java.lang.Long">
 		<property name="com.jaspersoft.studio.field.name" value="stt"/>
@@ -389,6 +534,10 @@ group by a0]]>
 		<property name="com.jaspersoft.studio.field.name" value="thue_tncn"/>
 		<property name="com.jaspersoft.studio.field.label" value="thue_tncn"/>
 	</field>
+	<field name="luong_con_lai" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="luong_con_lai"/>
+		<property name="com.jaspersoft.studio.field.label" value="luong_con_lai"/>
+	</field>
 	<variable name="sum_ngaycong" class="java.lang.Double" calculation="Sum">
 		<variableExpression><![CDATA[$F{ngay_cong}]]></variableExpression>
 	</variable>
@@ -426,7 +575,7 @@ group by a0]]>
 		<variableExpression><![CDATA[$F{tnct}]]></variableExpression>
 	</variable>
 	<variable name="sum_thuclinh_sauthue" class="java.lang.Double" calculation="Sum">
-		<variableExpression><![CDATA[$F{thuclinh}.doubleValue()-$F{thue_tncn}.doubleValue()]]></variableExpression>
+		<variableExpression><![CDATA[$F{luong_con_lai}]]></variableExpression>
 	</variable>
 	<variable name="sum_thue_tncn" class="java.lang.Double" calculation="Sum">
 		<variableExpression><![CDATA[$F{thue_tncn}]]></variableExpression>
@@ -681,7 +830,7 @@ group by a0]]>
 						<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 						<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					</box>
-					<textElement textAlignment="Right" verticalAlignment="Middle">
+					<textElement textAlignment="Center" verticalAlignment="Middle">
 						<font fontName="Arial" size="9" isBold="true"/>
 					</textElement>
 					<textFieldExpression><![CDATA[$V{sum_slnv}]]></textFieldExpression>
@@ -716,7 +865,7 @@ group by a0]]>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font fontName="Arial" size="20" isBold="true"/>
 				</textElement>
-				<text><![CDATA[ BÁO CÁO CHI TIẾT LƯƠNG TỔ SẢN XUẤT (PHÒNG)]]></text>
+				<text><![CDATA[ BÁO CÁO TỔNG HỢP LƯƠNG TỔ SẢN XUẤT (PHÒNG)]]></text>
 			</staticText>
 			<subreport isUsingCache="true">
 				<reportElement key="subreport-12" x="387" y="70" width="245" height="30" uuid="27aea5f4-2120-4a33-98b2-d0ca829fb982">
@@ -1598,7 +1747,7 @@ group by a0]]>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
 					<font fontName="Arial" size="9"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$F{thuclinh}.doubleValue()-$F{thue_tncn}.doubleValue()]]></textFieldExpression>
+				<textFieldExpression><![CDATA[$F{luong_con_lai}]]></textFieldExpression>
 			</textField>
 			<textField pattern="#,##0.##" isBlankWhenNull="true">
 				<reportElement x="120" y="0" width="25" height="26" uuid="11e1b6ab-96c2-4bd5-8fa1-1241f2844c9d">
@@ -1613,7 +1762,7 @@ group by a0]]>
 					<bottomPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 					<rightPen lineWidth="0.5" lineStyle="Solid" lineColor="#000000"/>
 				</box>
-				<textElement textAlignment="Right" verticalAlignment="Middle">
+				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font fontName="Arial" size="9"/>
 				</textElement>
 				<textFieldExpression><![CDATA[$F{sl_nv}]]></textFieldExpression>

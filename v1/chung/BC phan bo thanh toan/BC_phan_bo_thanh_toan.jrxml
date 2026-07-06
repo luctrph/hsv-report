@@ -5,11 +5,11 @@
 	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
 	<style name="Style1" mode="Opaque" backcolor="rgba(255, 255, 255, 0.0)">
 		<conditionalStyle>
-			<conditionExpression><![CDATA[$F{note}==true]]></conditionExpression>
+			<conditionExpression><![CDATA[$V{note}==true]]></conditionExpression>
 			<style mode="Opaque" backcolor="#A8FFD5"/>
 		</conditionalStyle>
 		<conditionalStyle>
-			<conditionExpression><![CDATA[$F{note}==false]]></conditionExpression>
+			<conditionExpression><![CDATA[$V{note}==false]]></conditionExpression>
 			<style/>
 		</conditionalStyle>
 	</style>
@@ -24,41 +24,32 @@
     k.name,
     cc.iso_code,
 
-    -- Số dư chưa phân bổ (Tổng - Đã phân bổ)
+    -- Chưa phân bổ = Tổng - Đã phân bổ
     SUM(thu_total - thu_alloc) AS thu,
-    SUM(chi_total - chi_alloc) AS chi,
     SUM(ban_total - ban_paid)  AS ban,
+    SUM(chi_total - chi_alloc) AS chi,
     SUM(mua_total - mua_paid)  AS mua,
-
-    CASE
-        -- 1. THU đối ứng với BÁN (Thông thường)
-        WHEN SUM(thu_total - thu_alloc) = SUM(ban_total - ban_paid) 
-             AND SUM(thu_total - thu_alloc) <> 0 THEN TRUE
-        
-        -- 2. CHI đối ứng với MUA (Thông thường)
-        WHEN SUM(chi_total - chi_alloc) = SUM(mua_total - mua_paid) 
-             AND SUM(chi_total - chi_alloc) <> 0 THEN TRUE
-
-        -- 3. HÓA ĐƠN NGƯỢC VẾ: BÁN đối ứng với CHI
-        WHEN SUM(ban_total - ban_paid) = SUM(chi_total - chi_alloc) 
-             AND SUM(ban_total - ban_paid) <> 0 THEN TRUE
-
-        -- 4. HÓA ĐƠN NGƯỢC VẾ: MUA đối ứng với THU
-        WHEN SUM(mua_total - mua_paid) = SUM(thu_total - thu_alloc) 
-             AND SUM(mua_total - mua_paid) <> 0 THEN TRUE
-
-        ELSE FALSE
-    END AS note
+ 
+    SUM(thu_total - thu_alloc)+SUM(mua_total - mua_paid)-SUM(ban_total - ban_paid)-SUM(chi_total - chi_alloc) as checlech
 FROM (
     /* ================= PAYMENT ================= */
     SELECT
         cb.value,
         cb.name,
+
+        -- THU
         SUM(CASE WHEN pay.isreceipt='Y' THEN pay.payamt ELSE 0 END) AS thu_total,
         SUM(CASE WHEN pay.isreceipt='Y' AND pay.isallocated='Y' THEN pay.payamt ELSE 0 END) AS thu_alloc,
+
+        -- CHI
         SUM(CASE WHEN pay.isreceipt='N' THEN pay.payamt ELSE 0 END) AS chi_total,
         SUM(CASE WHEN pay.isreceipt='N' AND pay.isallocated='Y' THEN pay.payamt ELSE 0 END) AS chi_alloc,
-        0 AS ban_total, 0 AS ban_paid, 0 AS mua_total, 0 AS mua_paid
+
+        0 AS ban_total,
+        0 AS ban_paid,
+        0 AS mua_total,
+        0 AS mua_paid
+     
     FROM c_payment pay
     JOIN c_bpartner cb ON cb.c_bpartner_id = pay.c_bpartner_id
     WHERE pay.ad_client_id = $P{AD_CLIENT_ID}
@@ -72,28 +63,36 @@ FROM (
     SELECT
         cb.value,
         cb.name,
-        0 AS thu_total, 0 AS thu_alloc, 0 AS chi_total, 0 AS chi_alloc,
+
+        0 AS thu_total,
+        0 AS thu_alloc,
+        0 AS chi_total,
+        0 AS chi_alloc,
+
+        -- BÁN
         SUM(CASE WHEN ci.issotrx='Y' THEN ci.grandtotal ELSE 0 END) AS ban_total,
         SUM(CASE WHEN ci.issotrx='Y' AND ci.ispaid='Y' THEN ci.grandtotal ELSE 0 END) AS ban_paid,
+
+        -- MUA
         SUM(CASE WHEN ci.issotrx='N' THEN ci.grandtotal ELSE 0 END) AS mua_total,
         SUM(CASE WHEN ci.issotrx='N' AND ci.ispaid='Y' THEN ci.grandtotal ELSE 0 END) AS mua_paid
+		
     FROM c_invoice ci
     JOIN c_bpartner cb ON cb.c_bpartner_id = ci.c_bpartner_id
     WHERE ci.ad_client_id = $P{AD_CLIENT_ID}
       AND ci.c_currency_id = $P{C_Currency_ID}
-      AND ci.docstatus IN ('CL','CO')
+
     GROUP BY cb.value, cb.name
 ) k
 LEFT JOIN c_currency cc ON cc.c_currency_id = $P{C_Currency_ID}
 GROUP BY k.value, k.name, cc.iso_code
-HAVING 
-    -- Giữ nguyên bộ lọc để chỉ hiện những dòng có phát sinh chưa khớp
-    SUM(thu_total - thu_alloc) <> 0 
-    OR SUM(chi_total - chi_alloc) <> 0
-    OR SUM(ban_total - ban_paid) <> 0
-    OR SUM(mua_total - mua_paid) <> 0
+having
+ 	  (SUM(thu_total - thu_alloc)<>0 and SUM(ban_total - ban_paid)<>0)  
+       or (SUM(chi_total - chi_alloc)<>0 and SUM(mua_total - mua_paid)<>0) 
+       or (SUM(thu_total - thu_alloc)-SUM(chi_total - chi_alloc)<>0 and SUM(thu_total - thu_alloc)<>0 and SUM(chi_total - chi_alloc) <>0) 
+       or (SUM(mua_total - mua_paid)-SUM(ban_total - ban_paid)<>0 and SUM(mua_total - mua_paid)<>0 and SUM(ban_total - ban_paid)<>0)
 
-ORDER BY k.name;]]>
+ORDER by abs(SUM(thu_total - thu_alloc)+SUM(mua_total - mua_paid)-SUM(ban_total - ban_paid)-SUM(chi_total - chi_alloc))  asc, k.name asc;]]>
 	</queryString>
 	<field name="value" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="value"/>
@@ -112,24 +111,24 @@ ORDER BY k.name;]]>
 		<property name="com.jaspersoft.studio.field.name" value="thu"/>
 		<property name="com.jaspersoft.studio.field.label" value="thu"/>
 	</field>
-	<field name="chi" class="java.math.BigDecimal">
-		<property name="com.jaspersoft.studio.field.name" value="chi"/>
-		<property name="com.jaspersoft.studio.field.label" value="chi"/>
-	</field>
 	<field name="ban" class="java.math.BigDecimal">
 		<property name="com.jaspersoft.studio.field.name" value="ban"/>
 		<property name="com.jaspersoft.studio.field.label" value="ban"/>
+	</field>
+	<field name="chi" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="chi"/>
+		<property name="com.jaspersoft.studio.field.label" value="chi"/>
 	</field>
 	<field name="mua" class="java.math.BigDecimal">
 		<property name="com.jaspersoft.studio.field.name" value="mua"/>
 		<property name="com.jaspersoft.studio.field.label" value="mua"/>
 	</field>
-	<field name="note" class="java.lang.Boolean">
-		<property name="com.jaspersoft.studio.field.name" value="note"/>
-		<property name="com.jaspersoft.studio.field.label" value="note"/>
+	<field name="checlech" class="java.math.BigDecimal">
+		<property name="com.jaspersoft.studio.field.name" value="checlech"/>
+		<property name="com.jaspersoft.studio.field.label" value="checlech"/>
 	</field>
-	<variable name="check" class="java.lang.Boolean">
-		<variableExpression><![CDATA[$F{note}]]></variableExpression>
+	<variable name="note" class="java.lang.Boolean">
+		<variableExpression><![CDATA[$F{checlech}.doubleValue()==0]]></variableExpression>
 	</variable>
 	<background>
 		<band splitType="Stretch"/>
@@ -403,6 +402,7 @@ ORDER BY k.name;]]>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
 					<font fontName="Arial" size="10"/>
 				</textElement>
+				<textFieldExpression><![CDATA[$F{checlech}]]></textFieldExpression>
 			</textField>
 		</band>
 	</detail>
