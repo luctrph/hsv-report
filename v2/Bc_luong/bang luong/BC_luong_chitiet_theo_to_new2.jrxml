@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Created with Jaspersoft Studio version 6.20.0.final using JasperReports Library version 6.20.0-2bc7ab61c56f459e8176eb05c7705e145cd400ad  -->
+<!-- Created with Jaspersoft Studio version 6.20.6.final using JasperReports Library version 6.20.6-5c96b6aa8a39ac1dc6b6bea4b81168e16dd39231  -->
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="BC_luong_chitiet_theo_to" pageWidth="842" pageHeight="595" orientation="Landscape" columnWidth="802" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="26bd7587-0a10-4f35-aaaf-382b36df1ca5">
 	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="psql"/>
 	<property name="net.sf.jasperreports.export.xls.exclude.origin.keep.first.band.1" value="columnHeader"/>
@@ -35,9 +35,6 @@
 	<parameter name="AD_Org_ID" class="java.lang.Integer"/>
 	<parameter name="hsv_nhanvien_ID" class="java.lang.Integer"/>
 	<parameter name="AD_USER_ID" class="java.lang.Integer"/>
-	<parameter name="hsv_qtluong" class="java.lang.String">
-		<defaultValueExpression><![CDATA["N"]]></defaultValueExpression>
-	</parameter>
 	<queryString>
 		<![CDATA[WITH p AS (
     SELECT startdate AS period_startdate,
@@ -292,7 +289,7 @@ tong_the_lv2 AS (
 
 tong_the_lv3 AS (
     SELECT t.hsv_toluong_id,
-           tl.name  AS a0,
+           tl.name  AS toluong,
            nv.name  AS hoten,
            nv.cmtnd,
            nv.iban,
@@ -310,7 +307,6 @@ tong_the_lv3 AS (
            coalesce(t_total_bhxh, 0)            AS t_total_bhxh,
            coalesce(a11, 0)            AS a11,
            case
-           	   when nv.hsv_qtluong = 'Y' then 0
                WHEN ngay_cong = 0 THEN 0
                WHEN coalesce(t.hsv_max_kpcd, 0) <> 0 THEN
                    LEAST(
@@ -321,10 +317,7 @@ tong_the_lv3 AS (
                        t.hsv_max_kpcd
                    )
                ELSE
-                   CASE
-                       WHEN luong_cb > 0 THEN luong_cb * coalesce(t.hsv_tlkpcdm, 0) / 100
-                       ELSE coalesce(t.hsv_cdkbhxh, 0)
-                   END
+                   luong_cb * coalesce(t.hsv_tlkpcdm, 0) / 100
            END AS tru_cd,
            a13,
            a15,
@@ -333,8 +326,8 @@ tong_the_lv3 AS (
            CASE WHEN nv.hsv_ctv = 'Y' THEN 0 ELSE tncn.hsv_GTGCNPT * coalesce(npt.songuoi_pt, 0) END AS gtgcnpt,
            nv.hsv_ctv,
            t.hsv_vl                                                                                 AS hsv_vl,   -- ✏️ THÊM
-           coalesce(t.anca_dem, 0)                                                                  AS anca_dem,  -- ✏️ THÊM
-           nv.hsv_qtluong
+           coalesce(t.anca_dem, 0)                                                                  AS anca_dem  -- ✏️ THÊM
+      
     FROM tong_the_lv2 t
     JOIN hsv_toluong   tl  ON t.hsv_toluong_id    = tl.hsv_toluong_id
     JOIN hsv_nhanvien  nv  ON t.a1                = nv.hsv_nhanvien_id
@@ -347,19 +340,19 @@ tong_the_lv3 AS (
 ),
 
 tong_the_lv4 AS (
-    SELECT a0, hoten, cmtnd, iban AS stk, nh,
+    SELECT toluong, hoten, cmtnd, iban AS stk, nh,
            coalesce(ngay_cong, 0)                                   AS ngay_cong,
            hesoluong,
            ngay_cong * hesoluong                                    AS hsqd,
-           case when hsv_qtluong  = 'Y' then 0 else coalesce(luong_cb, 0) end  AS luong_cb,
+            coalesce(luong_cb, 0)   AS luong_cb,
            coalesce(a4, 0) + coalesce(luong_pc_khac, 0)            AS luongsp,
            hsv_phucapnv                                             AS pc_khac,
            coalesce(t_tang_ca , 0)                                          AS pc_andem,
            coalesce(a4,0) + coalesce(luong_pc_khac,0) + hsv_phucapnv + coalesce(t_tang_ca ,0) AS tong_luong,
-           case when hsv_qtluong = 'Y' then 0 else maxHTBHXH end                                                       AS htbhxh,
-           case when hsv_qtluong = 'Y' then 0 else  t_total_bhxh - maxHTBHXH   end    AS tru_bhxh,
+           maxHTBHXH                                                        AS htbhxh,
+             t_total_bhxh - maxHTBHXH       AS tru_bhxh,
            a11 - anca                                               AS tru_tien_an,
-           case when hsv_qtluong = 'Y' then 0 else tru_cd end as tru_cd,
+           tru_cd  as tru_cd,
 
            -- ✏️ THÊM: khoản trừ 10% thu nhập vãng lai = (tổng lương - anca_dem) × 10%
            CASE
@@ -378,7 +371,7 @@ tong_the_lv4 AS (
            -- ✏️ SỬA: thuclinh trừ thêm tru_vl khi là vãng lai
                coalesce(a4,0) + coalesce(luong_pc_khac,0) + hsv_phucapnv + coalesce(t_tang_ca ,0)
            - (coalesce(a11,0) - coalesce(anca,0)) --tien an
-           - case when hsv_qtluong = 'Y' then 0 else  (coalesce(t_total_bhxh,0) - coalesce(maxHTBHXH,0)) end  --bhxh
+           -   (coalesce(t_total_bhxh,0) - coalesce(maxHTBHXH,0))  --bhxh
            - coalesce(tru_cd,0)
                 
               AS thuclinh,
@@ -389,7 +382,7 @@ tong_the_lv4 AS (
 
            -- ✏️ SỬA: tnct = 0 nếu là thu nhập vãng lai (đã trừ 10% ở tru_vl, không tính biểu lũy tiến)
            case
-           	   when hsv_qtluong = 'Y' then 0
+           	  
                WHEN hsv_vl = 'Y' THEN  (  coalesce(a4,0)
                         + coalesce(luong_pc_khac,0)
                         + coalesce(hsv_phucapnv,0)
@@ -412,8 +405,7 @@ tong_the_lv4 AS (
                
            hsv_ctv,
            hsv_vl,   -- ✏️ THÊM: giữ để dùng trong tax_cte
-           a9,
-           hsv_qtluong
+           a9
     FROM tong_the_lv3
     WHERE coalesce(a9, 0) <> 0
 ),
@@ -421,8 +413,7 @@ tong_the_lv4 AS (
 tax_cte AS (
     SELECT *,
            -- ✏️ SỬA: thue_tncn = 0 nếu là thu nhập vãng lai
-           case
-           	   when hsv_qtluong = 'Y'   then 0
+           case           	  
                WHEN hsv_vl = 'Y'        THEN tru_vl               
                WHEN tnct <= 10000000    THEN tnct * 0.05
                WHEN tnct <= 30000000    THEN tnct * 0.10  - 500000
@@ -434,8 +425,8 @@ tax_cte AS (
 )
 
 SELECT
-    row_number() OVER (PARTITION BY a0 ORDER BY hoten NULLS FIRST) AS stt,
-    a0, hoten, cmtnd, stk, nh,
+    row_number() OVER (PARTITION BY toluong ORDER BY hoten NULLS FIRST) AS stt,
+    toluong, hoten, cmtnd, stk, nh,
     ngay_cong, hesoluong, luong_cb,
     luongsp, pc_khac, pc_andem, tong_luong,
     htbhxh, tru_bhxh, tru_tien_an,
@@ -443,15 +434,13 @@ SELECT
     tru_vl,          -- ✏️ THÊM: hiển thị khoản trừ 10% vãng lai
     thuclinh,
     songuoi_pt,
-    CASE WHEN hsv_ctv = 'Y' or hsv_vl = 'Y' or hsv_qtluong = 'Y' THEN 0 ELSE gtbt      END AS gtbt,
+    CASE WHEN hsv_ctv = 'Y' or hsv_vl = 'Y'  THEN 0 ELSE gtbt      END AS gtbt,
     CASE WHEN hsv_ctv = 'Y' or hsv_vl = 'Y' THEN 0 ELSE gtgcnpt   END AS gtgcnpt,
     tnct,
     thue_tncn,
-    coalesce(round(thuclinh - thue_tncn, 0), 0)       AS luong_con_lai,
-    hsv_qtluong
-FROM tax_cte
-where $P{hsv_qtluong}=hsv_qtluong;
+    coalesce(round(thuclinh - thue_tncn, 0), 0)       AS luong_con_lai
 
+FROM tax_cte
 ]]>
 	</queryString>
 	<field name="stt" class="java.lang.Long">
@@ -558,11 +547,6 @@ where $P{hsv_qtluong}=hsv_qtluong;
 	<field name="luong_con_lai" class="java.math.BigDecimal">
 		<property name="com.jaspersoft.studio.field.name" value="luong_con_lai"/>
 		<property name="com.jaspersoft.studio.field.label" value="luong_con_lai"/>
-	</field>
-	<field name="hsv_qtluong" class="java.lang.String">
-		<property name="com.jaspersoft.studio.field.name" value="hsv_qtluong"/>
-		<property name="com.jaspersoft.studio.field.label" value="hsv_qtluong"/>
-		<property name="com.jaspersoft.studio.field.tree.path" value="hsv_nhanvien"/>
 	</field>
 	<variable name="sum_ngaycong" class="java.lang.Double" resetType="Group" resetGroup="nhom" calculation="Sum">
 		<variableExpression><![CDATA[$F{ngay_cong}]]></variableExpression>
@@ -1302,7 +1286,7 @@ where $P{hsv_qtluong}=hsv_qtluong;
 				<textElement textAlignment="Center" verticalAlignment="Middle">
 					<font fontName="Arial" size="10" isBold="true"/>
 				</textElement>
-				<textFieldExpression><![CDATA[$P{hsv_qtluong}.equals("N")?"Thực lĩnh sau thuế":"Tiền mặt"]]></textFieldExpression>
+				<textFieldExpression><![CDATA["Thực lĩnh sau thuế"]]></textFieldExpression>
 			</textField>
 		</band>
 	</columnHeader>

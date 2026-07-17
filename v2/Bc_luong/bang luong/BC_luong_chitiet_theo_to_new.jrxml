@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Created with Jaspersoft Studio version 6.20.0.final using JasperReports Library version 6.20.0-2bc7ab61c56f459e8176eb05c7705e145cd400ad  -->
+<!-- Created with Jaspersoft Studio version 6.20.6.final using JasperReports Library version 6.20.6-5c96b6aa8a39ac1dc6b6bea4b81168e16dd39231  -->
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="BC_luong_chitiet_theo_to" pageWidth="842" pageHeight="595" orientation="Landscape" columnWidth="802" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="26bd7587-0a10-4f35-aaaf-382b36df1ca5">
-	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="psql"/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="New Data Adapter"/>
 	<property name="net.sf.jasperreports.export.xls.exclude.origin.keep.first.band.1" value="columnHeader"/>
 	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.2" value="pageFooter"/>
 	<property name="net.sf.jasperreports.export.xls.exclude.origin.band.3" value="groupHeader"/>
@@ -289,7 +289,7 @@ tong_the_lv2 AS (
 
 tong_the_lv3 AS (
     SELECT t.hsv_toluong_id,
-           tl.name  AS a0,
+           tl.name  AS toluong,
            nv.name  AS hoten,
            nv.cmtnd,
            nv.iban,
@@ -306,10 +306,9 @@ tong_the_lv3 AS (
            coalesce(hsv_phucapnv, 0)   AS hsv_phucapnv,
            coalesce(t_total_bhxh, 0)            AS t_total_bhxh,
            coalesce(a11, 0)            AS a11,
-           case
-           	   
+          case
                WHEN ngay_cong = 0 THEN 0
-               WHEN coalesce(t.hsv_max_kpcd, 0) <> 0 THEN
+               WHEN coalesce(t.hsv_max_kpcd, 0) <> 0  THEN
                    LEAST(
                        (   (coalesce(a4,0) + coalesce(luong_pc_khac,0) + coalesce(hsv_phucapnv,0) + coalesce(t_tang_ca,0))
                          - (coalesce(t_total_bhxh,0) - coalesce(maxHTBHXH,0))
@@ -317,8 +316,10 @@ tong_the_lv3 AS (
                        ) * coalesce(t.hsv_tlkpcd, 0) / 100,
                        t.hsv_max_kpcd
                    )
+                
                ELSE
-                   CASE
+                   case
+	                   when coalesce(t.hsv_TLKPCDM, 0) = 0  then 0
                        WHEN luong_cb > 0 THEN luong_cb * coalesce(t.hsv_tlkpcdm, 0) / 100
                        ELSE coalesce(t.hsv_cdkbhxh, 0)
                    END
@@ -344,7 +345,7 @@ tong_the_lv3 AS (
 ),
 
 tong_the_lv4 AS (
-    SELECT a0, hoten, cmtnd, iban AS stk, nh,
+    SELECT toluong, hoten, cmtnd, iban AS stk, nh,
            coalesce(ngay_cong, 0)                                   AS ngay_cong,
            hesoluong,
            ngay_cong * hesoluong                                    AS hsqd,
@@ -429,8 +430,8 @@ tax_cte AS (
 )
 
 SELECT
-    row_number() OVER (PARTITION BY a0 ORDER BY hoten NULLS FIRST) AS stt,
-    a0, hoten, cmtnd, stk, nh,
+    row_number() OVER (PARTITION BY toluong ORDER BY hoten NULLS FIRST) AS stt,
+    toluong, hoten, cmtnd, stk, nh,
     ngay_cong, hesoluong, luong_cb,
     luongsp, pc_khac, pc_andem, tong_luong,
     htbhxh, tru_bhxh, tru_tien_an,
@@ -450,9 +451,9 @@ FROM tax_cte]]>
 		<property name="com.jaspersoft.studio.field.name" value="stt"/>
 		<property name="com.jaspersoft.studio.field.label" value="stt"/>
 	</field>
-	<field name="a0" class="java.lang.String">
-		<property name="com.jaspersoft.studio.field.name" value="a0"/>
-		<property name="com.jaspersoft.studio.field.label" value="a0"/>
+	<field name="toluong" class="java.lang.String">
+		<property name="com.jaspersoft.studio.field.name" value="toluong"/>
+		<property name="com.jaspersoft.studio.field.label" value="toluong"/>
 		<property name="com.jaspersoft.studio.field.tree.path" value="hsv_toluong"/>
 	</field>
 	<field name="hoten" class="java.lang.String">
@@ -639,7 +640,7 @@ FROM tax_cte]]>
 		<variableExpression><![CDATA[$V{user_name}]]></variableExpression>
 	</variable>
 	<group name="nhom">
-		<groupExpression><![CDATA[$F{a0}]]></groupExpression>
+		<groupExpression><![CDATA[$F{toluong}]]></groupExpression>
 		<groupHeader>
 			<band height="25">
 				<property name="com.jaspersoft.studio.unit.height" value="px"/>
@@ -659,7 +660,7 @@ FROM tax_cte]]>
 					<textElement verticalAlignment="Middle">
 						<font fontName="Arial" isBold="true"/>
 					</textElement>
-					<textFieldExpression><![CDATA[$F{a0}]]></textFieldExpression>
+					<textFieldExpression><![CDATA[$F{toluong}]]></textFieldExpression>
 				</textField>
 			</band>
 		</groupHeader>
