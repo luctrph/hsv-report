@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Created with Jaspersoft Studio version 6.20.0.final using JasperReports Library version 6.20.0-2bc7ab61c56f459e8176eb05c7705e145cd400ad  -->
+<!-- Created with Jaspersoft Studio version 6.20.6.final using JasperReports Library version 6.20.6-5c96b6aa8a39ac1dc6b6bea4b81168e16dd39231  -->
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="CompanyHeader" pageWidth="575" pageHeight="842" whenNoDataType="AllSectionsNoDetail" columnWidth="575" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="e1bf818f-f7b4-427c-b6f7-9081e19b1fb0">
 	<property name="ireport.scriptlethandling" value="0"/>
 	<property name="ireport.encoding" value="UTF-8"/>
 	<property name="ireport.zoom" value="1.0"/>
 	<property name="ireport.x" value="0"/>
 	<property name="ireport.y" value="0"/>
-	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="psql"/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="IDEMPIERE"/>
 	<property name="com.jaspersoft.studio.unit." value="pixel"/>
 	<property name="com.jaspersoft.studio.unit.pageHeight" value="pixel"/>
 	<property name="net.sf.jasperreports.export.xls.remove.empty.space.between.rows" value="true"/>
@@ -24,39 +24,57 @@
 	<import value="net.sf.jasperreports.engine.data.*"/>
 	<parameter name="C_BPartner_ID" class="java.lang.Integer"/>
 	<parameter name="AD_Org_ID" class="java.lang.Integer"/>
-	<parameter name="C_Activity_ID" class="java.lang.Integer"/>
+	<parameter name="C_Activity_ID" class="java.lang.String"/>
 	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
-	<parameter name="C_Campaign_ID" class="java.lang.Integer"/>
+	<parameter name="C_Campaign_ID" class="java.lang.String"/>
 	<parameter name="Account_ID" class="java.lang.Integer"/>
 	<queryString language="SQL">
-		<![CDATA[SELECT 
-    CASE 
-        WHEN $P{AD_Org_ID} IS NOT NULL THEN org.name 
+		<![CDATA[SELECT
+    CASE
+        WHEN $P{AD_Org_ID} IS NOT NULL THEN org.name
     END AS bophan,
-    CASE 
-        WHEN $P{Account_ID} IS NOT NULL THEN a.value || '_' || a.name 
+
+    CASE
+        WHEN $P{Account_ID} IS NOT NULL THEN a.value || '_' || a.name
     END AS taikhoan,
-    CASE 
-        WHEN $P{C_BPartner_ID} IS NOT NULL THEN cb.name 
+
+    CASE
+        WHEN $P{C_BPartner_ID} IS NOT NULL THEN cb.name
     END AS doituong,
-    CASE 
-        WHEN $P{C_Campaign_ID} IS NOT NULL THEN cc.name 
+
+    CASE
+        WHEN $P{C_Campaign_ID} IS NOT NULL THEN cc.name
     END AS chiendich,
-    CASE 
-        WHEN $P{C_Activity_ID} IS NOT NULL THEN ac.name 
-    END AS hoatdong
+
+    string_agg(ac.name, ', ') AS hoatdong
+
 FROM c_elementvalue a
-LEFT JOIN c_bpartner cb 
+
+LEFT JOIN c_bpartner cb
        ON cb.c_bpartner_id = $P{C_BPartner_ID}
-LEFT JOIN c_campaign cc 
-       ON cc.c_campaign_id = $P{C_Campaign_ID}
-LEFT JOIN c_activity ac 
-       ON ac.c_activity_id = $P{C_Activity_ID}
-LEFT JOIN ad_org org 
+
+LEFT JOIN c_campaign cc
+       ON cc.c_campaign_id = ANY(
+            string_to_array($P{C_Campaign_ID}::text, ',')::int[]
+          )
+
+LEFT JOIN c_activity ac
+       ON ac.c_activity_id = ANY(
+            string_to_array($P{C_Activity_ID}::text, ',')::int[]
+          )
+
+LEFT JOIN ad_org org
        ON org.ad_org_id = $P{AD_Org_ID}
+
 WHERE a.ad_client_id = $P{AD_CLIENT_ID}
   AND ($P{Account_ID} IS NULL OR a.c_elementvalue_id = $P{Account_ID})
-LIMIT 1;]]>
+
+GROUP BY
+    org.name,
+    a.value,
+    a.name,
+    cb.name,
+    cc.name;]]>
 	</queryString>
 	<field name="bophan" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="bophan"/>
