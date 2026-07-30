@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Created with Jaspersoft Studio version 6.20.0.final using JasperReports Library version 6.20.0-2bc7ab61c56f459e8176eb05c7705e145cd400ad  -->
+<!-- Created with Jaspersoft Studio version 6.20.6.final using JasperReports Library version 6.20.6-5c96b6aa8a39ac1dc6b6bea4b81168e16dd39231  -->
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Rpt_BCQuanTriGiaThanhNgao" pageWidth="842" pageHeight="595" orientation="Landscape" columnWidth="842" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="4023df51-1b73-46d9-adf6-650e3c9f2034">
-	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="psql"/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="IDEMPIERE"/>
 	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
 	<property name="net.sf.jasperreports.export.xls.exclude.origin.keep.first.band.1" value="columnHeader"/>
 	<property name="net.sf.jasperreports.export.xlsx.exclude.origin.keep.first.band.1" value="columnHeader"/>
@@ -43,7 +43,124 @@
 	</parameter>
 	<parameter name="EXPORT_TYPE" class="java.lang.String"/>
 	<queryString language="SQL">
-		<![CDATA[select l.description,cast(l.value as integer) as value,l.name,sum(t.cp) as cp,sum(case when t.nhom <> 'I' then  t.cp1 else 0 end ) as cp1
+		<![CDATA[
+WITH fact_gl_acc AS MATERIALIZED (
+    -- Common base for chi tieu 6,19,20,21,24,25,26,27,28,29,30
+    SELECT
+        fa.amtacctdr,
+        fa.amtacctcr,
+        tk.value AS acc_value
+    FROM Fact_Acct fa
+    LEFT JOIN gl_journalline gl
+           ON fa.record_id = gl.gl_journal_id
+          AND fa.line_id   = gl.gl_journalline_id
+          AND fa.Account_ID = gl.Account_ID
+    LEFT JOIN gl_journal a
+           ON a.gl_journal_id = fa.record_id
+          AND a.docstatus IN ('CO', 'CL')
+    JOIN c_elementvalue tk
+           ON fa.account_id = tk.c_elementvalue_id
+          AND tk.AD_Client_ID = $P{AD_CLIENT_ID}
+    WHERE fa.dateacct >= $P{StartDate}
+      AND fa.dateacct <= $P{EndDate}
+      AND fa.AD_Client_ID = $P{AD_CLIENT_ID}
+      AND (
+            (fa.ad_table_id <> 224)
+         OR (fa.ad_table_id = 224 AND gl.IsGenerated = 'N')
+         OR (fa.ad_table_id = 224 AND fa.line_id IS NULL)
+      )
+),
+ 
+attr_map AS MATERIALIZED (
+    -- Common attribute-instance -> hsv_c_thuoctinh_id mapping used for
+    -- production qty and sale qty grouping (chi tieu 2, 3, sx, xb)
+    SELECT tt.m_attributesetinstance_id, gtt.hsv_c_thuoctinh_id
+    FROM m_attributeinstance tt
+    JOIN m_attributevalue gtt
+           ON tt.m_attributevalue_id = gtt.m_attributevalue_id
+          AND gtt.m_attribute_id = 1000146
+          AND gtt.hsv_c_thuoctinh_id IN (1000145, 1000137, 1000138, 1000139, 1000146)
+    WHERE tt.ad_client_id = $P{AD_CLIENT_ID}
+),
+ 
+production_qty AS MATERIALIZED (
+    -- Chi tieu 2, computed once (used directly and by the "sx" join)
+    SELECT
+        COALESCE(SUM(CASE WHEN am.hsv_c_thuoctinh_id = 1000145 THEN pl.productionqty ELSE 0 END), 0) AS slb,
+        COALESCE(SUM(CASE WHEN am.hsv_c_thuoctinh_id = 1000137 THEN pl.productionqty ELSE 0 END), 0) AS slb1,
+        COALESCE(SUM(CASE WHEN am.hsv_c_thuoctinh_id IN (1000138,1000139,1000146) THEN pl.productionqty ELSE 0 END), 0) AS slb5
+    FROM m_productionplan pl
+    JOIN m_product hh ON pl.m_product_id = hh.m_product_id AND hh.M_AttributeSet_ID = 1000199
+    JOIN m_production p ON pl.m_production_id = p.m_production_id
+                        AND p.docstatus IN ('CO','CL')
+                        AND p.movementdate >= $P{StartDate}
+                        AND p.movementdate <= $P{EndDate}
+    JOIN attr_map am ON pl.m_attributesetinstance_id = am.m_attributesetinstance_id
+    WHERE pl.ad_client_id = $P{AD_CLIENT_ID}
+),
+ 
+sales_qty AS MATERIALIZED (
+    -- Chi tieu 3, computed once (used directly and by the "xb" join)
+    SELECT
+        COALESCE(SUM(CASE WHEN am.hsv_c_thuoctinh_id = 1000145 THEN io.movementqty ELSE 0 END), 0) AS slb,
+        COALESCE(SUM(CASE WHEN am.hsv_c_thuoctinh_id = 1000137 THEN io.movementqty ELSE 0 END), 0) AS slb1,
+        COALESCE(SUM(CASE WHEN am.hsv_c_thuoctinh_id IN (1000138,1000139,1000146) THEN io.movementqty ELSE 0 END), 0) AS slb5
+    FROM m_inoutline io
+    JOIN m_inout iol ON io.m_inout_id = iol.m_inout_id
+                     AND iol.docstatus IN ('CO','CL')
+                     AND iol.C_DocType_ID = 1001335
+                     AND iol.movementdate >= $P{StartDate}
+                     AND iol.movementdate <= $P{EndDate}
+    JOIN m_product hh ON io.m_product_id = hh.m_product_id AND hh.M_AttributeSet_ID = 1000199
+    JOIN attr_map am ON io.m_attributesetinstance_id = am.m_attributesetinstance_id
+    WHERE io.ad_client_id = $P{AD_CLIENT_ID}
+),
+ 
+packaging_cost AS MATERIALIZED (
+    -- Chi tieu 10-15 (bao bi PA/PE/tem nhan/carton/xop dem/PE), grouped in one pass
+    SELECT
+        hh.M_PartType_ID AS part_type,
+        COALESCE(SUM(fa.amtacctdr - fa.amtacctcr), 0) AS cp
+    FROM Fact_Acct fa
+    JOIN M_Inventory m
+           ON fa.record_id = m.M_Inventory_id
+          AND m.docstatus IN ('CO','CL')
+          AND m.C_DocType_ID IN (1001350, 1001347)
+    JOIN m_product hh
+           ON fa.m_product_id = hh.m_product_id
+          AND hh.M_PartType_ID IN (1000163, 1000164, 1000165, 1000166, 1000167, 1000168)
+    JOIN c_elementvalue tk
+           ON fa.account_id = tk.c_elementvalue_id
+          AND tk.AD_Client_ID = $P{AD_CLIENT_ID}
+          AND LEFT(tk.value, 4) IN ('6278', '6272')
+    WHERE fa.dateacct <= $P{EndDate}
+      AND fa.dateacct >= $P{StartDate}
+      AND fa.AD_Client_ID = $P{AD_CLIENT_ID}
+      AND fa.ad_table_id = 321
+    GROUP BY hh.M_PartType_ID
+),
+ 
+misc_packaging_cost AS MATERIALIZED (
+    -- Chi tieu 17-18 (day dai / bang dinh), grouped in one pass
+    SELECT
+        hh.M_PartType_ID AS part_type,
+        COALESCE(SUM(fa.amtacctcr - fa.amtacctdr), 0) AS cp
+    FROM Fact_Acct fa
+    JOIN M_Inventory m
+           ON fa.record_id = m.M_Inventory_id
+          AND m.docstatus IN ('CO','CL')
+          AND m.C_DocType_ID = 1001350
+    JOIN m_product hh
+           ON fa.m_product_id = hh.m_product_id
+          AND hh.M_PartType_ID IN (1000170, 1000171)
+    WHERE fa.dateacct <= $P{EndDate}
+      AND fa.dateacct >= $P{StartDate}
+      AND fa.AD_Client_ID = $P{AD_CLIENT_ID}
+      AND fa.ad_table_id = 321
+    GROUP BY hh.M_PartType_ID
+)
+ 
+select l.description,cast(l.value as integer) as value,l.name,sum(t.cp) as cp,sum(case when t.nhom <> 'I' then  t.cp1 else 0 end ) as cp1
 	,sum(case when t.nhom='I' then t.slb else case when t.nhom='II' then l.hsv_dinhmuc else l.hsv_dinhmuc end end ) as slb
 	,sum(case when t.nhom='I' then t.slb1 else case when t.nhom='II' then l.hsv_dinhmuc1 else l.hsv_dinhmuc1 end end ) as slb1
 	,sum(case when t.nhom='I' then t.slb5 else case when t.nhom='II' then l.hsv_dinhmuc05 else l.hsv_dinhmuc05  end end ) as slb5
@@ -51,89 +168,31 @@
 	,sum( case when t.nhom in ('II','III') then l.hsv_dinhmuc  else 0 end ) as slbc
 	,sum(case when t.nhom in ('II','III') then l.hsv_dinhmuc1 else 0 end ) as slbc1
 	,sum( case when t.nhom in ('II','III') then l.hsv_dinhmuc05  else 0 end ) as slbc5
-	
+ 
 	,sum(case when t.nhom='I' then t.cp1 else case when t.nhom='II' and t.chitieu<>'17' and t.chitieu<>'18' then l.hsv_dinhmuc*sx.slb+l.hsv_dinhmuc1*sx.slb1+l.hsv_dinhmuc05*sx.slb5 else l.hsv_dinhmuc*xb.slb+l.hsv_dinhmuc1*xb.slb1+l.hsv_dinhmuc05*xb.slb5 end end ) as tdm
 	, sum(case when l.value = '2' then t.slb end) as a1
 	,sum(case when l.value = '2' then t.slb1 end) as a2
 	,sum(case when l.value ='2' then t.slb5 end) as a3
 from (
+	
 	select 'I' as nhom,'1' as chitieu,-1* sum(fa.qty) as cp , 0 as slb,0 as slb1,0 as slb5, -1*sum(fa.amtacctdr-fa.amtacctcr)  as cp1
 	from m_inventory mi
 	join m_inventoryline miv on mi.m_inventory_id  = miv.m_inventory_id
 	join fact_acct fa on fa.record_id = miv.m_inventory_id and fa.line_id = miv.m_inventoryline_id and fa.ad_table_id = 321
 	join c_elementvalue ev on fa.account_id=ev.c_elementvalue_id and ev.ad_client_id=$P{AD_CLIENT_ID} and left(ev.value,2) in ('15')
 	where  mi.ad_client_id = $P{AD_CLIENT_ID} and mi.movementdate  >= $P{StartDate} and mi.movementdate <= $P{EndDate}
-	and fa.m_product_id = 1019435 
-
+	and fa.m_product_id = 1019435
+ 
 	union all
-	--Chi tieu so 2 so luong san xuat
-	select 'I' as nhom,'2' as chitieu,0 as cp,COALESCE(sum(t.slb),0) as slb,COALESCE(sum(t.slb1),0) as slb1,COALESCE(sum(t.slb5),0) as slb5,0 as cp1
-	from (
-			select distinct pl.m_productionplan_id as m_productionline_id,pl.m_product_id,pl.productionqty as slb,0 as slb1,0 as slb5,pl.m_attributesetinstance_id
-			from m_productionplan pl
-			join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000199
-			join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') 
-			AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
-			join (
-				select tt.m_attributesetinstance_id 
-				from m_attributeinstance tt
-				join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id=1000145 and gtt.m_attribute_id=1000146
-				WHERE tt.ad_client_id=$P{AD_CLIENT_ID}
-			) tt on pl.m_attributesetinstance_id=tt.m_attributesetinstance_id
-		where  pl.ad_client_id=$P{AD_CLIENT_ID}
-		
-		union all
-		
-		select distinct pl.m_productionplan_id as m_productionline_id,pl.m_product_id,0 as slb,pl.productionqty as slb1,0 as slb5,pl.m_attributesetinstance_id
-		from m_productionplan pl
-		join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000199
-		join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') 
-		AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
-		join (
-			select tt.m_attributesetinstance_id 
-			from m_attributeinstance tt
-			join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id=1000137 and gtt.m_attribute_id=1000146
-			WHERE tt.ad_client_id=$P{AD_CLIENT_ID}
-		) tt on pl.m_attributesetinstance_id=tt.m_attributesetinstance_id
-		where  pl.ad_client_id=$P{AD_CLIENT_ID}
-		
-		union all
-		
-		select distinct pl.m_productionplan_id as m_productionline_id,pl.m_product_id,0 as slb,0 as slb1,pl.productionqty as slb5,pl.m_attributesetinstance_id
-		from m_productionplan pl
-		join m_product hh on pl.m_product_id=hh.m_product_id and  hh.M_AttributeSet_ID=1000199
-		join m_production p on pl.m_production_id=p.m_production_id  and p.docstatus in ('CO','CL') 
-		AND p.movementdate>=$P{StartDate} and p.movementdate<=$P{EndDate}
-		join (
-			select tt.m_attributesetinstance_id 
-			from m_attributeinstance tt
-			join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in(1000138,1000139,1000146) and gtt.m_attribute_id=1000146
-			WHERE tt.ad_client_id=$P{AD_CLIENT_ID}
-		) tt on pl.m_attributesetinstance_id=tt.m_attributesetinstance_id
-		where  pl.ad_client_id=$P{AD_CLIENT_ID}
-	
-	) as t
-	
+	--Chi tieu so 2 so luong san xuat (computed once in production_qty CTE)
+	select 'I' as nhom,'2' as chitieu,0 as cp,pq.slb,pq.slb1,pq.slb5,0 as cp1
+	from production_qty pq
+ 
 	union all
-	--Chi tieu so 3 so luong xuat ban
-	SELECT 'I' AS nhom,'3' AS chitieu,  0 AS cp,   COALESCE(SUM(CASE WHEN ta.hsv_c_thuoctinh_id = 1000145 THEN io.movementqty ELSE 0 END), 0) AS slb,
-    COALESCE(SUM(CASE WHEN ta.hsv_c_thuoctinh_id = 1000137 THEN io.movementqty ELSE 0 END), 0) AS slb1,
-    COALESCE(SUM(CASE WHEN ta.hsv_c_thuoctinh_id IN (1000138,1000139,1000146) THEN io.movementqty ELSE 0 END), 0) AS slb5, 0 AS cp1
-	FROM 
-	    m_inoutline io
-	JOIN  m_inout iol ON io.m_inout_id = iol.m_inout_id  AND iol.docstatus IN ('CO', 'CL')   AND iol.C_DocType_ID = 1001335  AND iol.movementdate >= $P{StartDate}    AND iol.movementdate <= $P{EndDate}
-	    					
-	JOIN m_product hh ON io.m_product_id = hh.m_product_id  AND hh.M_AttributeSet_ID=1000199
-	JOIN (
-		SELECT tt.m_attributesetinstance_id,  gtt.hsv_c_thuoctinh_id
-	    FROM  m_attributeinstance tt
-	    JOIN m_attributevalue gtt ON tt.m_attributevalue_id = gtt.m_attributevalue_id 
-	    WHERE tt.ad_client_id = $P{AD_CLIENT_ID}
-	) ta ON io.m_attributesetinstance_id = ta.m_attributesetinstance_id
-	WHERE io.ad_client_id = $P{AD_CLIENT_ID}
-
-
-	
+	--Chi tieu so 3 so luong xuat ban (computed once in sales_qty CTE)
+	select 'I' as nhom,'3' as chitieu,0 as cp,sq.slb,sq.slb1,sq.slb5,0 as cp1
+	from sales_qty sq
+ 
 	union all
 	--Chi tieu so 4
 	select 'I' as nhom,'4' as chitieu,sum(miv.productionqty) as cp,0 as slb,0 as slb1,0 as slb5,0 as cp1
@@ -141,55 +200,28 @@ from (
 	join m_productionplan miv on mi.m_production_id = miv.m_production_id and mi.docstatus in ('CL','CO')
 	join m_product hh on miv.m_product_id = hh.m_product_id and hh.M_Product_Category_ID=1000609
 	where mi.ad_client_id=$P{AD_CLIENT_ID} and mi.c_campaign_id in (1000101,1000104)  and mi.movementdate  >= $P{StartDate} and mi.movementdate <= $P{EndDate}
-	
+ 
 	union all
-	--Chi tieu so 5: chi phi san xuat
-	select 'I' as nhom,'5' as chitieu,0 as cp,0 as slb,0 as slb1,0 as slb5,0 as cp1  from ad_client where ad_client_id=$P{AD_CLIENT_ID}
-	
+	--Chi tieu so 5,22,23: cac chi tieu chua nhap lieu, tra ve 0, khong can quet ad_client
+	select v.nhom, v.chitieu, null as cp,null as slb,null as slb1,null as slb5,null as cp1
+	from (values ('I','0'),('I','5'),('I','22'),('I','23')) as v(nhom,chitieu)
+ 
+	--Chi tieu so 5: giong chi tieu 6 nhung voi tai khoan 62222
+	union all
+	SELECT 'II' AS nhom, '31' AS chitieu,
+	       COALESCE(SUM(amtacctdr - amtacctcr), 0) AS cp, 0 AS slb, 0 AS slb1, 0 AS slb5,
+	       COALESCE(SUM(amtacctdr - amtacctcr), 0) AS cp1
+	FROM fact_gl_acc WHERE LEFT(acc_value, 5) = '62222'
+ 
 	--Chi tieu so 6: chi phi thu mua tai khoan 6276
 	union all
-	SELECT 
-	    'II' AS nhom,
-	    '6' AS chitieu,
-	    COALESCE(SUM(t.amtacctdr - t.amtacctcr), 0) AS cp,
-	    0 AS slb,
-	    0 AS slb1,
-	    0 AS slb5,
-	    COALESCE(SUM(t.amtacctdr - t.amtacctcr), 0) AS cp1
-	FROM (
-	    SELECT fa.amtacctdr,
-	        fa.amtacctcr,
-	        fa.account_id
-	    FROM 
-	        Fact_Acct fa
-	    LEFT JOIN 
-	        gl_journalline gl ON fa.record_id = gl.gl_journal_id
-	        AND fa.line_id = gl.gl_journalline_id
-	        AND fa.Account_ID = gl.Account_ID
-	    LEFT JOIN 
-	        gl_journal a ON a.gl_journal_id = fa.record_id
-	        AND a.docstatus IN ('CO', 'CL')
-	    WHERE 
-	        fa.dateacct <= $P{EndDate}
-	        AND fa.dateacct >= $P{StartDate}
-	        AND fa.AD_Client_ID = $P{AD_CLIENT_ID}
-	        
-	        AND (
-	            fa.ad_table_id <> 224
-	            OR (fa.ad_table_id = 224 AND gl.IsGenerated = 'N')
-	            OR (fa.ad_table_id = 224 AND fa.line_id IS NULL)
-	        )
-	) AS t
-	JOIN 
-	    c_elementvalue tk 
-	    ON t.account_id = tk.c_elementvalue_id
-	    AND tk.AD_Client_ID = $P{AD_CLIENT_ID} 
-	    AND LEFT(tk.value, 4) IN ('6276')
-
+	SELECT 'II' AS nhom, '6' AS chitieu,
+	       COALESCE(SUM(amtacctdr - amtacctcr), 0) AS cp, 0 AS slb, 0 AS slb1, 0 AS slb5,
+	       COALESCE(SUM(amtacctdr - amtacctcr), 0) AS cp1
+	FROM fact_gl_acc WHERE LEFT(acc_value, 4) = '6276'
+ 
 	--Chi tieu so 7: Chi phi tien dien tai khoan 6275
-	
 	union all
-	
 	select 	'II' as nhom,'7' as chitieu, COALESCE(sum( t.amtacctdr-t.amtacctcr ),0) as cp,0 as slb,0 as slb1,0 as slb5,COALESCE( sum( t.amtacctdr-t.amtacctcr ),0) as cp1
 	from
 	( 
@@ -202,11 +234,9 @@ from (
 	
 	) as t
 	join c_elementvalue tk 	on t.account_id=tk.c_elementvalue_id and tk.AD_Client_ID = $P{AD_CLIENT_ID} and left(tk.value,4) in ('6275')
-	
+ 
 	--Chi tieu so 8: chi phi tien nuoc tai khoan 6275 voi khach hang la C_BPartner_ID=1000247
-	
 	union all
-	
 	select 	'II' as nhom,'8' as chitieu, COALESCE(sum( t.amtacctdr-t.amtacctcr ),0) as cp,0 as slb,0 as slb1,0 as slb5,COALESCE( sum( t.amtacctdr-t.amtacctcr ),0) as cp1
 	from( 	
 		SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.account_id,fa.description ,fa.AD_Client_ID
@@ -216,10 +246,9 @@ from (
 		and fa.ad_table_id=318 and fa.C_BPartner_ID in (1021279)
 	) as t
 	join c_elementvalue tk 	on t.account_id=tk.c_elementvalue_id and tk.AD_Client_ID = $P{AD_CLIENT_ID} and left(tk.value,4) in ('6275')
-	
-	--chi tieu so 9:Chi phi than dot lo bang phat sinh tai khoan 6275-chi phi dien, nuoc
+ 
+	--chi tieu so 9:Chi phi than dot lo bang phat sinh tai khoan 6275-chi phi dien, nuoc  (kept as original: unique 4-way shape, not reused elsewhere)
 	union all
-	
 	select 	'II' as nhom,'9' as chitieu, COALESCE(sum( t.amtacctdr-t.amtacctcr ),0) as cp,0 as slb,0 as slb1,0 as slb5,COALESCE( sum( t.amtacctdr-t.amtacctcr ),0) as cp1
 	from ( 
 		SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.account_id,fa.description ,fa.AD_Client_ID
@@ -237,8 +266,6 @@ from (
 		fa.dateacct<=$P{EndDate} and fa.dateacct>=$P{StartDate}
 		and  fa.AD_Client_ID = $P{AD_CLIENT_ID}   
 		and fa.ad_table_id=318 and fa.C_BPartner_ID in (1021140,1021157,1021279)
-		
-		
 		
 		union all
 		SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.account_id ,fa.description ,fa.AD_Client_ID
@@ -262,108 +289,28 @@ from (
 		and fa.line_id is null
 	) as t
 	join c_elementvalue tk 	on t.account_id=tk.c_elementvalue_id and tk.AD_Client_ID = $P{AD_CLIENT_ID} and left(tk.value,4) in ('6275')
-	
-	--Chi tieu so 10: bao bi PA(gom ca truc in) xuat kho su dung voi M_PartType_ID=1000076
-	
+ 
+	--Chi tieu so 10-15: bao bi (computed once in packaging_cost CTE, one row lookup each)
 	union all
-	
-	select 	'II' as nhom,'10' as chitieu, COALESCE(sum( t.amtacctdr -t.amtacctcr ),0) as cp,0 as slb,0 as slb1,0 as slb5,COALESCE( sum( t.amtacctdr-t.amtacctcr  ),0) as cp1
-	from ( 
-		SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.m_product_id,fa.account_id,fa.description ,fa.AD_Client_ID
-		FROM Fact_Acct fa
-		join  M_Inventory m on fa.record_id=m.M_Inventory_id and m.docstatus in ('CO','CL') and m.C_DocType_ID in (1001350,1001347)
-		join m_product hh on fa.m_product_id=hh.m_product_id and hh.M_PartType_ID=1000163
-		WHERE
-		fa.dateacct<=$P{EndDate} and fa.dateacct>=$P{StartDate}
-		and  fa.AD_Client_ID = $P{AD_CLIENT_ID}   
-		and fa.ad_table_id=321 
-	
-	) as t
-	join c_elementvalue tk 	on t.account_id=tk.c_elementvalue_id and tk.AD_Client_ID = $P{AD_CLIENT_ID} and left(tk.value,4) in ('6278','6272')
-	
-	
-	--Chi tieu so 11: Bao bi PE voi xuat kho su dung voi M_PartType_ID=1000077
+	select 'II' as nhom,'10' as chitieu, COALESCE(pc.cp,0) as cp,0,0,0, COALESCE(pc.cp,0) as cp1
+	from (select cp from packaging_cost where part_type=1000163) pc
 	union all
-	
-	select 	'II' as nhom,'11' as chitieu, COALESCE(sum( t.amtacctdr -t.amtacctcr ),0) as cp,0 as slb,0 as slb1,0 as slb5,COALESCE( sum( t.amtacctdr -t.amtacctcr ),0) as cp1
-	from ( 
-		SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.m_product_id,fa.account_id,fa.description ,fa.AD_Client_ID
-		FROM Fact_Acct fa
-		join  M_Inventory m on fa.record_id=m.M_Inventory_id and m.docstatus in ('CO','CL') and m.C_DocType_ID in (1001350,1001347)
-		join m_product hh on fa.m_product_id=hh.m_product_id and hh.M_PartType_ID = 1000164
-		where 		
-		fa.dateacct<=$P{EndDate} and fa.dateacct>=$P{StartDate}
-		and  fa.AD_Client_ID = $P{AD_CLIENT_ID}   
-		and fa.ad_table_id=321 
-	
-	) as t
-	join c_elementvalue tk 	on t.account_id=tk.c_elementvalue_id and tk.AD_Client_ID = $P{AD_CLIENT_ID} and left(tk.value,4) in ('6278','6272')
-	
-	--Chi tieu so 12: Bao bi tem nhan voi xuat kho su dung voi M_PartType_ID=1000078
+	select 'II' as nhom,'11' as chitieu, x.cp,0,0,0, x.cp
+	from (select COALESCE((select cp from packaging_cost where part_type=1000164),0) as cp) x
 	union all
-	
-	select 	'II' as nhom,'12' as chitieu, COALESCE(sum(   t.amtacctdr -t.amtacctcr),0) as cp,0 as slb,0 as slb1,0 as slb5,COALESCE( sum(  t.amtacctdr -t.amtacctcr),0) as cp1
-	from ( 
-		SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.m_product_id,fa.account_id,fa.description ,fa.AD_Client_ID
-		FROM Fact_Acct fa
-		join  M_Inventory m on fa.record_id=m.M_Inventory_id and m.docstatus in ('CO','CL') and m.C_DocType_ID in (1001350,1001347)
-		join m_product hh on fa.m_product_id=hh.m_product_id and hh.M_PartType_ID = 1000165
-		where fa.dateacct<=$P{EndDate} and fa.dateacct>=$P{StartDate}
-		and  fa.AD_Client_ID = $P{AD_CLIENT_ID}   
-		and fa.ad_table_id=321
-	
-	) as t
-	join c_elementvalue tk 	on t.account_id=tk.c_elementvalue_id and tk.AD_Client_ID = $P{AD_CLIENT_ID} and left(tk.value,4) in ('6278','6272')
-	
-	--Chi tieu so 13: Bao bi carton voi xuat kho su dung voi M_PartType_ID=1000079
+	select 'II' as nhom,'12' as chitieu, x.cp,0,0,0, x.cp
+	from (select COALESCE((select cp from packaging_cost where part_type=1000165),0) as cp) x
 	union all
-	
-	select 	'II' as nhom,'13' as chitieu, COALESCE(sum( t.amtacctdr -t.amtacctcr ),0) as cp,0 as slb,0 as slb1,0 as slb5,COALESCE( sum( t.amtacctdr -t.amtacctcr ),0) as cp1
-	from (
-		SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.m_product_id,fa.account_id,fa.description ,fa.AD_Client_ID
-		FROM Fact_Acct fa
-		join  M_Inventory m on fa.record_id=m.M_Inventory_id and m.docstatus in ('CO','CL') and m.C_DocType_ID in (1001350,1001347)
-		join m_product hh on fa.m_product_id=hh.m_product_id and hh.M_PartType_ID = 1000166
-		WHERE
-		fa.dateacct<=$P{EndDate} and fa.dateacct>=$P{StartDate}
-		and  fa.AD_Client_ID = $P{AD_CLIENT_ID}   
-		and fa.ad_table_id=321 
-	) as t
-	join c_elementvalue tk 	on t.account_id=tk.c_elementvalue_id and tk.AD_Client_ID = $P{AD_CLIENT_ID} and left(tk.value,4) in ('6278','6272')
-	--Chi tieu so 14: Bao bi xop dem voi xuat kho su dung voi M_PartType_ID=1000080
+	select 'II' as nhom,'13' as chitieu, x.cp,0,0,0, x.cp
+	from (select COALESCE((select cp from packaging_cost where part_type=1000166),0) as cp) x
 	union all
-	
-	select 	'II' as nhom,'14' as chitieu, COALESCE(sum(  t.amtacctdr -t.amtacctcr ),0) as cp,0 as slb,0 as slb1,0 as slb5,COALESCE( sum( t.amtacctdr -t.amtacctcr ),0) as cp1
-	from ( 
-		SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.m_product_id,fa.account_id,fa.description ,fa.AD_Client_ID
-		FROM Fact_Acct fa
-		join  M_Inventory m on fa.record_id=m.M_Inventory_id and m.docstatus in ('CO','CL') and m.C_DocType_ID in (1001350,1001347)
-		join m_product hh on fa.m_product_id=hh.m_product_id and hh.M_PartType_ID = 1000167
-		WHERE
-		fa.dateacct<=$P{EndDate} and fa.dateacct>=$P{StartDate}
-		and  fa.AD_Client_ID = $P{AD_CLIENT_ID}   
-		and fa.ad_table_id=321 
-	
-	) as t
-	join c_elementvalue tk 	on t.account_id=tk.c_elementvalue_id and tk.AD_Client_ID = $P{AD_CLIENT_ID} and left(tk.value,4) in ('6278','6272')
-	--Chi tieu so 15: Bao bi PE voi xuat kho su dung voi M_PartType_ID=1000081
+	select 'II' as nhom,'14' as chitieu, x.cp,0,0,0, x.cp
+	from (select COALESCE((select cp from packaging_cost where part_type=1000167),0) as cp) x
 	union all
-	
-	select 	'II' as nhom,'15' as chitieu, COALESCE(sum( t.amtacctdr -t.amtacctcr  ),0) as cp,0 as slb,0 as slb1,0 as slb5,COALESCE( sum( t.amtacctdr -t.amtacctcr   ),0) as cp1
-	from ( 
-		SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.m_product_id,fa.account_id,fa.description ,fa.AD_Client_ID
-		FROM Fact_Acct fa
-		join  M_Inventory m on fa.record_id=m.M_Inventory_id and m.docstatus in ('CO','CL') and m.C_DocType_ID in (1001350,1001347)
-		join m_product hh on fa.m_product_id=hh.m_product_id and hh.M_PartType_ID = 1000168
-		WHERE
-		fa.dateacct<=$P{EndDate} and fa.dateacct>=$P{StartDate}
-		and  fa.AD_Client_ID = $P{AD_CLIENT_ID}   
-		and fa.ad_table_id=321
-		
-	) as t
-	join c_elementvalue tk 	on t.account_id=tk.c_elementvalue_id and tk.AD_Client_ID = $P{AD_CLIENT_ID} and left(tk.value,4) in ('6272','6278')
-	--Chi tieu so 16: Vat tu khac bang phat sinh tai khoan 6272,6278 tru chi chi tieu 10,11,12,13,14,15
-	
+	select 'II' as nhom,'15' as chitieu, x.cp,0,0,0, x.cp
+	from (select COALESCE((select cp from packaging_cost where part_type=1000168),0) as cp) x
+ 
+	--Chi tieu so 16: Vat tu khac (kept as original: unique shape, not reused elsewhere)
 	union all
 	select 'II' as nhom,'16' as chitieu,sum(cp) as cp, 0 as slb,0 as slb1,0 as slb5,sum(cp1)
 	from(
@@ -408,8 +355,8 @@ from (
 		and  fa.AD_Client_ID = $P{AD_CLIENT_ID}   
 		and fa.line_id is null
 	) as t
-	join c_elementvalue tk 	on t.account_id=tk.c_elementvalue_id and tk.AD_Client_ID = $P{AD_CLIENT_ID} and (left(tk.value,4) in ('6278','6272'))--or left(tk.value,5) in ('62720'))
-	
+	join c_elementvalue tk 	on t.account_id=tk.c_elementvalue_id and tk.AD_Client_ID = $P{AD_CLIENT_ID} and (left(tk.value,4) in ('6278','6272'))
+ 
 	union all 
 	
 	select COALESCE(sum( -1* ( fa.amtacctdr -fa.amtacctcr) ),0) as cp,COALESCE( sum( -1*( fa.amtacctdr -fa.amtacctcr  )),0) as cp1		
@@ -420,506 +367,95 @@ from (
 	where fa.dateacct<=$P{EndDate} and fa.dateacct>=$P{StartDate} and  fa.AD_Client_ID = $P{AD_CLIENT_ID} 
 		and  fa.ad_table_id=321
 	) as k
-	--Chi tieu 17: day dai
+ 
+	--Chi tieu 17,18: day dai / bang dinh (computed once in misc_packaging_cost CTE)
 	union all
-	
-	select 	'II' as nhom,'17' as chitieu, COALESCE(sum(  t.amtacctcr -t.amtacctdr),0) as cp,0 as slb,0 as slb1,0 as slb5,0 as cp1
-	from( 
-		SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.m_product_id,fa.account_id,fa.description ,fa.AD_Client_ID
-		FROM Fact_Acct fa
-		join  M_Inventory m on fa.record_id=m.M_Inventory_id and m.docstatus in ('CO','CL') and m.C_DocType_ID=1001350
-		join m_product hh on fa.m_product_id=hh.m_product_id and hh.M_PartType_ID=1000170
-		where						
-		fa.dateacct<=$P{EndDate} and fa.dateacct>=$P{StartDate}
-		and  fa.AD_Client_ID = $P{AD_CLIENT_ID}   
-		and fa.ad_table_id=321
-	
-	) as t
-	
+	select 'II' as nhom,'17' as chitieu, COALESCE(mp.cp,0) as cp,0,0,0,0 as cp1
+	from (select cp from misc_packaging_cost where part_type=1000170) mp
 	union all
-	--Chi tieu 18:Bang dinh
-	
-	select 	'II' as nhom,'18' as chitieu, COALESCE(sum(  t.amtacctcr -t.amtacctdr),0) as cp,0 as slb,0 as slb1,0 as slb5,0 as cp1
-	from ( 
-		SELECT fa.dateacct,fa.amtacctdr,fa.amtacctcr,fa.m_product_id,fa.account_id,fa.description ,fa.AD_Client_ID
-		FROM Fact_Acct fa
-		join  M_Inventory m on fa.record_id=m.M_Inventory_id and m.docstatus in ('CO','CL') and m.C_DocType_ID=1001350
-		join m_product hh on fa.m_product_id=hh.m_product_id and hh.M_PartType_ID=1000171
-		where						
-		fa.dateacct<=$P{EndDate} and fa.dateacct>=$P{StartDate}
-		and  fa.AD_Client_ID = $P{AD_CLIENT_ID} 
-		and fa.ad_table_id=321 		
-	) as t
-	
+	select 'II' as nhom,'18' as chitieu, COALESCE(mp.cp,0) as cp,0,0,0,0 as cp1
+	from (select cp from misc_packaging_cost where part_type=1000171) mp
+ 
 	--Chi tieu 19:Kiem ho giao dich tai khoan 6277
-	Union all
-	
-	SELECT 
-	    'II' AS nhom,
-	    '19' AS chitieu,
-	    COALESCE(SUM(t.amtacctdr - t.amtacctcr), 0) AS cp,
-	    0 AS slb,
-	    0 AS slb1,
-	    0 AS slb5,
-	    COALESCE(SUM(t.amtacctdr - t.amtacctcr), 0) AS cp1
-	FROM (
-	    SELECT     
-	        fa.amtacctdr,
-	        fa.amtacctcr,
-	        fa.account_id       
-	    FROM 
-	        Fact_Acct fa
-	    LEFT JOIN 
-	        gl_journalline gl ON fa.record_id = gl.gl_journal_id
-	        AND fa.line_id = gl.gl_journalline_id
-	        AND fa.Account_ID = gl.Account_ID
-	    LEFT JOIN 
-	        gl_journal a ON a.gl_journal_id = fa.record_id
-	        AND a.docstatus IN ('CO', 'CL')
-	    WHERE 
-	        fa.dateacct <= $P{EndDate}
-	        AND fa.dateacct >= $P{StartDate}
-	        AND fa.AD_Client_ID = $P{AD_CLIENT_ID}
-	        
-	        AND (
-	            fa.ad_table_id <> 224
-	            OR (fa.ad_table_id = 224 AND gl.IsGenerated = 'N')
-	            OR (fa.ad_table_id = 224 AND fa.line_id IS NULL)
-	        )
-	) AS t
-		JOIN 
-	    c_elementvalue tk 
-	    ON t.account_id = tk.c_elementvalue_id
-	    AND tk.AD_Client_ID = $P{AD_CLIENT_ID} 
-	    AND LEFT(tk.value, 4) IN ('6277')
-
 	union all
+	SELECT 'II' AS nhom, '19' AS chitieu,
+	       COALESCE(SUM(amtacctdr - amtacctcr), 0) AS cp, 0 AS slb, 0 AS slb1, 0 AS slb5,
+	       COALESCE(SUM(amtacctdr - amtacctcr), 0) AS cp1
+	FROM fact_gl_acc WHERE LEFT(acc_value, 4) = '6277'
+ 
 	--Chi tieu 20: Chi phi van chuyen tai khoan 6412
-	SELECT 
-    'III' AS nhom,
-    '20' AS chitieu,
-    COALESCE(SUM(t.amtacctdr - t.amtacctcr), 0) AS cp,
-    0 AS slb,
-    0 AS slb1,
-    0 AS slb5,
-    COALESCE(SUM(t.amtacctdr - t.amtacctcr), 0) AS cp1
-FROM (
-    SELECT 
-        
-        fa.amtacctdr,
-        fa.amtacctcr,
-        fa.account_id
-        
-    FROM 
-        Fact_Acct fa
-    LEFT JOIN 
-        gl_journalline gl 
-        ON fa.record_id = gl.gl_journal_id
-        AND fa.line_id = gl.gl_journalline_id
-        AND fa.Account_ID = gl.Account_ID
-    LEFT JOIN 
-        gl_journal a 
-        ON a.gl_journal_id = fa.record_id
-        AND a.docstatus IN ('CO', 'CL')
-    WHERE 
-        fa.dateacct <= $P{EndDate}
-        AND fa.dateacct >= $P{StartDate}
-        AND fa.AD_Client_ID = $P{AD_CLIENT_ID}
-        
-        AND (
-            fa.ad_table_id <> 224
-            OR (fa.ad_table_id = 224 AND gl.IsGenerated = 'N')
-            OR (fa.ad_table_id = 224 AND fa.line_id IS NULL)
-        )
-) AS t
-INNER JOIN 
-    c_elementvalue tk 
-    ON t.account_id = tk.c_elementvalue_id
-    AND tk.AD_Client_ID = $P{AD_CLIENT_ID} 
-    AND LEFT(tk.value, 4) IN ('6412')
-
+	union all
+	SELECT 'III' AS nhom, '20' AS chitieu,
+	       COALESCE(SUM(amtacctdr - amtacctcr), 0) AS cp, 0 AS slb, 0 AS slb1, 0 AS slb5,
+	       COALESCE(SUM(amtacctdr - amtacctcr), 0) AS cp1
+	FROM fact_gl_acc WHERE LEFT(acc_value, 4) = '6412'
+ 
 	--Chi tieu 21:Duong bo
 	union all
-	
-SELECT 
-    'III' AS nhom,
-    '21' AS chitieu,
-    COALESCE(SUM(t.amtacctdr - t.amtacctcr), 0) AS cp,
-    0 AS slb,
-    0 AS slb1,
-    0 AS slb5,
-    COALESCE(SUM(t.amtacctdr - t.amtacctcr), 0) AS cp1
-FROM (
-    SELECT 
-     
-        fa.amtacctdr,
-        fa.amtacctcr,
-        fa.account_id
-      
-    FROM 
-        Fact_Acct fa
-    LEFT JOIN 
-        gl_journalline gl 
-        ON fa.record_id = gl.gl_journal_id
-        AND fa.line_id = gl.gl_journalline_id
-        AND fa.Account_ID = gl.Account_ID
-    LEFT JOIN 
-        gl_journal a 
-        ON a.gl_journal_id = fa.record_id
-        AND a.docstatus IN ('CO', 'CL')
-    WHERE 
-        fa.dateacct <= $P{EndDate}
-        AND fa.dateacct >= $P{StartDate}
-        AND fa.AD_Client_ID = $P{AD_CLIENT_ID}
-        
-        AND (
-            fa.ad_table_id <> 224
-            OR (fa.ad_table_id = 224 AND gl.IsGenerated = 'N')
-            OR (fa.ad_table_id = 224 AND fa.line_id IS NULL)
-        )
-) AS t
-INNER JOIN 
-    c_elementvalue tk 
-    ON t.account_id = tk.c_elementvalue_id
-    AND tk.AD_Client_ID = $P{AD_CLIENT_ID} 
-    AND LEFT(tk.value, 4) IN ('6413')
-
-	--Chi tieu 22: chi phi cang
-	union all
-	
-	select 'I' as nhom,'22' as chitieu,0 as cp,0 as slb,0 as slb1,0 as slb5,0 as cp1  from ad_client where ad_client_id=$P{AD_CLIENT_ID}
-	
-	--Chi tieu 23: Chi phi duong bien
-	union all
-	
-	select 'I' as nhom,'23' as chitieu,0 as cp,0 as slb,0 as slb1,0 as slb5,0 as cp1  from ad_client where ad_client_id=$P{AD_CLIENT_ID}
-	
-	union all
+	SELECT 'III' AS nhom, '21' AS chitieu,
+	       COALESCE(SUM(amtacctdr - amtacctcr), 0) AS cp, 0 AS slb, 0 AS slb1, 0 AS slb5,
+	       COALESCE(SUM(amtacctdr - amtacctcr), 0) AS cp1
+	FROM fact_gl_acc WHERE LEFT(acc_value, 4) = '6413'
+ 
 	--Chi tieu 24:phi thanh toan LC tai khoan 6352
-	SELECT 'II' AS nhom,
-       '24' AS chitieu,
-       COALESCE(SUM(t.amtacctdr - t.amtacctcr), 0) AS cp,
-       0 AS slb,
-       0 AS slb1,
-       0 AS slb5,
-       COALESCE(SUM(t.amtacctdr - t.amtacctcr), 0) AS cp1
-FROM (
-    SELECT 
-           fa.amtacctdr,
-           fa.amtacctcr,
-           fa.account_id
-          
-    FROM Fact_Acct fa
-    LEFT JOIN gl_journalline gl 
-        ON fa.record_id = gl.gl_journal_id
-        AND fa.line_id = gl.gl_journalline_id
-        AND fa.Account_ID = gl.Account_ID
-    LEFT JOIN gl_journal a 
-        ON a.gl_journal_id = fa.record_id
-        AND a.docstatus IN ('CO', 'CL')
-    WHERE fa.dateacct >= $P{StartDate}
-      AND fa.dateacct <= $P{EndDate}
-      AND fa.AD_Client_ID = $P{AD_CLIENT_ID}
-      
-      AND (
-          (fa.ad_table_id <> 224) OR
-          (fa.ad_table_id = 224 AND gl.IsGenerated = 'N') OR
-          (fa.ad_table_id = 224 AND fa.line_id IS NULL)
-      )
-) AS t
-JOIN c_elementvalue tk 
-    ON t.account_id = tk.c_elementvalue_id 
-    AND tk.AD_Client_ID = $P{AD_CLIENT_ID} 
-    AND LEFT(tk.value, 4) IN ('6352')
-
-	
-	--Chi tieu 25:Chi phi sua chua thuong xuyen tai khoan 6273,6274(Ngay 16/10/2020 them tai khoan 6274)
 	union all
-	SELECT 'II' AS nhom,
-       '25' AS chitieu,
-       COALESCE(SUM(t.amtacctdr - t.amtacctcr), 0) AS cp,
-       0 AS slb,
-       0 AS slb1,
-       0 AS slb5,
-       COALESCE(SUM(t.amtacctdr - t.amtacctcr), 0) AS cp1
-FROM (
-    SELECT 
-           fa.amtacctdr,
-           fa.amtacctcr,
-           fa.account_id
-           
-    FROM Fact_Acct fa
-    LEFT JOIN gl_journalline gl 
-        ON fa.record_id = gl.gl_journal_id
-        AND fa.line_id = gl.gl_journalline_id
-        AND fa.Account_ID = gl.Account_ID
-    LEFT JOIN gl_journal a 
-        ON a.gl_journal_id = fa.record_id
-        AND a.docstatus IN ('CO', 'CL')
-    WHERE fa.dateacct >= $P{StartDate} 
-      AND fa.dateacct <= $P{EndDate}
-      AND fa.AD_Client_ID = $P{AD_CLIENT_ID}
-      
-      AND (
-          (fa.ad_table_id <> 224) OR
-          (fa.ad_table_id = 224 AND gl.IsGenerated = 'N') OR
-          (fa.ad_table_id = 224 AND fa.line_id IS NULL)
-      )
-) AS t
- JOIN c_elementvalue tk 
-    ON t.account_id = tk.c_elementvalue_id 
-    AND tk.AD_Client_ID = $P{AD_CLIENT_ID} 
-    AND LEFT(tk.value, 4) IN ('6273', '6274')
-
+	SELECT 'II' AS nhom, '24' AS chitieu,
+	       COALESCE(SUM(amtacctdr - amtacctcr), 0) AS cp, 0 AS slb, 0 AS slb1, 0 AS slb5,
+	       COALESCE(SUM(amtacctdr - amtacctcr), 0) AS cp1
+	FROM fact_gl_acc WHERE LEFT(acc_value, 4) = '6352'
+ 
+	--Chi tieu 25:Chi phi sua chua thuong xuyen tai khoan 6273,6274
+	union all
+	SELECT 'II' AS nhom, '25' AS chitieu,
+	       COALESCE(SUM(amtacctdr - amtacctcr), 0) AS cp, 0 AS slb, 0 AS slb1, 0 AS slb5,
+	       COALESCE(SUM(amtacctdr - amtacctcr), 0) AS cp1
+	FROM fact_gl_acc WHERE LEFT(acc_value, 4) IN ('6273','6274')
+ 
 	--Chi tieu 26:Chi phi nhan cong truc tiep voi tai khoan 6221
 	union all
-	SELECT 'II' AS nhom,
-       '26' AS chitieu,
-       COALESCE(SUM(t.amtacctdr - t.amtacctcr), 0) AS cp,
-       0 AS slb,
-       0 AS slb1,
-       0 AS slb5,
-       COALESCE(SUM(t.amtacctdr - t.amtacctcr), 0) AS cp1
-	FROM (
-	    SELECT 
-	           fa.amtacctdr,
-	           fa.amtacctcr,
-	           fa.account_id
-	    FROM Fact_Acct fa
-	    LEFT JOIN gl_journalline gl 
-	        ON fa.record_id = gl.gl_journal_id
-	        AND fa.line_id = gl.gl_journalline_id
-	        AND fa.Account_ID = gl.Account_ID
-	    LEFT JOIN gl_journal a 
-	        ON a.gl_journal_id = fa.record_id
-	        AND a.docstatus IN ('CO', 'CL')
-	    WHERE fa.dateacct >= $P{StartDate} 
-	      AND fa.dateacct <= $P{EndDate}
-	      AND fa.AD_Client_ID = $P{AD_CLIENT_ID}
-	      
-	      AND (
-	          (fa.ad_table_id <> 224) OR
-	          (fa.ad_table_id = 224 AND gl.IsGenerated = 'N') OR
-	          (fa.ad_table_id = 224 AND fa.line_id IS NULL)
-	      )
-	) AS t
-	JOIN c_elementvalue tk 
-	    ON t.account_id = tk.c_elementvalue_id 
-	    AND tk.AD_Client_ID = $P{AD_CLIENT_ID} 
-	    AND LEFT(tk.value, 4) IN ('6221')
-
+	SELECT 'II' AS nhom, '26' AS chitieu,
+	       COALESCE(SUM(amtacctdr - amtacctcr), 0) AS cp, 0 AS slb, 0 AS slb1, 0 AS slb5,
+	       COALESCE(SUM(amtacctdr - amtacctcr), 0) AS cp1
+	FROM fact_gl_acc WHERE LEFT(acc_value, 4) = '6221'
+ 
 	--Chi tieu 27:Chi phi nhan cong quan ly tai khoan 6411,6421,6271
 	union all
-	SELECT 'II' AS nhom,
-       '27' AS chitieu,
-       COALESCE(SUM(t.amtacctdr - t.amtacctcr), 0) AS cp,
-       0 AS slb,
-       0 AS slb1,
-       0 AS slb5,
-       COALESCE(SUM(t.amtacctdr - t.amtacctcr), 0) AS cp1
-	FROM (
-	    SELECT 
-	           fa.amtacctdr,
-	           fa.amtacctcr,
-	           fa.account_id
-	          
-	    FROM Fact_Acct fa
-	    LEFT JOIN gl_journalline gl ON fa.record_id = gl.gl_journal_id
-	                                AND fa.line_id = gl.gl_journalline_id
-	                                AND fa.Account_ID = gl.Account_ID
-	    LEFT JOIN gl_journal a ON a.gl_journal_id = fa.record_id
-	                            AND a.docstatus IN ('CO', 'CL')
-	    WHERE fa.dateacct >= $P{StartDate} 
-	      AND fa.dateacct <= $P{EndDate}
-	      AND fa.AD_Client_ID = $P{AD_CLIENT_ID}
-	      
-	      AND (
-	          (fa.ad_table_id <> 224) OR
-	          (fa.ad_table_id = 224 AND gl.IsGenerated = 'N') OR
-	          (fa.ad_table_id = 224 AND fa.line_id IS NULL)
-	      )
-	) AS t
-	JOIN c_elementvalue tk 
-	    ON t.account_id = tk.c_elementvalue_id 
-	    AND tk.AD_Client_ID = $P{AD_CLIENT_ID} 
-	    AND LEFT(tk.value, 4) IN ('6421', '6411', '6271')
+	SELECT 'II' AS nhom, '27' AS chitieu,
+	       COALESCE(SUM(amtacctdr - amtacctcr), 0) AS cp, 0 AS slb, 0 AS slb1, 0 AS slb5,
+	       COALESCE(SUM(amtacctdr - amtacctcr), 0) AS cp1
+	FROM fact_gl_acc WHERE LEFT(acc_value, 4) IN ('6421','6411','6271')
+ 
 	--Chi tieu 28:chi phi an ca,bao hiem
 	union all
-	
-	SELECT 'II' AS nhom,
-       '28' AS chitieu,
-       COALESCE(SUM(t.amtacctdr - t.amtacctcr), 0) AS cp,
-       0 AS slb,
-       0 AS slb1,
-       0 AS slb5,
-       COALESCE(SUM(t.amtacctdr - t.amtacctcr), 0) AS cp1
-	FROM (
-	    SELECT 
-	           fa.amtacctdr,
-	           fa.amtacctcr,
-	           fa.account_id
-	    FROM Fact_Acct fa
-	    LEFT JOIN gl_journalline gl ON fa.record_id = gl.gl_journal_id
-	                                AND fa.line_id = gl.gl_journalline_id
-	                                AND fa.Account_ID = gl.Account_ID
-	    LEFT JOIN gl_journal a ON a.gl_journal_id = fa.record_id
-	                            AND a.docstatus IN ('CO', 'CL')
-	    WHERE fa.dateacct >= $P{StartDate} 
-	      AND fa.dateacct <= $P{EndDate}
-	      AND fa.AD_Client_ID = $P{AD_CLIENT_ID}
-	      
-	      AND (
-	          (fa.ad_table_id <> 224) OR
-	          (fa.ad_table_id = 224 AND gl.IsGenerated = 'N') OR
-	          (fa.ad_table_id = 224 AND fa.line_id IS NULL)
-	      )
-	) AS t
-	JOIN c_elementvalue tk 
-	    ON t.account_id = tk.c_elementvalue_id 
-	    AND tk.AD_Client_ID = $P{AD_CLIENT_ID} 
-	    AND LEFT(tk.value, 4) IN ('6423', '6424')
-
-	
+	SELECT 'II' AS nhom, '28' AS chitieu,
+	       COALESCE(SUM(amtacctdr - amtacctcr), 0) AS cp, 0 AS slb, 0 AS slb1, 0 AS slb5,
+	       COALESCE(SUM(amtacctdr - amtacctcr), 0) AS cp1
+	FROM fact_gl_acc WHERE LEFT(acc_value, 4) IN ('6423','6424')
+ 
 	--Chi tieu 29:Chi phi phat trien thi truong tai khoan 6418
 	union all
-	
-	SELECT 'II' AS nhom, '29' AS chitieu, COALESCE(SUM(t.amtacctdr - t.amtacctcr), 0) AS cp,  0 AS slb,  0 AS slb1, 0 AS slb5,COALESCE(SUM(t.amtacctdr - t.amtacctcr), 0) AS cp1
-	FROM (
-	    SELECT 
-	           fa.amtacctdr,
-	           fa.amtacctcr,
-	           fa.account_id
-	          
-	    FROM Fact_Acct fa
-	    LEFT JOIN gl_journalline gl ON fa.record_id = gl.gl_journal_id
-	                                AND fa.line_id = gl.gl_journalline_id
-	                                AND fa.Account_ID = gl.Account_ID
-	    LEFT JOIN gl_journal a ON a.gl_journal_id = fa.record_id
-	                            AND a.docstatus IN ('CO', 'CL')
-	    WHERE fa.dateacct >= $P{StartDate} 
-	      AND fa.dateacct <= $P{EndDate}
-	      AND fa.AD_Client_ID = $P{AD_CLIENT_ID}
-	      
-	      AND ((fa.ad_table_id <> 224) OR
-	          (fa.ad_table_id = 224 AND gl.IsGenerated = 'N') OR
-	          (fa.ad_table_id = 224 AND fa.line_id IS NULL)
-	      )
-	) AS t
-	JOIN c_elementvalue tk 
-    ON t.account_id = tk.c_elementvalue_id 
-    AND tk.AD_Client_ID = $P{AD_CLIENT_ID} 
-    AND LEFT(tk.value, 4) IN ('6418')
-
+	SELECT 'II' AS nhom, '29' AS chitieu,
+	       COALESCE(SUM(amtacctdr - amtacctcr), 0) AS cp, 0 AS slb, 0 AS slb1, 0 AS slb5,
+	       COALESCE(SUM(amtacctdr - amtacctcr), 0) AS cp1
+	FROM fact_gl_acc WHERE LEFT(acc_value, 4) = '6418'
+ 
 	--Chi tieu 30: Chi phi khac phuc vu san xuat
 	union all
-	
-	SELECT 'II' AS nhom,
-       '30' AS chitieu,
-       COALESCE(SUM(t.amtacctdr - t.amtacctcr), 0) AS cp,
-       0 AS slb,
-       0 AS slb1,
-       0 AS slb5,
-       COALESCE(SUM(t.amtacctdr - t.amtacctcr), 0) AS cp1
-	FROM (
-		    SELECT fa.amtacctdr,
-		           fa.amtacctcr,
-		           fa.account_id
-		    FROM Fact_Acct fa
-		    LEFT JOIN gl_journalline gl ON fa.record_id = gl.gl_journal_id
-		                                AND fa.line_id = gl.gl_journalline_id
-		                                AND fa.Account_ID = gl.Account_ID
-		    LEFT JOIN gl_journal a ON a.gl_journal_id = fa.record_id
-		                            AND a.docstatus IN ('CO', 'CL')
-		    WHERE fa.dateacct >= $P{StartDate} 
-		      AND fa.dateacct <= $P{EndDate}
-		      AND fa.AD_Client_ID = $P{AD_CLIENT_ID}
-		      
-		      AND (
-		          (fa.ad_table_id <> 224) OR
-		          (fa.ad_table_id = 224 AND gl.IsGenerated = 'N') OR
-		          (fa.ad_table_id = 224 AND fa.line_id IS NULL)
-		      )
-		) AS t
-		JOIN c_elementvalue tk ON t.account_id = tk.c_elementvalue_id 
-		AND tk.AD_Client_ID = $P{AD_CLIENT_ID} 
-		AND LEFT(tk.value, 4) IN ('6422', '6426')
-
-
+	SELECT 'II' AS nhom, '30' AS chitieu,
+	       COALESCE(SUM(amtacctdr - amtacctcr), 0) AS cp, 0 AS slb, 0 AS slb1, 0 AS slb5,
+	       COALESCE(SUM(amtacctdr - amtacctcr), 0) AS cp1
+	FROM fact_gl_acc WHERE LEFT(acc_value, 4) IN ('6422','6426')
+ 
 ) as t
 join hsv_giathanh l on t.chitieu=l.value and ad_client_id=$P{AD_CLIENT_ID}
-
---Lien ket de lay so luong san xuat
-	left join(
-		SELECT 'II' AS nhom,
-		       '2' AS chitieu,
-		       0 AS cp,
-		       COALESCE(SUM(CASE WHEN tt.hsv_c_thuoctinh_id = 1000145 THEN pl.productionqty ELSE 0 END), 0) AS slb,
-		       COALESCE(SUM(CASE WHEN tt.hsv_c_thuoctinh_id = 1000137 THEN pl.productionqty ELSE 0 END), 0) AS slb1,
-		       COALESCE(SUM(CASE WHEN tt.hsv_c_thuoctinh_id IN (1000138,1000139,1000146) THEN pl.productionqty ELSE 0 END), 0) AS slb5
-		FROM m_productionplan pl
-		JOIN m_product hh ON pl.m_product_id = hh.m_product_id AND hh.M_AttributeSet_ID=1000199
-		JOIN m_production p ON pl.m_production_id = p.m_production_id
-		                     AND p.docstatus IN ('CO', 'CL')
-		                     
-		                     AND p.movementdate >= $P{StartDate} 
-		                     AND p.movementdate <= $P{EndDate}
-		JOIN (
-		    SELECT tt.m_attributesetinstance_id, gtt.hsv_c_thuoctinh_id
-		    FROM m_attributeinstance tt
-		    JOIN m_attributevalue gtt ON tt.m_attributevalue_id = gtt.m_attributevalue_id
-		    WHERE tt.ad_client_id = $P{AD_CLIENT_ID}
-		      AND (hsv_c_thuoctinh_id = 1000145 OR hsv_c_thuoctinh_id = 1000137 OR hsv_c_thuoctinh_id IN (1000138,1000139,1000146))
-		) tt ON pl.m_attributesetinstance_id = tt.m_attributesetinstance_id
-		WHERE pl.ad_client_id = $P{AD_CLIENT_ID}
-) as sx on t.nhom=sx.nhom
-
---Lien ket de lay so luong xuat ban
-	left join (		
-		select 'III' as nhom,'3' as chitieu,0 as cp,COALESCE(sum(t.slb),0) as slb,COALESCE(sum(t.slb1),0) as slb1,COALESCE(sum(t.slb5),0) as slb5
-		from(
-			select COALESCE(sum(io.movementqty),0) as slb,0 as slb1,0 as slb5,'3' as chitieu	from m_inoutline io
-			join m_inout iol on io.m_inout_id=iol.m_inout_id and iol.docstatus in ('CO','CL') and iol.C_DocType_ID=1001335
-			AND iol.movementdate>=$P{StartDate} and iol.movementdate<=$P{EndDate}
-			join m_product hh on io.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID=1000199
-			join (
-				select tt.m_attributesetinstance_id from m_attributeinstance tt
-				join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id=1000145 and gtt.m_attribute_id=1000146
-				WHERE tt.ad_client_id=$P{AD_CLIENT_ID}
-			) tt on IO.m_attributesetinstance_id=tt.m_attributesetinstance_id
-		where io.ad_client_id=$P{AD_CLIENT_ID}
-	
-		union all
-	
-		select 0 as slb,COALESCE(sum(io.movementqty),0) as slb1,0 as slb5,'3' as chitieu	
-		from m_inoutline io
-		join m_inout iol on io.m_inout_id=iol.m_inout_id and iol.docstatus in ('CO','CL') and iol.C_DocType_ID=1001335
-		AND iol.movementdate>=$P{StartDate} and iol.movementdate<=$P{EndDate}
-		join m_product hh on io.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID=1000199
-		join (
-			select tt.m_attributesetinstance_id from m_attributeinstance tt
-			join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id=1000137 and gtt.m_attribute_id=1000146
-			WHERE tt.ad_client_id=$P{AD_CLIENT_ID}
-		) tt on IO.m_attributesetinstance_id=tt.m_attributesetinstance_id
-		where io.ad_client_id=$P{AD_CLIENT_ID}
-		
-		union all
-		
-		select 0 as slb,0 as slb1,COALESCE(sum(io.movementqty),0) as slb5,'3' as chitieu	
-		from m_inoutline io
-		join m_inout iol on io.m_inout_id=iol.m_inout_id and iol.docstatus in ('CO','CL') and iol.C_DocType_ID=1001335
-		AND iol.movementdate>=$P{StartDate} and iol.movementdate<=$P{EndDate}
-		join m_product hh on io.m_product_id=hh.m_product_id and hh.M_AttributeSet_ID=1000199
-		join (
-			select tt.m_attributesetinstance_id from m_attributeinstance tt
-			join m_attributevalue gtt on tt.m_attributevalue_id=gtt.m_attributevalue_id and hsv_c_thuoctinh_id in(1000138,1000139,1000146) and gtt.m_attribute_id=1000146
-			WHERE tt.ad_client_id=$P{AD_CLIENT_ID}
-		) tt on IO.m_attributesetinstance_id=tt.m_attributesetinstance_id
-		where io.ad_client_id=$P{AD_CLIENT_ID}
-	
-	) as t
-)	xb on t.nhom=xb.nhom
-group by t.nhom,l.description,cast(l.value as integer),l.name
-order by cast(value as integer) asc]]>
+ 
+-- sx/xb: no re-scan, just reuse the production_qty / sales_qty CTEs computed above
+left join (select 'II' as nhom, slb, slb1, slb5 from production_qty) as sx on t.nhom=sx.nhom
+left join (select 'III' as nhom, slb, slb1, slb5 from sales_qty) as xb on t.nhom=xb.nhom
+ 
+group by t.nhom,l.description,cast(l.value as integer),l.name,l.hsv_stt
+order by cast(l.hsv_stt as integer) asc
+]]>
 	</queryString>
 	<field name="description" class="java.lang.String">
 		<property name="com.jaspersoft.studio.field.name" value="description"/>

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Created with Jaspersoft Studio version 6.20.0.final using JasperReports Library version 6.20.0-2bc7ab61c56f459e8176eb05c7705e145cd400ad  -->
+<!-- Created with Jaspersoft Studio version 6.20.6.final using JasperReports Library version 6.20.6-5c96b6aa8a39ac1dc6b6bea4b81168e16dd39231  -->
 <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="Sub_chiphi" pageWidth="800" pageHeight="595" orientation="Landscape" columnWidth="800" leftMargin="0" rightMargin="0" topMargin="0" bottomMargin="0" uuid="3caf149e-9cd3-4746-b817-264542f239e2">
 	<property name="com.jaspersoft.studio.data.sql.tables" value=""/>
-	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="psql"/>
+	<property name="com.jaspersoft.studio.data.defaultdataadapter" value="IDEMPIERE"/>
 	<parameter name="StartDate" class="java.util.Date"/>
 	<parameter name="EndDate" class="java.util.Date"/>
 	<parameter name="AD_CLIENT_ID" class="java.lang.Integer"/>
@@ -46,12 +46,12 @@ base_data AS (
         AND iol.movementdate BETWEEN $P{StartDate} AND $P{EndDate}
     JOIN m_product hh ON io.m_product_id = hh.m_product_id
         AND hh.M_AttributeSet_ID IN (1000199, 1000202, 1000200)
-    LEFT JOIN (
+    LEFT JOIN (  
         SELECT tt.m_attributesetinstance_id, gtt.hsv_c_thuoctinh_id
         FROM m_attributeinstance tt
         JOIN m_attributevalue gtt ON tt.m_attributevalue_id = gtt.m_attributevalue_id
             AND gtt.m_attribute_id = 1000146
-            AND gtt.hsv_c_thuoctinh_id IN (1000145, 1000137, 1000138, 1000139, 1000146)
+            AND gtt.hsv_c_thuoctinh_id IN (1000145, 1000137, 1000138, 1000139, 1000146) 
         WHERE tt.ad_client_id = $P{AD_CLIENT_ID}
     ) tt ON io.m_attributesetinstance_id = tt.m_attributesetinstance_id
     WHERE io.ad_client_id = $P{AD_CLIENT_ID}
@@ -98,7 +98,22 @@ fact_acct_common AS (
 
 
 all_costs AS (
-    SELECT
+		
+    select
+     -- 00: tk LIKE '62222%'
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE t.dateacct BETWEEN p.year_start AND p.end_date
+              AND tk.value LIKE '62222%'
+              AND (t.ad_table_id <> 224 OR (t.ad_table_id = 224 AND (t.IsGenerated = 'N' OR t.line_id IS NULL)))
+              AND t.c_activity_id NOT IN (1000344,1000343)   
+        ),0) AS cp_00_total,									
+        COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
+            WHERE t.dateacct BETWEEN p.start_date AND p.end_date
+              AND tk.value LIKE '62222%'
+              AND (t.ad_table_id <> 224 OR (t.ad_table_id = 224 AND (t.IsGenerated = 'N' OR t.line_id IS NULL)))
+              AND t.c_activity_id NOT IN (1000344,1000343) 
+        ),0) AS cp_00_period,
+
         -- 01: tk LIKE '6276%'
         COALESCE(SUM(t.amtacctdr - t.amtacctcr) FILTER (
             WHERE t.dateacct BETWEEN p.year_start AND p.end_date
@@ -415,7 +430,8 @@ SELECT
     dg.dgb * $P{slb} + $P{slb1} * dg.dgb1 + dg.dgb5 * $P{slb5} + dg.dgnt * $P{slnt} + dg.dgnm * $P{slnm} AS cplk_dm,
     k.cplk
 FROM (
-         SELECT '01' AS id, cp_01_period AS cp, cp_01_total AS cplk FROM all_costs
+			  select '0' as id, cp_00_period as cp, cp_00_total as cplk from all_costs
+	union all SELECT '01' AS id, cp_01_period AS cp, cp_01_total AS cplk FROM all_costs
     UNION ALL SELECT '02', cp_02_period, cp_02_total FROM all_costs
     UNION ALL SELECT '03', cp_03_period, cp_03_total FROM all_costs
     UNION ALL SELECT '04', cp_04_period, cp_04_total FROM all_costs
@@ -670,7 +686,7 @@ ORDER BY k.id::INT4;]]>
 				<textElement verticalAlignment="Middle">
 					<font fontName="Arial" size="11" isBold="true"/>
 				</textElement>
-				<text><![CDATA[Thành phẩm ngao]]></text>
+				<text><![CDATA[Chi phí trực tiếp]]></text>
 			</staticText>
 		</band>
 	</columnHeader>
